@@ -12,7 +12,40 @@ go get github.com/imunhatep/awslib
 ```
 
 ## Usage
+                      
+### Logging verbosity
+Use this func example to set logging verbosity
+```go
+package internal
 
+import (
+	"github.com/imunhatep/awslib/provider/types"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"os"
+	"time"
+)
+
+func setLogLevel(level int) {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.DateTime})
+
+	switch level {
+	case 0:
+		zerolog.SetGlobalLevel(zerolog.FatalLevel)
+	case 1:
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	case 2:
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	case 3:
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	case 4:
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	default:
+		zerolog.SetGlobalLevel(zerolog.TraceLevel)
+	}
+}
+
+```
 ### AWS Resources interface
 The library provides a set of interfaces to interact with AWS resources. The interfaces are defined as follows:
 ```go
