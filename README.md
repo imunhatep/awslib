@@ -4,12 +4,36 @@ This library provides a set of tools to interact with AWS services.
 The library also integrates with Prometheus for monitoring AWS API requests and errors.
 
 ## Installation
-
 To install the library, use the following command:
 
 ```sh
 go get github.com/imunhatep/awslib
 ```
+
+## AWS Service list
+ - athena
+ - autoscaling
+ - batch
+ - cfg
+ - cloudcontrol
+ - cloudtrail
+ - cloudwatchlogs
+ - dynamodb
+ - ec2
+ - ecs
+ - efs
+ - eks
+ - elb
+ - emr
+ - emrserverless
+ - health
+ - lambda
+ - pricing
+ - rds
+ - s3
+ - secretmanager
+ - sns
+ - sqs
 
 ## Usage
                       
