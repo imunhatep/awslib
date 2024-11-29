@@ -4,7 +4,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const AwslibSubsystem = "awslib_"
+const AwslibSubsystem = "awslib"
 
 var AwsApiDurationBuckets = []float64{.01, .1, .5, 1, 10, 30, 60, 120}
 
@@ -26,7 +26,7 @@ var (
 // InitMetrics initialize Prometheus metrics
 func InitMetrics(subsystem string) {
 	AwsMetricsEnabled = true
-	
+
 	AwsApiRequests = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Subsystem: subsystem,
