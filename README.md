@@ -52,46 +52,46 @@ Initialize AWS client pool.
 package main
 
 import (
-	"context"
-	"github.com/allegro/bigcache/v3"
-	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/rs/zerolog/log"
-	"github.com/imunhatep/awslib/cache"
-	"github.com/imunhatep/awslib/cache/handlers"
-	"github.com/imunhatep/awslib/gateway"
-	"github.com/imunhatep/awslib/provider"
-	ptypes "github.com/imunhatep/awslib/provider/types"
-	"github.com/imunhatep/awslib/provider/v2"
-	"github.com/imunhatep/awslib/resources"
+  "context"
+  "github.com/allegro/bigcache/v3"
+  "github.com/aws/aws-sdk-go-v2/service/configservice/types"
+  "github.com/rs/zerolog/log"
+  "github.com/imunhatep/awslib/cache"
+  "github.com/imunhatep/awslib/cache/handlers"
+  "github.com/imunhatep/awslib/gateway"
+  "github.com/imunhatep/awslib/provider"
+  ptypes "github.com/imunhatep/awslib/provider/types"
+  "github.com/imunhatep/awslib/provider/v2"
+  "github.com/imunhatep/awslib/resources"
 )
 
 type AwsClientPool interface {
-	GetContext() context.Context
-	GetClient(ptypes.AwsAccountID, ptypes.AwsRegion) (*v2.Client, error)
-	GetClients(...ptypes.AwsRegion) ([]*v2.Client, error)
+  GetContext() context.Context
+  GetClient(ptypes.AwsAccountID, ptypes.AwsRegion) (*v2.Client, error)
+  GetClients(...ptypes.AwsRegion) ([]*v2.Client, error)
 }
 
 func NewClientPool() (AwsClientPool, error) {
-	awsRegions := []ptypes.AwsRegion{ "us-east-1", "us-west-2" }
+  awsRegions := []ptypes.AwsRegion{ "us-east-1", "us-west-2" }
 
-	ctx := context.Background()
-	clientBuilder, err := v2.NewClientBuilder(ctx)
-	if err != nil {
-		return nil, err
-	}
+  ctx := context.Background()
+  clientBuilder, err := v2.NewClientBuilder(ctx)
+  if err != nil {
+    return nil, err
+  }
   
-	localClientPool := provider.NewClientPool(ctx, clientBuilder)
+  localClientPool := provider.NewClientPool(ctx, clientBuilder)
 
-	clients, err := localClientPool.GetClients(awsRegions...)
-	if err != nil {
-		return nil, err
-	}
+  clients, err := localClientPool.GetClients(awsRegions...)
+  if err != nil {
+    return nil, err
+  }
 
-	for _, client := range clients {
-		// Do something with the client per region
-	}
-	
-	return localClientPool, nil
+  for _, client := range clients {
+    // Do something with the client per region
+  }
+  
+  return localClientPool, nil
 }
 ```
 
@@ -100,50 +100,50 @@ func NewClientPool() (AwsClientPool, error) {
 package main
 
 import (
-	"context"
-	"github.com/allegro/bigcache/v3"
-	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/rs/zerolog/log"
-	"github.com/imunhatep/awslib/cache"
-	"github.com/imunhatep/awslib/cache/handlers"
-	"github.com/imunhatep/awslib/gateway"
-	"github.com/imunhatep/awslib/metrics"
-	"github.com/imunhatep/awslib/provider"
-	ptypes "github.com/imunhatep/awslib/provider/types"
-	"github.com/imunhatep/awslib/provider/v2"
-	"github.com/imunhatep/awslib/resources"
+  "context"
+  "github.com/allegro/bigcache/v3"
+  "github.com/aws/aws-sdk-go-v2/service/configservice/types"
+  "github.com/rs/zerolog/log"
+  "github.com/imunhatep/awslib/cache"
+  "github.com/imunhatep/awslib/cache/handlers"
+  "github.com/imunhatep/awslib/gateway"
+  "github.com/imunhatep/awslib/metrics"
+  "github.com/imunhatep/awslib/provider"
+  ptypes "github.com/imunhatep/awslib/provider/types"
+  "github.com/imunhatep/awslib/provider/v2"
+  "github.com/imunhatep/awslib/resources"
 )
 
 type AwsClientPool interface {
-	GetContext() context.Context
-	GetClient(ptypes.AwsAccountID, ptypes.AwsRegion) (*v2.Client, error)
-	GetClients(...ptypes.AwsRegion) ([]*v2.Client, error)
+  GetContext() context.Context
+  GetClient(ptypes.AwsAccountID, ptypes.AwsRegion) (*v2.Client, error)
+  GetClients(...ptypes.AwsRegion) ([]*v2.Client, error)
 }
 
 func NewClientPool() (AwsClientPool, error) {
-	// enable metrics, optional
-	metrics.InitMetrics(metrics.AwslibSubsystem)
-	
-	awsRegions := []ptypes.AwsRegion{ "us-east-1", "us-west-2" }
-
-	ctx := context.Background()
-	clientBuilder, err := v2.NewClientBuilder(ctx)
-	if err != nil {
-		return nil, err
-	}
+  // enable metrics, optional
+  metrics.InitMetrics(metrics.AwslibSubsystem)
   
-	assumedClientPool := v2.NewClientPool(ctx, clientBuilder)
+  awsRegions := []ptypes.AwsRegion{ "us-east-1", "us-west-2" }
 
-	clients, err := assumedClientPool.GetClients(awsRegions...)
-	if err != nil {
-		return nil, err
-	}
+  ctx := context.Background()
+  clientBuilder, err := v2.NewClientBuilder(ctx)
+  if err != nil {
+    return nil, err
+  }
+  
+  assumedClientPool := v2.NewClientPool(ctx, clientBuilder)
 
-	for _, client := range clients {
-		// Do something with the client per region
-	}
-	
-	return assumedClientPool, nil
+  clients, err := assumedClientPool.GetClients(awsRegions...)
+  if err != nil {
+    return nil, err
+  }
+
+  for _, client := range clients {
+    // Do something with the client per region
+  }
+  
+  return assumedClientPool, nil
 }
 ```
 
@@ -187,64 +187,64 @@ This structure helps fetching AWS resources from AWS services.
 package main
 
 import (
-	"context"
-	"github.com/allegro/bigcache/v3"
-	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/rs/zerolog/log"
-	"github.com/imunhatep/awslib/cache"
-	"github.com/imunhatep/awslib/cache/handlers"
-	"github.com/imunhatep/awslib/gateway"
-	"github.com/imunhatep/awslib/provider"
-	ptypes "github.com/imunhatep/awslib/provider/types"
-	"github.com/imunhatep/awslib/provider/v2"
-	"github.com/imunhatep/awslib/resources"
+  "context"
+  "github.com/allegro/bigcache/v3"
+  "github.com/aws/aws-sdk-go-v2/service/configservice/types"
+  "github.com/rs/zerolog/log"
+  "github.com/imunhatep/awslib/cache"
+  "github.com/imunhatep/awslib/cache/handlers"
+  "github.com/imunhatep/awslib/gateway"
+  "github.com/imunhatep/awslib/provider"
+  ptypes "github.com/imunhatep/awslib/provider/types"
+  "github.com/imunhatep/awslib/provider/v2"
+  "github.com/imunhatep/awslib/resources"
     "github.com/imunhatep/awslib/service"
-	"fmt"
-	"time"
+  "fmt"
+  "time"
 )
 
 type AwsClientPool interface {
-	GetContext() context.Context
-	GetClient(ptypes.AwsAccountID, ptypes.AwsRegion) (*v2.Client, error)
-	GetClients(...ptypes.AwsRegion) ([]*v2.Client, error)
+  GetContext() context.Context
+  GetClient(ptypes.AwsAccountID, ptypes.AwsRegion) (*v2.Client, error)
+  GetClients(...ptypes.AwsRegion) ([]*v2.Client, error)
 }
 
 func InitRepo() error {
-	awsRegions := []ptypes.AwsRegion{ "us-east-1", "us-west-2" }
-	
-	clientPool, _ := NewClientPool()
+  awsRegions := []ptypes.AwsRegion{ "us-east-1", "us-west-2" }
+  
+  clientPool, _ := NewClientPool()
 
-	clients, err := clientPool.GetClients(awsRegions...)
-	if err != nil {
-		return err 
-	}
+  clients, err := clientPool.GetClients(awsRegions...)
+  if err != nil {
+    return err 
+  }
     
-	ctx := context.Background()
-	gatewayPool := gateway.NewRepoGatewayPool(ctx, clients)
-	
-	// enable resource cache
-	cacheTtl := 300 * time.Second
-	
-	bigCache, _ := bigcache.New(ctx, bigcache.DefaultConfig(cacheTtl))
-	inMem := handlers.NewInMemory(bigCache)
+  ctx := context.Background()
+  gatewayPool := gateway.NewRepoGatewayPool(ctx, clients)
+  
+  // enable resource cache
+  cacheTtl := 300 * time.Second
+  
+  bigCache, _ := bigcache.New(ctx, bigcache.DefaultConfig(cacheTtl))
+  inMem := handlers.NewInMemory(bigCache)
 
-	inFile, _ := handlers.NewInFile("/tmp", cacheTtl)
+  inFile, _ := handlers.NewInFile("/tmp", cacheTtl)
 
-	dataCache := cache.NewDataCache().WithHandlers(inMem, inFile)
+  dataCache := cache.NewDataCache().WithHandlers(inMem, inFile)
 
-	// enable resource cache
-	gatewayPool.WithCache(dataCache)
+  // enable resource cache
+  gatewayPool.WithCache(dataCache)
 
-	resourceType := types.ResourceTypeInstance
-	awsProvider := resources.NewProvider(resourceType, gatewayPool.List(resourceType)...)
-	reader := awsProvider.Run()
-	
-	// resource service.EntityInterface
-	for _, resource := range reader.Read() {
-		fmt.Println(resource.GetArn())
+  resourceType := types.ResourceTypeInstance
+  awsProvider := resources.NewProvider(resourceType, gatewayPool.List(resourceType)...)
+  reader := awsProvider.Run()
+  
+  // resource service.EntityInterface
+  for _, resource := range reader.Read() {
+    fmt.Println(resource.GetArn())
     }
-	
-	return nil
+  
+  return nil
 }
 ```
 
@@ -259,26 +259,26 @@ To list all EC2 insatnces:
 package main
 
 import (
-	"context"
-	"fmt"
-	"github.com/imunhatep/awslib/service/ec2"
+  "context"
+  "fmt"
+  "github.com/imunhatep/awslib/service/ec2"
 )
 
 func main() {
-	ctx := context.Background()
-	
-	client := NewAwsClient() // Assume NewAwsClient is a function that returns an initialized AWS client
-	repo := ec2.NewEc2Repository(ctx, client)
+  ctx := context.Background()
+  
+  client := NewAwsClient() // Assume NewAwsClient is a function that returns an initialized AWS client
+  repo := ec2.NewEc2Repository(ctx, client)
 
-	instances, err := repo.ListInstancesAll()
-	if err != nil {
-		fmt.Println("Error listing instances:", err)
-		return
-	}
+  instances, err := repo.ListInstancesAll()
+  if err != nil {
+    fmt.Println("Error listing instances:", err)
+    return
+  }
 
-	for _, instance := range instances {
-		fmt.Println("EC2 ID:", instance.GetID())
-	}
+  for _, instance := range instances {
+    fmt.Println("EC2 ID:", instance.GetID())
+  }
 }
 ```
 
@@ -288,23 +288,23 @@ To get tags for a specific EC2 volume:
 package main
 
 import (
- "context"
- "fmt"
- "github.com/imunhatep/awslib/service/ec2"
+  "context"
+  "fmt"
+  "github.com/imunhatep/awslib/service/ec2"
 )
 
 func main() {
- ctx := context.Background()
- client := NewAwsClient() // Assume NewAwsClient is a function that returns an initialized AWS client
- repo := ec2.NewEc2Repository(ctx, client)
+  ctx := context.Background()
+  client := NewAwsClient() // Assume NewAwsClient is a function that returns an initialized AWS client
+  repo := ec2.NewEc2Repository(ctx, client)
 
- volumeID := "vol-0123456789abcdef0"
- volume := ec2.Volume{ID: volumeID}
+  volumeID := "vol-0123456789abcdef0"
+  volume := ec2.Volume{ID: volumeID}
 
- tags := volume.GetTags()
- for key, value := range tags {
-  fmt.Printf("Key: %s, Value: %s\n", key, value)
- }
+  tags := volume.GetTags()
+  for key, value := range tags {
+    fmt.Printf("Key: %s, Value: %s\n", key, value)
+  }
 }
 ```
 
@@ -316,29 +316,29 @@ To list all S3 buckets:
 package main
 
 import (
- "context"
- "fmt"
- "github.com/imunhatep/awslib/service/s3"
+  "context"
+  "fmt"
+  "github.com/imunhatep/awslib/service/s3"
 )
 
 func main() {
- ctx := context.Background()
- client := NewAwsClient() // Assume NewAwsClient is a function that returns an initialized AWS client
- repo := s3.NewS3Repository(ctx, client)
-
- buckets, err := repo.ListBucketsAll()
- if err != nil {
-  fmt.Println("Error listing buckets:", err)
-  return
- }
-
- for _, bucket := range buckets {
-  fmt.Println("Bucket Name:", bucket.GetName())
+  ctx := context.Background()
+  client := NewAwsClient() // Assume NewAwsClient is a function that returns an initialized AWS client
+  repo := s3.NewS3Repository(ctx, client)
   
-  for key, value := range bucket.GetTags() {
-   fmt.Printf("Key: %s, Value: %s\n", key, value)
+  buckets, err := repo.ListBucketsAll()
+  if err != nil {
+    fmt.Println("Error listing buckets:", err)
+    return
   }
- }
+  
+  for _, bucket := range buckets {
+    fmt.Println("Bucket Name:", bucket.GetName())
+    
+    for key, value := range bucket.GetTags() {
+      fmt.Printf("Key: %s, Value: %s\n", key, value)
+    }
+  }
 }
 ```
 
@@ -348,28 +348,28 @@ To get tags for a specific S3 bucket:
 package main
 
 import (
- "context"
- "fmt"
- "github.com/imunhatep/awslib/service/s3"
+  "context"
+  "fmt"
+  "github.com/imunhatep/awslib/service/s3"
 )
 
 func main() {
- ctx := context.Background()
- client := NewAwsClient() // Assume NewAwsClient is a function that returns an initialized AWS client
- repo := s3.NewS3Repository(ctx, client)
+  ctx := context.Background()
+  client := NewAwsClient() // Assume NewAwsClient is a function that returns an initialized AWS client
+  repo := s3.NewS3Repository(ctx, client)
 
- bucketName := "my-bucket"
- bucket := s3.Bucket{Name: &bucketName}
+  bucketName := "my-bucket"
+  bucket := s3.Bucket{Name: &bucketName}
+  
+  tags, err := repo.GetTags(bucket)
+  if err != nil {
+   fmt.Println("Error getting bucket tags:", err)
+   return
+  }
 
- tags, err := repo.GetTags(bucket)
- if err != nil {
-  fmt.Println("Error getting bucket tags:", err)
-  return
- }
-
- for key, value := range tags {
-  fmt.Printf("Key: %s, Value: %s\n", key, value)
- }
+  for key, value := range tags {
+    fmt.Printf("Key: %s, Value: %s\n", key, value)
+  }
 }
 ```
 
