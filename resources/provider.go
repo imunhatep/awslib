@@ -33,7 +33,9 @@ func (r Provider) Run() *ResourceReader {
 		Str("type", cfg.ResourceTypeToString(r.resourceType)).
 		Msg("[AwsProvider.Run] processing resource type")
 
-	metrics.AwsObserverExecutionCount.WithLabelValues(cfg.ResourceTypeToString(r.resourceType)).Inc()
+	if metrics.AwsMetricsEnabled {
+		metrics.AwsObserverExecutionCount.WithLabelValues(cfg.ResourceTypeToString(r.resourceType)).Inc()
+	}
 
 	// resource transition channel
 	stream := make(chan service.EntityInterface, ResourceBusSize)
@@ -87,7 +89,9 @@ func (r Provider) flush(resources []service.EntityInterface, stream chan<- servi
 		select {
 		case stream <- resource:
 		default:
-			metrics.AwsObserverResourceQueueFull.WithLabelValues(string(resource.GetType())).Inc()
+			if metrics.AwsMetricsEnabled {
+				metrics.AwsObserverResourceQueueFull.WithLabelValues(string(resource.GetType())).Inc()
+			}
 			log.Warn().
 				Str("arn", resource.GetArn()).
 				Msg("[AwsProvider.flush] resource channel is full, value is discarded")

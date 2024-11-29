@@ -13,10 +13,41 @@ go get github.com/imunhatep/awslib
 
 ## Usage
 
+### AWS Resources interface
+The library provides a set of interfaces to interact with AWS resources. The interfaces are defined as follows:
+```go
+package service
+
+import (
+    "github.com/aws/aws-sdk-go-v2/aws/arn"
+    cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
+    ptypes "github.com/imunhatep/awslib/provider/types"
+    "time"
+)
+
+type ResourceInterface interface {
+    GetAccountID() ptypes.AwsAccountID
+    GetRegion() ptypes.AwsRegion
+    GetCreatedAt() time.Time
+    GetArn() string
+    GetId() string
+    GetIdOrArn() string
+    GetType() cfg.ResourceType
+    GetTags() map[string]string
+}
+
+type EntityInterface interface {
+    ResourceInterface
+    GetName() string
+    GetTags() map[string]string
+    GetTagValue(string) string
+}
+```
+
 ### AWS Client Pool
 Initialize AWS client pool.
 
-#### With local account credentials
+#### Use credentials to access account directly
 ```go
 package main
 
@@ -64,7 +95,7 @@ func NewClientPool() (AwsClientPool, error) {
 }
 ```
 
-#### With assuming roles, i.e. cross-account access
+#### Use credentials to assume roles, e.g. cross-account access
 ```go
 package main
 
@@ -169,6 +200,7 @@ import (
 	"github.com/imunhatep/awslib/resources"
     "github.com/imunhatep/awslib/service"
 	"fmt"
+	"time"
 )
 
 type AwsClientPool interface {
@@ -191,7 +223,7 @@ func InitRepo() error {
 	gatewayPool := gateway.NewRepoGatewayPool(ctx, clients)
 	
 	// enable resource cache
-	cacheTtl := 300
+	cacheTtl := 300 * time.Second
 	
 	bigCache, _ := bigcache.New(ctx, bigcache.DefaultConfig(cacheTtl))
 	inMem := handlers.NewInMemory(bigCache)

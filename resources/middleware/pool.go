@@ -89,7 +89,9 @@ func (m *ResourcePoolMiddleware) updateMetrics(resourceType types.ResourceType) 
 	resourceList, ok := m.resourceList[resourceType]
 	if !ok {
 		promQL := map[string]string{"resource_type": cfg.ResourceTypeToString(resourceType)}
-		metrics.AwsPoolResourcePerRegionCount.DeletePartialMatch(promQL)
+		if metrics.AwsMetricsEnabled {
+			metrics.AwsPoolResourcePerRegionCount.DeletePartialMatch(promQL)
+		}
 
 		return
 	}
@@ -109,9 +111,11 @@ func (m *ResourcePoolMiddleware) updateMetrics(resourceType types.ResourceType) 
 	// metrics
 	for accountId, regions := range countByAccountAndRegion {
 		for region, cnt := range regions {
-			metrics.AwsPoolResourcePerRegionCount.
-				WithLabelValues(accountId.String(), region.String(), cfg.ResourceTypeToString(resourceType)).
-				Set(float64(cnt))
+			if metrics.AwsMetricsEnabled {
+				metrics.AwsPoolResourcePerRegionCount.
+					WithLabelValues(accountId.String(), region.String(), cfg.ResourceTypeToString(resourceType)).
+					Set(float64(cnt))
+			}
 		}
 	}
 }

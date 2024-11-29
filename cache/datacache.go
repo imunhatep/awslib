@@ -41,9 +41,13 @@ func (c *DataCache) Read(name string, data interface{}) bool {
 	log.Debug().Str("key", cacheKey).Msg("[DataCache.Read] read cache")
 
 	for _, handler := range c.handlers {
-		metrics.AwsResourceCacheRead.WithLabelValues(c.namespace, name, handler.Type()).Inc()
+		if metrics.AwsMetricsEnabled {
+			metrics.AwsResourceCacheRead.WithLabelValues(c.namespace, name, handler.Type()).Inc()
+		}
 		if handler.Read(cacheKey, data) {
-			metrics.AwsResourceCacheHit.WithLabelValues(c.namespace, name, handler.Type()).Inc()
+			if metrics.AwsMetricsEnabled {
+				metrics.AwsResourceCacheHit.WithLabelValues(c.namespace, name, handler.Type()).Inc()
+			}
 			return true
 		}
 	}
@@ -58,11 +62,15 @@ func (c *DataCache) Write(name string, data interface{}) error {
 	log.Debug().Str("key", cacheKey).Msg("[DataCache.Write] write cache")
 
 	for _, handler := range c.handlers {
-		metrics.AwsResourceCacheWrite.WithLabelValues(c.namespace, name, handler.Type()).Inc()
+		if metrics.AwsMetricsEnabled {
+			metrics.AwsResourceCacheWrite.WithLabelValues(c.namespace, name, handler.Type()).Inc()
+		}
 
 		if err := handler.Write(cacheKey, data); err != nil {
 			errors = append(errors, err)
-			metrics.AwsResourceCacheError.WithLabelValues(c.namespace, name, handler.Type()).Inc()
+			if metrics.AwsMetricsEnabled {
+				metrics.AwsResourceCacheError.WithLabelValues(c.namespace, name, handler.Type()).Inc()
+			}
 		}
 	}
 
