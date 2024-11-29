@@ -198,7 +198,7 @@ import (
   ptypes "github.com/imunhatep/awslib/provider/types"
   "github.com/imunhatep/awslib/provider/v2"
   "github.com/imunhatep/awslib/resources"
-    "github.com/imunhatep/awslib/service"
+  "github.com/imunhatep/awslib/service"
   "fmt"
   "time"
 )
@@ -242,7 +242,7 @@ func InitRepo() error {
   // resource service.EntityInterface
   for _, resource := range reader.Read() {
     fmt.Println(resource.GetArn())
-    }
+  }
   
   return nil
 }
@@ -334,7 +334,7 @@ func main() {
   
   for _, bucket := range buckets {
     fmt.Println("Bucket Name:", bucket.GetName())
-    
+
     for key, value := range bucket.GetTags() {
       fmt.Printf("Key: %s, Value: %s\n", key, value)
     }
@@ -363,8 +363,8 @@ func main() {
   
   tags, err := repo.GetTags(bucket)
   if err != nil {
-   fmt.Println("Error getting bucket tags:", err)
-   return
+    fmt.Println("Error getting bucket tags:", err)
+    return
   }
 
   for key, value := range tags {
