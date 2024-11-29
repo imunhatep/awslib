@@ -22,18 +22,17 @@ func (r *CloudTrailRepository) ListEventsByInput(query *cloudtrail.LookupEventsI
 
 	// reach end of pages or max results
 	for p.HasMorePages() && (query.MaxResults == nil || len(events) < int(*query.MaxResults)) {
-		metrics.AwsApiRequests.
-			With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).
-			Inc()
+		if metrics.AwsMetricsEnabled {
+			metrics.AwsApiRequests.With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).Inc()
+		}
 
 		log.Trace().Msgf("[CloudTrailRepository.FindBy] fetching events %d ...", len(events))
 
 		resp, err := p.NextPage(r.ctx)
 		if err != nil {
-			// metrics
-			metrics.AwsApiRequestErrors.
-				With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).
-				Inc()
+			if metrics.AwsMetricsEnabled {
+				metrics.AwsApiRequestErrors.With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).Inc()
+			}
 
 			return events, errors.New(err)
 		}
@@ -43,15 +42,15 @@ func (r *CloudTrailRepository) ListEventsByInput(query *cloudtrail.LookupEventsI
 		}
 	}
 
-	// metrics
-	metrics.AwsApiResourcesFetched.
-		With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).
-		Add(float64(len(events)))
+	if metrics.AwsMetricsEnabled {
+		metrics.AwsApiResourcesFetched.
+			With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).
+			Add(float64(len(events)))
 
-	// metrics
-	metrics.AwsRepoCallDuration.
-		With(r.promLabels("ListEventsByInput", ccfg.ResourceTypeTrailEvent)).
-		Observe(time.Since(start).Seconds())
+		metrics.AwsRepoCallDuration.
+			With(r.promLabels("ListEventsByInput", ccfg.ResourceTypeTrailEvent)).
+			Observe(time.Since(start).Seconds())
+	}
 
 	return events, nil
 }
@@ -72,8 +71,7 @@ func (r *CloudTrailRepository) ListEventsByLookup(lookup *LookupMiddleware) ([]E
 
 // ListEventsByLookupCached a wrapper of EventsByResource method with reading and writing results into a cache
 func (r *CloudTrailRepository) ListEventsByLookupCached(cache *cache.DataCache, lookup *LookupMiddleware) (items []Event, err error) {
-	namespace := fmt.Sprintf("%s:%s:%s", r.client.GetAccountID().String(),
-		r.client.GetRegion().String(), lookup.Hash())
+	namespace := fmt.Sprintf("%s:%s:%s", r.client.GetAccountID().String(), r.client.GetRegion().String(), lookup.Hash())
 	cacheNs := cache.WithNamespace(namespace)
 
 	resourceTypeKey := ccfg.ResourceTypeToString(ccfg.ResourceTypeTrailEvent)

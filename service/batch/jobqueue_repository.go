@@ -18,16 +18,15 @@ func (r *BatchRepository) ListJobQueueByInput(query *batch.DescribeJobQueuesInpu
 
 	p := batch.NewDescribeJobQueuesPaginator(r.client.Batch(), query)
 	for p.HasMorePages() {
-		metrics.AwsApiRequests.
-			With(r.promLabels("DescribeJobQueues", cfg.ResourceTypeBatchJobQueue)).
-			Inc()
+		if metrics.AwsMetricsEnabled {
+			metrics.AwsApiRequests.With(r.promLabels("DescribeJobQueues", cfg.ResourceTypeBatchJobQueue)).Inc()
+		}
 
 		resp, err := p.NextPage(r.ctx)
 		if err != nil {
-			// metrics
-			metrics.AwsApiRequestErrors.
-				With(r.promLabels("DescribeJobQueues", cfg.ResourceTypeBatchJobQueue)).
-				Inc()
+			if metrics.AwsMetricsEnabled {
+				metrics.AwsApiRequestErrors.With(r.promLabels("DescribeJobQueues", cfg.ResourceTypeBatchJobQueue)).Inc()
+			}
 
 			return computeEnvs, errors.New(err)
 		}
@@ -38,15 +37,15 @@ func (r *BatchRepository) ListJobQueueByInput(query *batch.DescribeJobQueuesInpu
 		}
 	}
 
-	// metrics
-	metrics.AwsApiResourcesFetched.
-		With(r.promLabels("DescribeJobQueues", cfg.ResourceTypeBatchJobQueue)).
-		Add(float64(len(computeEnvs)))
+	if metrics.AwsMetricsEnabled {
+		metrics.AwsApiResourcesFetched.
+			With(r.promLabels("DescribeJobQueues", cfg.ResourceTypeBatchJobQueue)).
+			Add(float64(len(computeEnvs)))
 
-	// metrics
-	metrics.AwsRepoCallDuration.
-		With(r.promLabels("ListJobQueueByInput", cfg.ResourceTypeBatchJobQueue)).
-		Observe(time.Since(start).Seconds())
+		metrics.AwsRepoCallDuration.
+			With(r.promLabels("ListJobQueueByInput", cfg.ResourceTypeBatchJobQueue)).
+			Observe(time.Since(start).Seconds())
+	}
 
 	return computeEnvs, nil
 }
