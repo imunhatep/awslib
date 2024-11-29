@@ -14,7 +14,6 @@ go get github.com/imunhatep/awslib
  - athena
  - autoscaling
  - batch
- - cfg
  - cloudcontrol
  - cloudtrail
  - cloudwatchlogs
