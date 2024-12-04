@@ -1,6 +1,7 @@
 package cloudtrail
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 	"github.com/go-errors/errors"
@@ -38,7 +39,13 @@ func (r *CloudTrailRepository) ListEventsByInput(query *cloudtrail.LookupEventsI
 		}
 
 		for _, event := range resp.Events {
-			events = append(events, NewEvent(r.client, event))
+			var cloudTrailEvent CloudTrailEvent
+			err := json.Unmarshal([]byte(*event.CloudTrailEvent), &cloudTrailEvent)
+			if err != nil {
+				continue
+			}
+
+			events = append(events, NewEvent(r.client, event, cloudTrailEvent))
 		}
 	}
 
@@ -47,6 +54,7 @@ func (r *CloudTrailRepository) ListEventsByInput(query *cloudtrail.LookupEventsI
 			With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).
 			Add(float64(len(events)))
 
+		// metrics
 		metrics.AwsRepoCallDuration.
 			With(r.promLabels("ListEventsByInput", ccfg.ResourceTypeTrailEvent)).
 			Observe(time.Since(start).Seconds())
@@ -83,8 +91,7 @@ func (r *CloudTrailRepository) ListEventsByLookupCached(cache *cache.DataCache, 
 		}
 	}
 
-	log.
-		Trace().
+	log.Trace().
 		Str("accountID", r.client.GetAccountID().String()).
 		Str("region", r.client.GetRegion().String()).
 		Str("type", ccfg.ResourceTypeToString(ccfg.ResourceTypeTrailEvent)).

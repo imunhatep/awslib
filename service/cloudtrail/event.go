@@ -10,12 +10,29 @@ import (
 	"time"
 )
 
+func init() {
+	gob.Register(Event{})
+}
+
 type Event struct {
 	service.AbstractResource
 	types.Event
+	EventData CloudTrailEvent
 }
 
-func NewEvent(client AwsClient, event types.Event) Event {
+// UserIdentity represents the user identity information in a CloudTrail event
+type UserIdentity struct {
+	Type string `json:"type"`
+}
+
+// CloudTrailEvent represents the structure of a CloudTrail event
+type CloudTrailEvent struct {
+	EventID         string       `json:"eventID"`
+	UserIdentity    UserIdentity `json:"userIdentity"`
+	SourceIPAddress string       `json:"sourceIPAddress"`
+}
+
+func NewEvent(client AwsClient, event types.Event, eventData CloudTrailEvent) Event {
 	ebs := Event{
 		AbstractResource: service.AbstractResource{
 			AccountID: client.GetAccountID(),
@@ -25,7 +42,8 @@ func NewEvent(client AwsClient, event types.Event) Event {
 			CreatedAt: aws.ToTime(event.EventTime),
 			Type:      cfg.ResourceTypeTrail,
 		},
-		Event: event,
+		Event:     event,
+		EventData: eventData,
 	}
 
 	return ebs
@@ -54,6 +72,10 @@ func (e Event) GetUsername() string {
 
 func (e Event) GetSource() string {
 	return aws.ToString(e.Event.EventSource)
+}
+
+func (e Event) GetSourceIPAddress() string {
+	return e.EventData.SourceIPAddress
 }
 
 func (e Event) GetResources() []types.Resource {
@@ -86,8 +108,4 @@ func (e Event) GetReadOnly() string {
 
 func (e Event) IsReadOnly() bool {
 	return e.GetReadOnly() == "true"
-}
-
-func init() {
-	gob.Register(Event{})
 }
