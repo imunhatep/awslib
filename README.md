@@ -432,6 +432,3 @@ func main() {
 
 ## Monitoring
 The library integrates with Prometheus to monitor AWS API requests and errors. Metrics are collected and can be visualized using Prometheus-compatible tools.
-
-## License
-This library is licensed under the MIT License. See the `LICENSE` file for more details.
