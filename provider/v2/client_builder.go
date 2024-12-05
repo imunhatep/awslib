@@ -17,6 +17,9 @@ import (
 	"time"
 )
 
+const AwsRetryAttempts = 5
+const AwsRetryMaxBackoffDelay = 1 * time.Second
+
 type ClientBuilder struct {
 	sync.Mutex
 
@@ -26,20 +29,14 @@ type ClientBuilder struct {
 	credentials map[iam.RoleArn]*aws.CredentialsCache
 }
 
-func NewClientBuilder(ctx context.Context, providers ...func(*config.LoadOptions) error) (*ClientBuilder, error) {
-	// aws creds config credsProvider
-	sdkProviders, err := GetAwsClientProviders(providers...)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
+func NewClientBuilder(ctx context.Context, providers ...func(*config.LoadOptions) error) *ClientBuilder {
 	builder := &ClientBuilder{
 		ctx:         ctx,
-		providers:   sdkProviders,
+		providers:   providers,
 		credentials: map[iam.RoleArn]*aws.CredentialsCache{},
 	}
 
-	return builder, nil
+	return builder
 }
 
 func (c *ClientBuilder) DefaultClient() (*Client, error) {
@@ -116,14 +113,16 @@ func (c *ClientBuilder) LocalClient(region types.AwsRegion) (*Client, error) {
 	return client, nil
 }
 
-func GetAwsClientProviders(providers ...func(*config.LoadOptions) error) ([]func(options *config.LoadOptions) error, error) {
+func DefaultAwsClientProviders(providers ...func(*config.LoadOptions) error) ([]func(options *config.LoadOptions) error, error) {
 	log.Debug().Msg("[client.GetAwsClientProviders] creating aws client with env creds")
 
-	// aws retry config credsProvider
-	providers = append(providers, config.WithRetryer(func() aws.Retryer {
-		return retry.AddWithMaxBackoffDelay(retry.NewStandard(), time.Second*2)
-	}))
+	// aws retry
+	providers = append(providers,
+		config.WithRetryMaxAttempts(AwsRetryAttempts),
+		config.WithRetryer(func() aws.Retryer { return retry.AddWithMaxBackoffDelay(retry.NewStandard(), AwsRetryMaxBackoffDelay) }),
+	)
 
+	// aws config credsProvider
 	envConf, err := config.NewEnvConfig()
 	if err != nil {
 		return providers, err

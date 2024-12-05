@@ -11,6 +11,7 @@ go get github.com/imunhatep/awslib
 ```
 
 ## AWS Service list
+List of AWS Services that have normalized interface EntityInterface{}
  - athena
  - autoscaling
  - batch
@@ -130,13 +131,13 @@ type AwsClientPool interface {
 func NewClientPool() (AwsClientPool, error) {
   awsRegions := []ptypes.AwsRegion{ "us-east-1", "us-west-2" }
 
-  ctx := context.Background()
-  clientBuilder, err := v2.NewClientBuilder(ctx)
+  providers, err := v2.DefaultAwsClientProviders()
   if err != nil {
     return nil, err
   }
-  
-  localClientPool := provider.NewClientPool(ctx, clientBuilder)
+
+  ctx := context.Background()
+  localClientPool := provider.NewClientPool(ctx, v2.NewClientBuilder(ctx, providers...))
 
   clients, err := localClientPool.GetClients(awsRegions...)
   if err != nil {
