@@ -1,12 +1,14 @@
 package cloudtrail
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/cache"
 	"github.com/imunhatep/awslib/metrics"
+	"github.com/imunhatep/awslib/service"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog/log"
@@ -14,20 +16,42 @@ import (
 )
 
 func (r *CloudTrailRepository) ListEventsByInput(query *cloudtrail.LookupEventsInput) ([]Event, error) {
+	source, errChan := r.ListEventsByInputAsync(query)
+	return service.ReadChannels(r.ctx, source, errChan)
+}
+
+func (r *CloudTrailRepository) ListEventsByInputAsync(query *cloudtrail.LookupEventsInput) (<-chan Event, <-chan *errors.Error) {
+	source := make(chan Event, 50)
+	errChan := make(chan *errors.Error, 50)
+
+	go r.fetchEventsByInput(r.ctx, query, source, errChan)
+
+	return source, errChan
+}
+
+func (r *CloudTrailRepository) fetchEventsByInput(
+	ctx context.Context,
+	query *cloudtrail.LookupEventsInput,
+	source chan<- Event,
+	errChan chan<- *errors.Error,
+) {
+	defer close(source)
+	defer close(errChan)
+
 	DebugQuery("[CloudTrailRepository.FindBy] debug query", query)
 
 	start := time.Now()
-	var events []Event
 
 	p := cloudtrail.NewLookupEventsPaginator(r.client.CloudTrail(), query)
 
 	// reach end of pages or max results
-	for p.HasMorePages() && (query.MaxResults == nil || len(events) < int(*query.MaxResults)) {
+	eventsFetchedCount := 0
+	for p.HasMorePages() && (query.MaxResults == nil || eventsFetchedCount < int(*query.MaxResults)) {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).Inc()
 		}
 
-		log.Trace().Msgf("[CloudTrailRepository.FindBy] fetching events %d ...", len(events))
+		log.Trace().Int("count", eventsFetchedCount).Msg("[CloudTrailRepository.FindBy] fetching events...")
 
 		resp, err := p.NextPage(r.ctx)
 		if err != nil {
@@ -35,32 +59,51 @@ func (r *CloudTrailRepository) ListEventsByInput(query *cloudtrail.LookupEventsI
 				metrics.AwsApiRequestErrors.With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).Inc()
 			}
 
-			return events, errors.New(err)
+			service.WriteToChan(errChan, errors.New(err))
+			continue
 		}
+
+		eventsFetchedCount += len(resp.Events)
 
 		for _, event := range resp.Events {
 			var cloudTrailEvent CloudTrailEvent
-			err := json.Unmarshal([]byte(*event.CloudTrailEvent), &cloudTrailEvent)
-			if err != nil {
+			if err := json.Unmarshal([]byte(*event.CloudTrailEvent), &cloudTrailEvent); err != nil {
+				service.WriteToChan(errChan, errors.New(err))
 				continue
 			}
 
-			events = append(events, NewEvent(r.client, event, cloudTrailEvent))
+			select {
+			case <-ctx.Done():
+				break
+			default:
+				service.WriteToChan(source, NewEvent(r.client, event, cloudTrailEvent))
+			}
 		}
 	}
 
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsApiResourcesFetched.
 			With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).
-			Add(float64(len(events)))
+			Add(float64(eventsFetchedCount))
 
 		// metrics
 		metrics.AwsRepoCallDuration.
 			With(r.promLabels("ListEventsByInput", ccfg.ResourceTypeTrailEvent)).
 			Observe(time.Since(start).Seconds())
 	}
+}
 
-	return events, nil
+func (r *CloudTrailRepository) ListEventsByLookupAsync(lookup *LookupMiddleware) (<-chan Event, <-chan *errors.Error) {
+	if errs, ok := lookup.Errors(); !ok {
+		errChan := make(chan *errors.Error, 1)
+		defer close(errChan)
+
+		errChan <- errors.New(errs[0])
+
+		return nil, errChan
+	}
+
+	return r.ListEventsByInputAsync(lookup.Get())
 }
 
 func (r *CloudTrailRepository) ListEventsByLookup(lookup *LookupMiddleware) ([]Event, error) {
