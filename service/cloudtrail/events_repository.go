@@ -15,21 +15,27 @@ import (
 )
 
 func (r *CloudTrailRepository) ListEventsByInput(query *cloudtrail.LookupEventsInput) ([]Event, error) {
-	source := make(chan Event, 50)
-	errChan := make(chan *errors.Error, 50)
-	defer close(source)
-	defer close(errChan)
-
-	r.ListEventsByInputAsync(query, source, errChan)
+	source, errChan := r.ListEventsByInputAsync(query)
 
 	return service.ReadChannels(r.ctx, source, errChan)
 }
 
-func (r *CloudTrailRepository) ListEventsByInputAsync(
+func (r *CloudTrailRepository) ListEventsByInputAsync(query *cloudtrail.LookupEventsInput) (<-chan Event, <-chan *errors.Error) {
+	source := make(chan Event)
+	errChan := make(chan *errors.Error)
+
+	go r.fetchEventsByInput(query, source, errChan)
+
+	return source, errChan
+}
+
+func (r *CloudTrailRepository) fetchEventsByInput(
 	query *cloudtrail.LookupEventsInput,
-	events chan<- Event,
+	source chan<- Event,
 	errChan chan<- *errors.Error,
 ) {
+	defer close(source)
+	defer close(errChan)
 
 	DebugQuery("[CloudTrailRepository.FindBy] debug query", query)
 
@@ -58,7 +64,7 @@ func (r *CloudTrailRepository) ListEventsByInputAsync(
 				metrics.AwsApiRequestErrors.With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).Inc()
 			}
 
-			errChan <- errors.New(err)
+			service.WriteToChan(errChan, errors.New(err))
 			continue
 		}
 
@@ -75,7 +81,7 @@ func (r *CloudTrailRepository) ListEventsByInputAsync(
 			case <-r.ctx.Done():
 				break
 			default:
-				service.WriteToChan(events, NewEvent(r.client, event, cloudTrailEvent))
+				service.WriteToChan(source, NewEvent(r.client, event, cloudTrailEvent))
 			}
 		}
 	}
@@ -92,17 +98,17 @@ func (r *CloudTrailRepository) ListEventsByInputAsync(
 	}
 }
 
-func (r *CloudTrailRepository) ListEventsByLookupAsync(
-	lookup *LookupMiddleware,
-	events chan<- Event,
-	errChan chan<- *errors.Error,
-) {
+func (r *CloudTrailRepository) ListEventsByLookupAsync(lookup *LookupMiddleware) (<-chan Event, <-chan *errors.Error) {
 	if errs, ok := lookup.Errors(); !ok {
+		errChan := make(chan *errors.Error, 2)
+		defer close(errChan)
+
 		errChan <- errors.New(errs[0])
-		return
+
+		return nil, errChan
 	}
 
-	r.ListEventsByInputAsync(lookup.Get(), events, errChan)
+	return r.ListEventsByInputAsync(lookup.Get())
 }
 
 func (r *CloudTrailRepository) ListEventsByLookup(lookup *LookupMiddleware) ([]Event, error) {
