@@ -15,24 +15,19 @@ import (
 )
 
 func (r *CloudTrailRepository) ListEventsByInput(query *cloudtrail.LookupEventsInput) ([]Event, error) {
-	source, errChan := r.ListEventsByInputAsync(query)
-	return service.ReadChannels(r.ctx, source, errChan)
-}
-
-func (r *CloudTrailRepository) ListEventsByInputAsync(query *cloudtrail.LookupEventsInput) (<-chan Event, <-chan *errors.Error) {
 	source := make(chan Event, 50)
 	errChan := make(chan *errors.Error, 50)
 	defer close(source)
 	defer close(errChan)
 
-	go r.fetchEventsByInput(query, source, errChan)
+	r.ListEventsByInputAsync(query, source, errChan)
 
-	return source, errChan
+	return service.ReadChannels(r.ctx, source, errChan)
 }
 
-func (r *CloudTrailRepository) fetchEventsByInput(
+func (r *CloudTrailRepository) ListEventsByInputAsync(
 	query *cloudtrail.LookupEventsInput,
-	source chan<- Event,
+	events chan<- Event,
 	errChan chan<- *errors.Error,
 ) {
 
@@ -80,7 +75,7 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 			case <-r.ctx.Done():
 				break
 			default:
-				service.WriteToChan(source, NewEvent(r.client, event, cloudTrailEvent))
+				service.WriteToChan(events, NewEvent(r.client, event, cloudTrailEvent))
 			}
 		}
 	}
@@ -97,17 +92,17 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 	}
 }
 
-func (r *CloudTrailRepository) ListEventsByLookupAsync(lookup *LookupMiddleware) (<-chan Event, <-chan *errors.Error) {
+func (r *CloudTrailRepository) ListEventsByLookupAsync(
+	lookup *LookupMiddleware,
+	events chan<- Event,
+	errChan chan<- *errors.Error,
+) {
 	if errs, ok := lookup.Errors(); !ok {
-		errChan := make(chan *errors.Error, 1)
-		defer close(errChan)
-
 		errChan <- errors.New(errs[0])
-
-		return nil, errChan
+		return
 	}
 
-	return r.ListEventsByInputAsync(lookup.Get())
+	r.ListEventsByInputAsync(lookup.Get(), events, errChan)
 }
 
 func (r *CloudTrailRepository) ListEventsByLookup(lookup *LookupMiddleware) ([]Event, error) {

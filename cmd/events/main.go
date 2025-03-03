@@ -96,6 +96,11 @@ func awsEvents() error {
 		return errors.New(err)
 	}
 
+	events := make(chan cloudtrail.Event, 50)
+	errChan := make(chan *errors.Error, 50)
+	defer close(events)
+	defer close(errChan)
+
 	for _, client := range clients {
 		ctx2, cancel := context.WithCancel(ctx)
 
@@ -104,9 +109,9 @@ func awsEvents() error {
 		//	NewCloudTrailRepository(ctx2, client).
 		//	ListEventsByLookupCached(dataCache, lookup)
 
-		events, errChan := cloudtrail.
+		cloudtrail.
 			NewCloudTrailRepository(ctx2, client).
-			ListEventsByLookupAsync(lookup)
+			ListEventsByLookupAsync(lookup, events, errChan)
 
 		service.CancelContextOnError(ctx2, cancel, errChan)
 
