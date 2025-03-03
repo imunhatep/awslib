@@ -36,15 +36,15 @@ func awsEvents() error {
 	ctx := context.Background()
 
 	awsRegions := []ptypes.AwsRegion{"eu-central-1"}
-	eventName := getEnv("EVENT_", "")
+	eventName := getEnv("EVENT_NAME", "")
 	resourceId := getEnv("EVENT_RESOURCE", "")
 	resourceType := getEnv("EVENT_TYPE", "")
 	username := getEnv("EVENT_USER", "")
 	domain := getEnv("EVENT_DOMAIN", "")
 	sourceIP := getEnv("EVENT_SOURCE_IP", "")
 	filterOutSourceIP := getEnv("EVENT_SOURCE_IP_NOT", "")
-	startTime := time.Now().Add(-24 * time.Hour)
-	endTime := time.Now()
+	startTime := time.Now()
+	endTime := time.Now().Add(-24 * time.Hour)
 	readonly := getEnv("EVENT_READONLY", "")
 	limit, _ := strconv.Atoi(getEnv("EVENT_LIMIT", "20"))
 
@@ -196,7 +196,7 @@ func getEnv(key, fallback string) string {
 }
 
 func fin(err error) {
-	fmt.Printf("reason: %s\n", err.Error())
+	fmt.Printf("Error: %s\n", err.Error())
 	fmt.Println("trace:")
 	fmt.Println(err.(*errors.Error).ErrorStack())
 	os.Exit(1)

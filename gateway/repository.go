@@ -130,8 +130,7 @@ func (e *RepoGateway) FindAll(resourceType cfg.ResourceType) (items []service.En
 	case cfgEntity.ResourceTypeGlueTable:
 		items, err = FindGlueTables(e.ctx, e.client)
 	case cfg.ResourceTypeBucket:
-		// items, err = FindS3Buckets(e.ctx, e.client)
-		items, err = FindS3CCBuckets(e.ctx, e.client)
+		items, err = FindS3Buckets(e.ctx, e.client)
 	case cfg.ResourceTypeDBInstance:
 		items, err = FindDbInstances(e.ctx, e.client)
 	case cfg.ResourceTypeDBSnapshot:
@@ -153,7 +152,7 @@ func (e *RepoGateway) FindAll(resourceType cfg.ResourceType) (items []service.En
 	case cfg.ResourceTypeFunction:
 		items, err = FindLambdaFunctions(e.ctx, e.client)
 	case cfg.ResourceTypeInstance:
-		items, err = FindEc2Instances(e.ctx, e.client) // FindEc2CCInstances(e.ctx, e.client)
+		items, err = FindEc2Instances(e.ctx, e.client)
 	case cfgEntity.ResourceTypeCloudWatchLogGroup:
 		items, err = FindCloudWatchLogGroups(e.ctx, e.client)
 	case cfg.ResourceTypeRoute53HostedZone:
@@ -161,7 +160,7 @@ func (e *RepoGateway) FindAll(resourceType cfg.ResourceType) (items []service.En
 	case cfgEntity.ResourceTypeSnapshot:
 		items, err = FindEc2Snapshots(e.ctx, e.client)
 	case cfg.ResourceTypeVolume:
-		items, err = FindEc2Volumes(e.ctx, e.client) // FindEbsCCVolumes(e.ctx, e.client)
+		items, err = FindEc2Volumes(e.ctx, e.client)
 	case cfg.ResourceTypeEFSFileSystem:
 		items, err = FindEfsFileSystems(e.ctx, e.client)
 	case cfg.ResourceTypeLoadBalancerV2:
@@ -176,6 +175,27 @@ func (e *RepoGateway) FindAll(resourceType cfg.ResourceType) (items []service.En
 		items, err = FindIamUsers(e.ctx, e.client)
 	case cfg.ResourceTypeVpc:
 		items, err = FindEc2Vpcs(e.ctx, e.client)
+	default:
+		err = fmt.Errorf("resource type %s not supported", cfgEntity.ResourceTypeToString(resourceType))
+	}
+
+	log.Info().
+		Str("accountID", e.client.GetAccountID().String()).
+		Str("region", e.client.GetRegion().String()).
+		Str("type", cfgEntity.ResourceTypeToString(resourceType)).
+		Msgf("[RepoGateway.FindAll] aws resources found: %d", len(items))
+
+	return items, err
+}
+
+func (e *RepoGateway) FindAllCC(resourceType cfg.ResourceType) (items []service.EntityInterface, err error) {
+	switch resourceType {
+	case cfg.ResourceTypeBucket:
+		items, err = FindS3CCBuckets(e.ctx, e.client)
+	case cfg.ResourceTypeInstance:
+		items, err = FindEc2CCInstances(e.ctx, e.client)
+	case cfg.ResourceTypeVolume:
+		items, err = FindEbsCCVolumes(e.ctx, e.client) // FindEbsCCVolumes(e.ctx, e.client)
 	default:
 		err = fmt.Errorf("resource type %s not supported", cfgEntity.ResourceTypeToString(resourceType))
 	}

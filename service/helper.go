@@ -97,6 +97,8 @@ func WriteToChan[T any](source chan<- T, value T) {
 // Function to read from the error channel and cancel the context on error
 func CancelContextOnError(ctx context.Context, cancel context.CancelFunc, errorChan <-chan *errors.Error) {
 	go func() {
+		log.Debug().Msg("Starting error channel listener")
+		
 		select {
 		case err, ok := <-errorChan:
 			if ok {

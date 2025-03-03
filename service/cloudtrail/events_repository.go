@@ -1,7 +1,6 @@
 package cloudtrail
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
@@ -23,20 +22,19 @@ func (r *CloudTrailRepository) ListEventsByInput(query *cloudtrail.LookupEventsI
 func (r *CloudTrailRepository) ListEventsByInputAsync(query *cloudtrail.LookupEventsInput) (<-chan Event, <-chan *errors.Error) {
 	source := make(chan Event, 50)
 	errChan := make(chan *errors.Error, 50)
+	defer close(source)
+	defer close(errChan)
 
-	go r.fetchEventsByInput(r.ctx, query, source, errChan)
+	go r.fetchEventsByInput(query, source, errChan)
 
 	return source, errChan
 }
 
 func (r *CloudTrailRepository) fetchEventsByInput(
-	ctx context.Context,
 	query *cloudtrail.LookupEventsInput,
 	source chan<- Event,
 	errChan chan<- *errors.Error,
 ) {
-	defer close(source)
-	defer close(errChan)
 
 	DebugQuery("[CloudTrailRepository.FindBy] debug query", query)
 
@@ -51,6 +49,12 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 			metrics.AwsApiRequests.With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).Inc()
 		}
 
+		select {
+		case <-r.ctx.Done():
+			break
+		default:
+		}
+
 		log.Trace().Int("count", eventsFetchedCount).Msg("[CloudTrailRepository.FindBy] fetching events...")
 
 		resp, err := p.NextPage(r.ctx)
@@ -59,7 +63,7 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 				metrics.AwsApiRequestErrors.With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).Inc()
 			}
 
-			service.WriteToChan(errChan, errors.New(err))
+			errChan <- errors.New(err)
 			continue
 		}
 
@@ -68,12 +72,12 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 		for _, event := range resp.Events {
 			var cloudTrailEvent CloudTrailEvent
 			if err := json.Unmarshal([]byte(*event.CloudTrailEvent), &cloudTrailEvent); err != nil {
-				service.WriteToChan(errChan, errors.New(err))
+				errChan <- errors.New(err)
 				continue
 			}
 
 			select {
-			case <-ctx.Done():
+			case <-r.ctx.Done():
 				break
 			default:
 				service.WriteToChan(source, NewEvent(r.client, event, cloudTrailEvent))

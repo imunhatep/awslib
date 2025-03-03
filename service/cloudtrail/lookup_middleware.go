@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail/types"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
+	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/gocollection/helper"
 	"github.com/imunhatep/gocollection/slice"
@@ -104,8 +105,7 @@ func (l *LookupMiddleware) WithUsername(value string) *LookupMiddleware {
 
 func LookupEventByAttribute(key types.LookupAttributeKey, value string) LookupHandler {
 	return func(q *cloudtrail.LookupEventsInput) (*cloudtrail.LookupEventsInput, error) {
-		log.
-			Trace().
+		log.Trace().
 			Str("key", string(key)).
 			Str("value", value).
 			Msg("[CloudTrail.LookupEventByAttribute]")
@@ -118,10 +118,12 @@ func LookupEventByAttribute(key types.LookupAttributeKey, value string) LookupHa
 		if len(q.LookupAttributes) < 1 {
 			q.LookupAttributes = append(q.LookupAttributes, eventName)
 		} else {
-			log.Error().
+			log.Warn().
 				Str("key", string(key)).
 				Str("value", value).
 				Msg("[CloudTrail.LookupEventByAttribute] skipped. Only 1 lookup attribute is supported, refer to AWS CloudTrail SDK docs")
+
+			return q, errors.New("only 1 lookup attribute is supported, refer to AWS CloudTrail SDK docs")
 		}
 
 		return q, nil
@@ -130,11 +132,7 @@ func LookupEventByAttribute(key types.LookupAttributeKey, value string) LookupHa
 
 func LookupStartTimeHandler(t time.Time) LookupHandler {
 	return func(q *cloudtrail.LookupEventsInput) (*cloudtrail.LookupEventsInput, error) {
-		log.
-			Trace().
-			Str("key", "StartTime").
-			Time("time", t).
-			Msg("lookup: query")
+		log.Trace().Str("key", "StartTime").Time("time", t).Msg("lookup: query")
 
 		q.StartTime = &t
 
@@ -144,11 +142,7 @@ func LookupStartTimeHandler(t time.Time) LookupHandler {
 
 func LookupEndTimeHandler(t time.Time) LookupHandler {
 	return func(q *cloudtrail.LookupEventsInput) (*cloudtrail.LookupEventsInput, error) {
-		log.
-			Trace().
-			Str("key", "EndTime").
-			Time("time", t).
-			Msg("lookup: query")
+		log.Trace().Str("key", "EndTime").Time("time", t).Msg("lookup: query")
 
 		q.EndTime = &t
 
@@ -158,11 +152,7 @@ func LookupEndTimeHandler(t time.Time) LookupHandler {
 
 func LookupLimitHandler(limit int32) LookupHandler {
 	return func(q *cloudtrail.LookupEventsInput) (*cloudtrail.LookupEventsInput, error) {
-		log.
-			Trace().
-			Str("key", "MaxResults").
-			Int32("limit", limit).
-			Msg("lookup: query")
+		log.Trace().Str("key", "MaxResults").Int32("limit", limit).Msg("lookup: query")
 
 		q.MaxResults = &limit
 
@@ -172,11 +162,7 @@ func LookupLimitHandler(limit int32) LookupHandler {
 
 func LookupResourceHandler(e service.EntityInterface) LookupHandler {
 	return func(q *cloudtrail.LookupEventsInput) (*cloudtrail.LookupEventsInput, error) {
-		log.
-			Trace().
-			Str("key", "ResourceName").
-			Str("name", e.GetIdOrArn()).
-			Msg("lookup: query")
+		log.Trace().Str("key", "ResourceName").Str("name", e.GetIdOrArn()).Msg("lookup: query")
 
 		q, _ = LookupEventByAttribute(types.LookupAttributeKeyResourceName, e.GetIdOrArn())(q)
 
