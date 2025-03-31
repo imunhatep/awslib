@@ -4,12 +4,18 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/imunhatep/awslib/gateway"
+	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/cfg"
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog/log"
 )
 
-type HandlerFunc func(c *ResourceReader) error
+type ResourceReaderInterface interface {
+	ResourceType() types.ResourceType
+	Read() []service.EntityInterface
+}
+
+type HandlerFunc func(c ResourceReaderInterface) error
 
 type MiddlewareInterface interface {
 	HandleResourceReader(next HandlerFunc) HandlerFunc

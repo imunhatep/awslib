@@ -9,7 +9,7 @@ import (
 )
 
 func SummaryHandler() resources.HandlerFunc {
-	return func(reader *resources.ResourceReader) error {
+	return func(reader resources.ResourceReaderInterface) error {
 		resourceList := reader.Read()
 		resourceType := reader.ResourceType()
 
@@ -22,7 +22,7 @@ func SummaryHandler() resources.HandlerFunc {
 }
 
 func LoggerHandler() resources.HandlerFunc {
-	return func(reader *resources.ResourceReader) error {
+	return func(reader resources.ResourceReaderInterface) error {
 		resourceList := reader.Read()
 		resourceType := reader.ResourceType()
 
@@ -37,7 +37,7 @@ func LoggerHandler() resources.HandlerFunc {
 }
 
 func WaitHandler(final chan struct{}) resources.HandlerFunc {
-	return func(reader *resources.ResourceReader) error {
+	return func(reader resources.ResourceReaderInterface) error {
 		log.Debug().Str("len/cap", fmt.Sprintf("%d/%d", len(final), cap(final))).Msgf("[WaitMiddleware] to final <- struct{}{}")
 		time.Sleep(3 * time.Second)
 		final <- struct{}{}
@@ -46,7 +46,7 @@ func WaitHandler(final chan struct{}) resources.HandlerFunc {
 }
 
 func NullHandler() resources.HandlerFunc {
-	return func(reader *resources.ResourceReader) error {
+	return func(reader resources.ResourceReaderInterface) error {
 		log.Trace().Msgf("[NullHandler] invoked")
 		return nil
 	}

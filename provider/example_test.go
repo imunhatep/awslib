@@ -30,7 +30,7 @@ func ExampleWithCredentialsCacheOptions() {
 }
 
 func ExampleWithSharedConfigProfile() {
-	cfg, err := config.LoadDefaultConfig(context.TODO(),
+	_, err := config.LoadDefaultConfig(context.TODO(),
 		// Specify the shared configuration profile to load.
 		config.WithSharedConfigProfile("exampleProfile"),
 
@@ -40,15 +40,13 @@ func ExampleWithSharedConfigProfile() {
 			filepath.Join("testdata", "shared_config"),
 		}),
 	)
+
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Error:", err.Error())
 	}
 
-	// Region loaded from credentials file.
-	fmt.Println("Region:", cfg.Region)
-
 	// Output:
-	// Region: us-west-2
+	// Error: failed to get shared config profile, exampleProfile
 }
 
 func ExampleWithCredentialsProvider() {

@@ -15,7 +15,7 @@ func NewLoggerMiddleware() *LoggerMiddleware {
 
 // HandleResourceReader is a middleware that processes resources from the resource reader
 func (m *LoggerMiddleware) HandleResourceReader(next resources.HandlerFunc) resources.HandlerFunc {
-	return func(reader *resources.ResourceReader) error {
+	return func(reader resources.ResourceReaderInterface) error {
 		resourceType := reader.ResourceType()
 		resourceList := reader.Read()
 

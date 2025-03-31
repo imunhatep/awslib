@@ -217,31 +217,3 @@ func (r *SecretManagerRepository) UpdateSecret(input *secretsmanager.UpdateSecre
 
 	return &secretUpdated, nil
 }
-
-// DeleteSecretByInput updates a secret
-func (r *SecretManagerRepository) DeleteSecretByInput(input *secretsmanager.DeleteSecretInput) error {
-	start := time.Now()
-
-	if metrics.AwsMetricsEnabled {
-		metrics.AwsApiRequests.
-			With(r.promLabels("DeleteSecret", cfg.ResourceTypeSecret)).
-			Inc()
-	}
-
-	_, err := r.client.SecretsManager().DeleteSecret(r.ctx, input)
-	if err != nil {
-		if metrics.AwsMetricsEnabled {
-			metrics.AwsApiRequestErrors.With(r.promLabels("DeleteSecret", cfg.ResourceTypeSecret)).Inc()
-		}
-
-		return errors.New(err)
-	}
-
-	if metrics.AwsMetricsEnabled {
-		metrics.AwsRepoCallDuration.
-			With(r.promLabels("DeleteSecret", cfg.ResourceTypeSecret)).
-			Observe(time.Since(start).Seconds())
-	}
-
-	return nil
-}

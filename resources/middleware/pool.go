@@ -52,7 +52,7 @@ func (m *ResourcePoolMiddleware) GetResourcesByType(resourceType types.ResourceT
 
 // HandleResourceReader is a middleware that processes resources from the resource reader
 func (m *ResourcePoolMiddleware) HandleResourceReader(next resources.HandlerFunc) resources.HandlerFunc {
-	return func(reader *resources.ResourceReader) error {
+	return func(reader resources.ResourceReaderInterface) error {
 		log.Debug().Msg("[ResourcePoolMiddleware.HandleResourceReader] processing resources")
 
 		resourceType := reader.ResourceType()
