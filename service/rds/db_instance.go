@@ -39,6 +39,20 @@ func NewDbInstance(client AwsClient, db types.DBInstance) DbInstance {
 }
 
 func (e DbInstance) GetName() string {
+	if name, ok := e.GetTags()["Name"]; ok {
+		return name
+	}
+
+	// If no name tag is found, extract from ARN
+	if resourceName := e.ARN.Resource; resourceName != "" {
+		return resourceName
+	}
+
+	// fallback to DB name
+	return e.GetDbName()
+}
+
+func (e DbInstance) GetDbName() string {
 	return aws.ToString(e.DBName)
 }
 
