@@ -43,9 +43,13 @@ func (e DbInstance) GetName() string {
 		return name
 	}
 
-	// If no name tag is found, extract from ARN
-	if resourceName := e.ARN.Resource; resourceName != "" {
-		return resourceName
+	// if no name tag is found and DBInstanceIdentifier is not nil, return it
+	if e.DBInstanceIdentifier != nil {
+		return aws.ToString(e.DBInstanceIdentifier)
+	}
+
+	if e.ARN != nil {
+		return e.ARN.Resource
 	}
 
 	// fallback to DB name
