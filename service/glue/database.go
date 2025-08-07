@@ -1,7 +1,6 @@
 package glue
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/glue/types"
 	"github.com/imunhatep/awslib/helper"
@@ -17,10 +16,6 @@ type Database struct {
 	service.AbstractResource
 	types.Database
 	Tags map[string]string
-}
-
-func init() {
-	gob.Register(Database{})
 }
 
 func NewDatabase(client AwsClient, database types.Database, tags map[string]string) Database {

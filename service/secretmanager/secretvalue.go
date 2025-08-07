@@ -1,7 +1,6 @@
 package secretmanager
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -12,10 +11,6 @@ import (
 type SecretValue struct {
 	service.AbstractResource
 	*sm.GetSecretValueOutput
-}
-
-func init() {
-	gob.Register(SecretValue{})
 }
 
 func NewSecretValue(client AwsClient, value *sm.GetSecretValueOutput) SecretValue {

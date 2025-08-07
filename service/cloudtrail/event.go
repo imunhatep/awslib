@@ -1,7 +1,6 @@
 package cloudtrail
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail/types"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -9,10 +8,6 @@ import (
 	"github.com/imunhatep/awslib/service"
 	"time"
 )
-
-func init() {
-	gob.Register(Event{})
-}
 
 type Event struct {
 	service.AbstractResource

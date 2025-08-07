@@ -1,17 +1,12 @@
 package rds
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/imunhatep/awslib/service"
 )
-
-func init() {
-	gob.Register(DbSnapshot{})
-}
 
 type DbSnapshot struct {
 	service.AbstractResource

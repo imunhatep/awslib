@@ -1,7 +1,6 @@
 package cloudcontrol
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cc "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -33,10 +32,6 @@ func NewVolume(client AwsClient, resource cc.ResourceDescription, attributes map
 	}
 
 	return rsrc
-}
-
-func init() {
-	gob.Register(Volume{})
 }
 
 func (e Volume) GetName() string {

@@ -1,7 +1,6 @@
 package batch
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/service/batch/types"
@@ -18,10 +17,6 @@ type JobQueue struct {
 	service.AbstractResource
 	types.JobQueueDetail
 	Tags map[string]string
-}
-
-func init() {
-	gob.Register(JobQueue{})
 }
 
 func NewJobQueue(client AwsClient, jobQueue types.JobQueueDetail) JobQueue {

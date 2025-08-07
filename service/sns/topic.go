@@ -1,7 +1,6 @@
 package sns
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -15,10 +14,6 @@ type Topic struct {
 	types.Topic
 	Attributes map[string]string
 	Tags       []types.Tag
-}
-
-func init() {
-	gob.Register(Topic{})
 }
 
 func NewTopic(client AwsClient, topic types.Topic, attributes map[string]string, tags []types.Tag) Topic {

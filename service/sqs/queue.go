@@ -1,7 +1,6 @@
 package sqs
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -14,10 +13,6 @@ type Queue struct {
 	QueueUrl   string
 	Attributes map[string]string
 	Tags       map[string]string
-}
-
-func init() {
-	gob.Register(Queue{})
 }
 
 func NewQueue(client AwsClient, queueUrl string, attributes, tags map[string]string) Queue {

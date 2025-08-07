@@ -1,7 +1,6 @@
 package ec2
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/imunhatep/awslib/helper"
@@ -55,8 +54,4 @@ func (e Snapshot) GetTagValue(tag string) string {
 	}
 
 	return val
-}
-
-func init() {
-	gob.Register(Snapshot{})
 }

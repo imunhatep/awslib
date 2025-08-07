@@ -1,7 +1,6 @@
 package athena
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/athena/types"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -17,10 +16,6 @@ type WorkGroup struct {
 	service.AbstractResource
 	types.WorkGroup
 	Tags []types.Tag
-}
-
-func init() {
-	gob.Register(WorkGroup{})
 }
 
 func NewWorkGroup(client AwsClient, workGroup types.WorkGroup, tags []types.Tag) WorkGroup {

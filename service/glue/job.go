@@ -1,17 +1,12 @@
 package glue
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/glue/types"
 	"github.com/imunhatep/awslib/helper"
 	"github.com/imunhatep/awslib/service"
 )
-
-func init() {
-	gob.Register(Job{})
-}
 
 type JobList struct {
 	Items []Job

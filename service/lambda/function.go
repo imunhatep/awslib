@@ -1,7 +1,6 @@
 package lambda
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -14,10 +13,6 @@ type Function struct {
 	service.AbstractResource
 	types2.FunctionConfiguration
 	Tags map[string]string
-}
-
-func init() {
-	gob.Register(Function{})
 }
 
 func NewFunction(client AwsClient, fn types2.FunctionConfiguration, tags map[string]string) Function {

@@ -1,7 +1,6 @@
 package emrserverless
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/service/emrserverless/types"
@@ -16,10 +15,6 @@ type ApplicationList struct {
 type Application struct {
 	service.AbstractResource
 	*types.Application
-}
-
-func init() {
-	gob.Register(Application{})
 }
 
 func NewApplication(client AwsClient, application *types.Application) Application {

@@ -1,7 +1,6 @@
 package cloudcontrol
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cc "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -19,10 +18,6 @@ type Bucket struct {
 	cc.ResourceDescription
 	attributes map[string]interface{}
 	tags       map[string]string
-}
-
-func init() {
-	gob.Register(Bucket{})
 }
 
 func NewBucket(

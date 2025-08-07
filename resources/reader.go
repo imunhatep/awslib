@@ -3,7 +3,6 @@ package resources
 import (
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/imunhatep/awslib/service"
-	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog/log"
 	"sync"
 )
@@ -29,16 +28,6 @@ func NewResourceReader(resourceType types.ResourceType, channel <-chan service.E
 	return cr
 }
 
-func (cr *ResourceReader) Read() []service.EntityInterface {
-	cr.wg.Wait()
-
-	return slice.Copy(cr.values)
-}
-
-func (cr *ResourceReader) ResourceType() types.ResourceType {
-	return cr.resourceType
-}
-
 func (cr *ResourceReader) await(channel <-chan service.EntityInterface) {
 	defer cr.wg.Done()
 
@@ -47,4 +36,17 @@ func (cr *ResourceReader) await(channel <-chan service.EntityInterface) {
 		cr.values = append(cr.values, v)
 	}
 	log.Trace().Msgf("[ResourceReader.await] resources found: %d", len(cr.values))
+}
+
+func (cr *ResourceReader) Read() []service.EntityInterface {
+	cr.wg.Wait()
+
+	result := make([]service.EntityInterface, len(cr.values))
+	copy(result, cr.values)
+
+	return result
+}
+
+func (cr *ResourceReader) ResourceType() types.ResourceType {
+	return cr.resourceType
 }

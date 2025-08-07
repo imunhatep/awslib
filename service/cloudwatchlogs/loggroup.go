@@ -1,7 +1,6 @@
 package cloudwatchlogs
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
@@ -18,10 +17,6 @@ type LogGroup struct {
 	service.AbstractResource
 	types.LogGroup
 	Tags map[string]string
-}
-
-func init() {
-	gob.Register(LogGroup{})
 }
 
 func NewLogGroup(client AwsClient, logGroup types.LogGroup, tags map[string]string) LogGroup {

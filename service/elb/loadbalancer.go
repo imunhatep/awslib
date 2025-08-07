@@ -1,7 +1,6 @@
 package elb
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -57,8 +56,4 @@ func (e LoadBalancer) GetTagValue(tag string) string {
 	}
 
 	return val
-}
-
-func init() {
-	gob.Register(LoadBalancer{})
 }

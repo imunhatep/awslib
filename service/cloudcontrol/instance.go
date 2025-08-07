@@ -1,7 +1,6 @@
 package cloudcontrol
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cc "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -38,10 +37,6 @@ func NewInstance(
 	}
 
 	return rsrc
-}
-
-func init() {
-	gob.Register(Instance{})
 }
 
 func (e Instance) GetName() string {

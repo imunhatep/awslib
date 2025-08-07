@@ -1,7 +1,6 @@
 package secretmanager
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -17,10 +16,6 @@ type SecretEntryList struct {
 type SecretEntry struct {
 	service.AbstractResource
 	*sm.DescribeSecretOutput
-}
-
-func init() {
-	gob.Register(SecretEntry{})
 }
 
 func NewSecretEntry(client AwsClient, secret *sm.DescribeSecretOutput) SecretEntry {

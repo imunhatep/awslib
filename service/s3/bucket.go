@@ -1,7 +1,6 @@
 package s3
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -17,10 +16,6 @@ type Bucket struct {
 	service.AbstractResource
 	types.Bucket
 	Tags []types.Tag
-}
-
-func init() {
-	gob.Register(Bucket{})
 }
 
 func NewBucket(client AwsClient, bucket types.Bucket, tags []types.Tag) Bucket {

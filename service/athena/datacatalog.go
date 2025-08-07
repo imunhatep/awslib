@@ -1,7 +1,6 @@
 package athena
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/athena/types"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -18,10 +17,6 @@ type DataCatalog struct {
 	service.AbstractResource
 	types.DataCatalog
 	Tags []types.Tag
-}
-
-func init() {
-	gob.Register(DataCatalog{})
 }
 
 func NewDataCatalog(client AwsClient, dataCatalog types.DataCatalog, tags []types.Tag) DataCatalog {

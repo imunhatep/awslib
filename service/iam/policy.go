@@ -1,20 +1,12 @@
 package iam
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/imunhatep/awslib/service"
 )
-
-func init() {
-	gob.Register(Policy{})
-	gob.Register(PolicyVersion{})
-	gob.Register(PolicyDocument{})
-	gob.Register(Statement{})
-}
 
 type PolicyList struct {
 	Items []Policy

@@ -1,7 +1,6 @@
 package glue
 
 import (
-	"encoding/gob"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/glue/types"
@@ -9,10 +8,6 @@ import (
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/cfg"
 )
-
-func init() {
-	gob.Register(Table{})
-}
 
 type TableList struct {
 	Items []Table

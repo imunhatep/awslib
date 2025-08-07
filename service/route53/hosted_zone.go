@@ -1,7 +1,6 @@
 package route53
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/route53/types"
@@ -9,10 +8,6 @@ import (
 	"github.com/imunhatep/awslib/service"
 	"time"
 )
-
-func init() {
-	gob.Register(HostedZone{})
-}
 
 type HostedZoneList struct {
 	Items []HostedZone

@@ -1,7 +1,6 @@
 package eks
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -16,10 +15,6 @@ type ClusterList struct {
 type Cluster struct {
 	service.AbstractResource
 	*types.Cluster
-}
-
-func init() {
-	gob.Register(Cluster{})
 }
 
 func NewCluster(client AwsClient, cluster *types.Cluster) Cluster {

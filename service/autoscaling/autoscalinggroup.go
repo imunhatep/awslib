@@ -1,7 +1,6 @@
 package autoscaling
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/service/autoscaling/types"
@@ -60,8 +59,4 @@ func (e AutoScalingGroup) GetTagValue(tag string) string {
 	}
 
 	return val
-}
-
-func init() {
-	gob.Register(AutoScalingGroup{})
 }

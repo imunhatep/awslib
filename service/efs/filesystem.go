@@ -1,7 +1,6 @@
 package efs
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -17,10 +16,6 @@ type FileSystem struct {
 	service.AbstractResource
 	types.FileSystemDescription
 	Tags []types.Tag
-}
-
-func init() {
-	gob.Register(FileSystem{})
 }
 
 func NewFileSystem(client AwsClient, fileSystem types.FileSystemDescription) FileSystem {

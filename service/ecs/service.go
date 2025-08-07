@@ -1,7 +1,6 @@
 package ecs
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -17,10 +16,6 @@ type ServiceList struct {
 type Service struct {
 	service.AbstractResource
 	types.Service
-}
-
-func init() {
-	gob.Register(Service{})
 }
 
 func NewService(client AwsClient, svc types.Service) Service {

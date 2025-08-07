@@ -1,7 +1,6 @@
 package emrserverless
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/service/emrserverless/types"
@@ -16,12 +15,6 @@ type JobRunList struct {
 type JobRun struct {
 	service.AbstractResource
 	*types.JobRun
-}
-
-func init() {
-	gob.Register(JobRun{})
-	gob.Register(types.JobDriverMemberSparkSubmit{})
-	gob.Register(types.JobDriverMemberHive{})
 }
 
 func NewJobRun(client AwsClient, jobRun *types.JobRun) JobRun {

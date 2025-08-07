@@ -1,7 +1,6 @@
 package dynamodb
 
 import (
-	"encoding/gob"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -17,10 +16,6 @@ type Table struct {
 	service.AbstractResource
 	*types.TableDescription
 	Tags []types.Tag
-}
-
-func init() {
-	gob.Register(Table{})
 }
 
 func NewTable(client AwsClient, table *types.TableDescription, tags []types.Tag) Table {
