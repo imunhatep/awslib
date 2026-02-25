@@ -1,12 +1,13 @@
 package sns
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/imunhatep/awslib/service"
-	"time"
 )
 
 type Topic struct {

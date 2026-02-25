@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cc "github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -14,9 +18,6 @@ import (
 	"github.com/imunhatep/gocollection/dict"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"os"
-	"strconv"
-	"time"
 )
 
 func main() {

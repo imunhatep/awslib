@@ -1,12 +1,13 @@
 package secretmanager
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
-	"time"
 )
 
 func (r *SecretManagerRepository) DescribeSecretValue(secret SecretEntry) (*SecretValue, error) {

@@ -2,6 +2,9 @@ package resources
 
 import (
 	"context"
+	"strings"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/go-errors/errors"
 	ptypes "github.com/imunhatep/awslib/provider/types"
@@ -11,8 +14,6 @@ import (
 	"github.com/imunhatep/awslib/service/cloudtrail"
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog/log"
-	"strings"
-	"time"
 )
 
 type AwsClientPool interface {

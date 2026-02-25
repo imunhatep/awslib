@@ -1,10 +1,11 @@
 package service
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	ptypes "github.com/imunhatep/awslib/provider/types"
-	"time"
 )
 
 type ResourceInterface interface {

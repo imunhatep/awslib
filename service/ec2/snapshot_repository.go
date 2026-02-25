@@ -1,11 +1,12 @@
 package ec2
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
-	"time"
 )
 
 func (r *Ec2Repository) ListSnapshotsAll() ([]Snapshot, error) {

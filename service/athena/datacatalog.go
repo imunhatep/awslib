@@ -1,12 +1,13 @@
 package athena
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/athena/types"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/imunhatep/awslib/helper"
 	"github.com/imunhatep/awslib/service"
-	"time"
 )
 
 type DataCatalogList struct {

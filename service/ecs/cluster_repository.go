@@ -1,6 +1,8 @@
 package ecs
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
@@ -8,7 +10,6 @@ import (
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/imunhatep/awslib/service/cfg"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 func (r *EcsRepository) ListClustersAll() ([]Cluster, error) {

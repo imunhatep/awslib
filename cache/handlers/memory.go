@@ -3,10 +3,11 @@ package handlers
 import (
 	"bytes"
 	"encoding/gob"
+	"sync"
+
 	"github.com/allegro/bigcache/v3"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"sync"
 )
 
 const CacheTypeMemory = "memory"

@@ -2,6 +2,9 @@ package v2
 
 import (
 	"context"
+	"strings"
+	"sync"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/go-errors/errors"
@@ -10,8 +13,6 @@ import (
 	"github.com/imunhatep/gocollection/dict"
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog/log"
-	"strings"
-	"sync"
 )
 
 // ClientPool is a concurrent map implementation to store multiple AWS clients.

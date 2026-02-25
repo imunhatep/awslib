@@ -2,6 +2,8 @@ package sqs
 
 import (
 	"context"
+	"time"
+
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -11,7 +13,6 @@ import (
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 type AwsClient interface {

@@ -2,6 +2,8 @@ package health
 
 import (
 	"context"
+	"time"
+
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/health"
 	"github.com/aws/aws-sdk-go-v2/service/health/types"
@@ -13,7 +15,6 @@ import (
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 type AwsClient interface {

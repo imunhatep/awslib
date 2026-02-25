@@ -1,11 +1,12 @@
 package autoscaling
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/service/autoscaling"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
-	"time"
 )
 
 func (r *AutoscalingRepository) ListAutoScalingGroupsAll() ([]AutoScalingGroup, error) {

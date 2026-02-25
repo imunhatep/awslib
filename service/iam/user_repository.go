@@ -1,6 +1,8 @@
 package iam
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -8,7 +10,6 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 func (r *IamRepository) ListUsersAll() ([]User, error) {

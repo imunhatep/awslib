@@ -2,6 +2,8 @@ package elb
 
 import (
 	"context"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
@@ -13,7 +15,6 @@ import (
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 type AwsClient interface {
@@ -94,7 +95,7 @@ func (r *LoadBalancerRepository) GetLoadBalancerTags(lb types.LoadBalancer) ([]t
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsApiRequests.With(r.promLabels("DescribeTags", cfg.ResourceTypeLoadBalancerV2)).Inc()
 	}
-	
+
 	tagOutput, err := r.client.ELBv2().DescribeTags(r.ctx, &elasticloadbalancingv2.DescribeTagsInput{
 		ResourceArns: []string{aws.ToString(lb.LoadBalancerArn)},
 	})

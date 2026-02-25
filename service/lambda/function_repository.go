@@ -2,6 +2,8 @@ package lambda
 
 import (
 	"context"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
@@ -12,7 +14,6 @@ import (
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 type AwsClient interface {

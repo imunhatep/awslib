@@ -1,11 +1,12 @@
 package batch
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/service/batch"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
-	"time"
 )
 
 func (r *BatchRepository) ListJobQueueAll() ([]JobQueue, error) {

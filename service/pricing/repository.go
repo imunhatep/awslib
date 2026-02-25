@@ -2,6 +2,7 @@ package pricing
 
 import (
 	"context"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"

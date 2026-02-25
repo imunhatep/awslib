@@ -1,6 +1,8 @@
 package emrserverless
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/emrserverless"
 	"github.com/go-errors/errors"
@@ -8,7 +10,6 @@ import (
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/cfg"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 func (r *EMRServerlessRepository) ListJobRunsAll() ([]JobRun, error) {

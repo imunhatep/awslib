@@ -1,8 +1,9 @@
-package gateway
+package proxy
 
 import (
 	"context"
 	"fmt"
+
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/imunhatep/awslib/cache"
@@ -15,7 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type RepoGatewayInterface interface {
+type RepoProxyInterface interface {
 	GetAccountID() ptypes.AwsAccountID
 	GetRegion() ptypes.AwsRegion
 	GetClient() *v2.Client
@@ -23,36 +24,36 @@ type RepoGatewayInterface interface {
 	FindAll(resourceType cfg.ResourceType) ([]service.EntityInterface, error)
 }
 
-type RepoGatewayPool struct {
-	gateways []RepoGatewayInterface
+type RepoProxyPool struct {
+	gateways []RepoProxyInterface
 }
 
-func NewRepoGatewayPool(ctx context.Context, clients []*v2.Client) *RepoGatewayPool {
-	var services []RepoGatewayInterface
+func NewRepoProxyPool(ctx context.Context, clients []*v2.Client) *RepoProxyPool {
+	var services []RepoProxyInterface
 	for _, client := range clients {
 		log.Trace().
 			Str("accountID", client.GetAccountID().String()).
 			Str("region", client.GetRegion().String()).
-			Msg("[RepoGatewayPool.NewRepoGatewayPool] adding client to the pool")
+			Msg("[RepoProxyPool.NewRepoProxyPool] adding client to the pool")
 
 		services = append(services, NewRepoGateway(ctx, client))
 	}
 
-	return &RepoGatewayPool{services}
+	return &RepoProxyPool{services}
 }
 
-func (e *RepoGatewayPool) WithCache(cache *cache.DataCache) *RepoGatewayPool {
-	services := []RepoGatewayInterface{}
+func (e *RepoProxyPool) WithCache(cache *cache.DataCache) *RepoProxyPool {
+	services := []RepoProxyInterface{}
 
 	for _, gw := range e.gateways {
 		cacheNS := fmt.Sprintf("%s:%s", gw.GetAccountID(), gw.GetRegion())
-		services = append(services, NewRepoGatewayCached(gw, cache.WithNamespace(cacheNS)))
+		services = append(services, NewRepoProxyCached(gw, cache.WithNamespace(cacheNS)))
 	}
 
-	return &RepoGatewayPool{services}
+	return &RepoProxyPool{services}
 }
 
-func (e *RepoGatewayPool) List(resourceType cfg.ResourceType) []RepoGatewayInterface {
+func (e *RepoProxyPool) List(resourceType cfg.ResourceType) []RepoProxyInterface {
 	// nothing to filter
 	if slice.IsEmpty(e.gateways) {
 		return e.gateways
@@ -64,7 +65,7 @@ func (e *RepoGatewayPool) List(resourceType cfg.ResourceType) []RepoGatewayInter
 	}
 
 	// for global resources prefer eu-central-1
-	filterEuCentral1 := func(p RepoGatewayInterface) bool {
+	filterEuCentral1 := func(p RepoProxyInterface) bool {
 		return p.GetRegion() == ptypes.AwsRegion(types.VPCRegionEuCentral1)
 	}
 
@@ -74,7 +75,7 @@ func (e *RepoGatewayPool) List(resourceType cfg.ResourceType) []RepoGatewayInter
 	}
 
 	// eu-central-1 not in the list, then any region will do
-	anyGwMap := map[ptypes.AwsAccountID]RepoGatewayInterface{}
+	anyGwMap := map[ptypes.AwsAccountID]RepoProxyInterface{}
 	for _, gw := range e.gateways {
 		if _, ok := anyGwMap[gw.GetAccountID()]; ok {
 			continue

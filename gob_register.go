@@ -2,6 +2,10 @@ package awslib
 
 import (
 	"encoding/gob"
+	"go/importer"
+	"go/types"
+	"reflect"
+
 	typesEMR "github.com/aws/aws-sdk-go-v2/service/emrserverless/types"
 	"github.com/imunhatep/awslib/service/athena"
 	"github.com/imunhatep/awslib/service/autoscaling"
@@ -27,9 +31,6 @@ import (
 	"github.com/imunhatep/awslib/service/sns"
 	"github.com/imunhatep/awslib/service/sqs"
 	"github.com/rs/zerolog/log"
-	"go/importer"
-	"go/types"
-	"reflect"
 )
 
 var awsServicesGobRegistered = false

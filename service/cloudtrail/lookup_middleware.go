@@ -4,6 +4,9 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail/types"
@@ -13,8 +16,6 @@ import (
 	"github.com/imunhatep/gocollection/helper"
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog/log"
-	"strings"
-	"time"
 )
 
 type LookupHandler func(*cloudtrail.LookupEventsInput) (*cloudtrail.LookupEventsInput, error)

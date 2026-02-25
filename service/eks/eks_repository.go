@@ -2,6 +2,7 @@ package eks
 
 import (
 	"context"
+
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	ptypes "github.com/imunhatep/awslib/provider/types"

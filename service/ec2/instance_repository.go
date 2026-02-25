@@ -1,12 +1,13 @@
 package ec2
 
 import (
+	"time"
+
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
-	"time"
 )
 
 func (r *Ec2Repository) ListInstancesAll() ([]Instance, error) {

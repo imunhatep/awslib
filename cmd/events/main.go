@@ -3,6 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/allegro/bigcache/v3"
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/go-errors/errors"
@@ -16,10 +21,6 @@ import (
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func main() {

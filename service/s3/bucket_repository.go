@@ -2,6 +2,9 @@ package s3
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -12,8 +15,6 @@ import (
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
-	"sync"
-	"time"
 )
 
 type AwsClient interface {

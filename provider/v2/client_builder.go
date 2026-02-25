@@ -2,6 +2,10 @@ package v2
 
 import (
 	"context"
+	"os"
+	"sync"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -12,9 +16,6 @@ import (
 	"github.com/imunhatep/awslib/service/iam"
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog/log"
-	"os"
-	"sync"
-	"time"
 )
 
 const AwsRetryAttempts = 5

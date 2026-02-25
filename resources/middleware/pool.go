@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"sync"
+
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/imunhatep/awslib/metrics"
 	ptypes "github.com/imunhatep/awslib/provider/types"
@@ -10,7 +12,6 @@ import (
 	"github.com/imunhatep/gocollection/dict"
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog/log"
-	"sync"
 )
 
 type ResourcePoolMiddleware struct {

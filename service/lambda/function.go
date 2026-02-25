@@ -1,12 +1,13 @@
 package lambda
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	types2 "github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/imunhatep/awslib/service"
-	"time"
 )
 
 type Function struct {

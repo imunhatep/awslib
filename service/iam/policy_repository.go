@@ -2,6 +2,9 @@ package iam
 
 import (
 	"encoding/json"
+	"net/url"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -9,8 +12,6 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/rs/zerolog/log"
-	"net/url"
-	"time"
 )
 
 func (r *IamRepository) ListPoliciesAll() ([]Policy, error) {

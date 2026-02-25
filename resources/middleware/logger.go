@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"encoding/json"
+
 	"github.com/imunhatep/awslib/resources"
 	"github.com/imunhatep/awslib/service/cfg"
 	"github.com/rs/zerolog/log"

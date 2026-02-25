@@ -1,6 +1,8 @@
 package emr
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/service/emr"
@@ -9,7 +11,6 @@ import (
 	"github.com/imunhatep/awslib/service"
 	cfgEntity "github.com/imunhatep/awslib/service/cfg"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 func (r *EmrRepository) ListClustersAll() ([]Cluster, error) {

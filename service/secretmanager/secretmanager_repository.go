@@ -2,6 +2,8 @@ package secretmanager
 
 import (
 	"context"
+	"time"
+
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/go-errors/errors"
@@ -9,7 +11,6 @@ import (
 	ptypes "github.com/imunhatep/awslib/provider/types"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
-	"time"
 )
 
 type SecretManagerClient interface {

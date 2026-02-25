@@ -1,11 +1,12 @@
 package ec2
 
 import (
+	"testing"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/imunhatep/awslib/service"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 type MockEntity struct {

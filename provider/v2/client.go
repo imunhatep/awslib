@@ -2,6 +2,8 @@ package v2
 
 import (
 	"context"
+	"sync"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/accessanalyzer"
@@ -59,7 +61,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/wafv2"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/provider/types"
-	"sync"
 )
 
 type Client struct {

@@ -1,7 +1,8 @@
-package gateway
+package proxy
 
 import (
 	"context"
+
 	"github.com/imunhatep/awslib/provider/v2"
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/autoscaling"

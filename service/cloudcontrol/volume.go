@@ -1,12 +1,13 @@
 package cloudcontrol
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cc "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/imunhatep/awslib/helper"
 	"github.com/imunhatep/awslib/service"
-	"time"
 )
 
 type Volume struct {

@@ -1,10 +1,11 @@
 package resources
 
 import (
+	"sync"
+
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/imunhatep/awslib/service"
 	"github.com/rs/zerolog/log"
-	"sync"
 )
 
 type ResourceReader struct {

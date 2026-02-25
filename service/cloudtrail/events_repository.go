@@ -3,6 +3,8 @@ package cloudtrail
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/cache"
@@ -11,7 +13,6 @@ import (
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 func (r *CloudTrailRepository) ListEventsByInput(query *cloudtrail.LookupEventsInput) ([]Event, error) {

@@ -2,6 +2,7 @@ package autoscaling
 
 import (
 	"context"
+
 	"github.com/aws/aws-sdk-go-v2/service/autoscaling"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	ptypes "github.com/imunhatep/awslib/provider/types"
