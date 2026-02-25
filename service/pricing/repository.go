@@ -6,33 +6,33 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/aws/aws-sdk-go-v2/service/pricing"
+	awspricing "github.com/aws/aws-sdk-go-v2/service/pricing"
 	"github.com/aws/aws-sdk-go-v2/service/pricing/types"
 	"github.com/go-errors/errors"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/pricing"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 )
 
-type AwsClient interface {
-	GetRegion() ptypes.AwsRegion
-	GetAccountID() ptypes.AwsAccountID
-	Pricing() *pricing.Client
-}
-
 type PricingRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewPricingRepository(ctx context.Context, client AwsClient) *PricingRepository {
+func NewPricingRepository(ctx context.Context, client *v3.Client) *PricingRepository {
 	repo := &PricingRepository{
 		ctx:    ctx,
 		client: client,
 	}
 
 	return repo
+}
+
+func (r *PricingRepository) pricingClient() *awspricing.Client {
+	return pricing.GetClient(r.client)
 }
 
 func (r *PricingRepository) GetRegion() ptypes.AwsRegion {
@@ -52,7 +52,7 @@ func (r *PricingRepository) promLabels(method string, resourceType cfg.ResourceT
 func (r *PricingRepository) GetInstancePricing(region ptypes.AwsRegion, instanceType ec2types.InstanceType) (*Ec2Product, error) {
 
 	// Define the pricing filter for EC2 On-Demand instances in a specific region
-	query := &pricing.GetProductsInput{
+	query := &awspricing.GetProductsInput{
 		ServiceCode: aws.String("AmazonEC2"),
 		Filters: []types.Filter{
 			{
@@ -112,9 +112,9 @@ func (r *PricingRepository) GetInstancePricing(region ptypes.AwsRegion, instance
 }
 
 // GetInstancePricingByInput fetches the pricing for a given instance type using the AWS Pricing API.
-func (r *PricingRepository) GetInstancePricingByInput(query *pricing.GetProductsInput) ([]string, error) {
+func (r *PricingRepository) GetInstancePricingByInput(query *awspricing.GetProductsInput) ([]string, error) {
 	// Fetch the products (pricing details)
-	output, err := r.client.Pricing().GetProducts(r.ctx, query)
+	output, err := r.pricingClient().GetProducts(r.ctx, query)
 	if err != nil {
 		return []string{}, errors.New(err)
 	}

@@ -18,7 +18,7 @@ func (r *BatchRepository) ListComputeEnvironmentByInput(query *batch.DescribeCom
 	start := time.Now()
 	var computeEnvs []ComputeEnvironment
 
-	p := batch.NewDescribeComputeEnvironmentsPaginator(r.client.Batch(), query)
+	p := batch.NewDescribeComputeEnvironmentsPaginator(r.batchClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.

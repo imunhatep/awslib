@@ -3,9 +3,11 @@ package athena
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go-v2/service/athena"
+	awsathena "github.com/aws/aws-sdk-go-v2/service/athena"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/athena"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -13,21 +15,24 @@ import (
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	Athena() *athena.Client
 }
 
 type AthenaRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewAthenaRepository(ctx context.Context, client AwsClient) *AthenaRepository {
+func NewAthenaRepository(ctx context.Context, client *v3.Client) *AthenaRepository {
 	repo := &AthenaRepository{
 		ctx:    ctx,
 		client: client,
 	}
 
 	return repo
+}
+
+func (r *AthenaRepository) athenaClient() *awsathena.Client {
+	return athena.GetClient(r.client)
 }
 
 func (r *AthenaRepository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {

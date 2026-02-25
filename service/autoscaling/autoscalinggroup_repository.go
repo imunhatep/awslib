@@ -17,7 +17,7 @@ func (r *AutoscalingRepository) ListAutoScalingGroups(query *autoscaling.Describ
 	start := time.Now()
 	var groups []AutoScalingGroup
 
-	p := autoscaling.NewDescribeAutoScalingGroupsPaginator(r.client.Autoscaling(), query)
+	p := autoscaling.NewDescribeAutoScalingGroupsPaginator(r.autoscalingClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.

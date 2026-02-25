@@ -24,7 +24,7 @@ func (r *EcsRepository) ListClustersByInput(query *ecs.ListClustersInput) ([]Clu
 	start := time.Now()
 	var clusters []Cluster
 
-	p := ecs.NewListClustersPaginator(r.client.ECS(), query)
+	p := ecs.NewListClustersPaginator(r.ecsClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.
@@ -44,7 +44,7 @@ func (r *EcsRepository) ListClustersByInput(query *ecs.ListClustersInput) ([]Clu
 		}
 
 		// list clusters
-		ecsClusters, err := r.client.ECS().DescribeClusters(
+		ecsClusters, err := r.ecsClient().DescribeClusters(
 			r.ctx,
 			&ecs.DescribeClustersInput{Clusters: resp.ClusterArns},
 		)

@@ -42,7 +42,7 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 
 	start := time.Now()
 
-	p := cloudtrail.NewLookupEventsPaginator(r.client.CloudTrail(), query)
+	p := cloudtrail.NewLookupEventsPaginator(r.cloudtrailClient(), query)
 
 	// reach end of pages or max results
 	eventsFetchedCount := 0

@@ -21,7 +21,7 @@ func (r *Ec2Repository) ListVpcsByInput(describeInput *ec2.DescribeVpcsInput) ([
 	start := time.Now()
 	var volumes []Vpc
 
-	p := ec2.NewDescribeVpcsPaginator(r.client.EC2(), describeInput)
+	p := ec2.NewDescribeVpcsPaginator(r.ec2Client(), describeInput)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.
@@ -73,7 +73,7 @@ func (r *Ec2Repository) DeleteVpc(deleteInput *ec2.DeleteVpcInput) (*ec2.DeleteV
 			Inc()
 	}
 
-	deleteVpcOutput, err := r.client.EC2().DeleteVpc(r.ctx, deleteInput)
+	deleteVpcOutput, err := r.ec2Client().DeleteVpc(r.ctx, deleteInput)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.
@@ -106,7 +106,7 @@ func (r *Ec2Repository) CreateVpcTags(tagsInput *ec2.CreateTagsInput) (*ec2.Crea
 			Inc()
 	}
 
-	output, err := r.client.EC2().CreateTags(r.ctx, tagsInput)
+	output, err := r.ec2Client().CreateTags(r.ctx, tagsInput)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.
@@ -139,7 +139,7 @@ func (r *Ec2Repository) DeleteVpcTags(tagsInput *ec2.DeleteTagsInput) (*ec2.Dele
 			Inc()
 	}
 
-	output, err := r.client.EC2().DeleteTags(r.ctx, tagsInput)
+	output, err := r.ec2Client().DeleteTags(r.ctx, tagsInput)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.

@@ -23,7 +23,7 @@ func (r *SecretManagerRepository) DescribeSecretValueByInput(query *secretsmanag
 		metrics.AwsApiRequests.With(r.promLabels("GetSecretValue", cfg.ResourceTypeSecret)).Inc()
 	}
 
-	secretValueOutput, err := r.client.SecretsManager().GetSecretValue(r.ctx, query)
+	secretValueOutput, err := r.smClient().GetSecretValue(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("GetSecretValue", cfg.ResourceTypeSecret)).Inc()

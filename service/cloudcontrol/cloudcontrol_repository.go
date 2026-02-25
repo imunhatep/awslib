@@ -6,12 +6,14 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	awscloudcontrol "github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/cloudcontrol"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
@@ -20,21 +22,24 @@ import (
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	CloudControl() *cloudcontrol.Client
 }
 
 type CloudControlRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewCloudControlRepository(ctx context.Context, client AwsClient) *CloudControlRepository {
+func NewCloudControlRepository(ctx context.Context, client *v3.Client) *CloudControlRepository {
 	repo := &CloudControlRepository{
 		ctx:    ctx,
 		client: client,
 	}
 
 	return repo
+}
+
+func (r *CloudControlRepository) cloudcontrolClient() *awscloudcontrol.Client {
+	return cloudcontrol.GetClient(r.client)
 }
 
 func (r *CloudControlRepository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {
@@ -50,11 +55,11 @@ func (r *CloudControlRepository) GetRegion() ptypes.AwsRegion {
 	return r.client.GetRegion()
 }
 
-func (r *CloudControlRepository) FindResources(query *cloudcontrol.ListResourcesInput) ([]types.ResourceDescription, error) {
+func (r *CloudControlRepository) FindResources(query *awscloudcontrol.ListResourcesInput) ([]types.ResourceDescription, error) {
 	resourceType := cfg.ResourceType(aws.ToString(query.TypeName))
 	resources := []types.ResourceDescription{}
 
-	p := cloudcontrol.NewListResourcesPaginator(r.client.CloudControl(), query)
+	p := awscloudcontrol.NewListResourcesPaginator(r.cloudcontrolClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.
@@ -93,10 +98,10 @@ func (r *CloudControlRepository) FindResources(query *cloudcontrol.ListResources
 	return resources, nil
 }
 
-func (r *CloudControlRepository) DescribeResource(resourceType cfg.ResourceType, identifier *string) (*cloudcontrol.GetResourceOutput, error) {
+func (r *CloudControlRepository) DescribeResource(resourceType cfg.ResourceType, identifier *string) (*awscloudcontrol.GetResourceOutput, error) {
 	start := time.Now()
 
-	query := &cloudcontrol.GetResourceInput{
+	query := &awscloudcontrol.GetResourceInput{
 		Identifier: identifier,
 		TypeName:   aws.String(string(resourceType)),
 	}
@@ -107,7 +112,7 @@ func (r *CloudControlRepository) DescribeResource(resourceType cfg.ResourceType,
 			Inc()
 	}
 
-	resp, err := r.client.CloudControl().GetResource(r.ctx, query)
+	resp, err := r.cloudcontrolClient().GetResource(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.

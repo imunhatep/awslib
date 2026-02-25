@@ -21,7 +21,7 @@ func (r *Ec2Repository) ListRegionsOptIn() ([]types.Region, error) {
 }
 
 func (r *Ec2Repository) ListRegionByInput(query *ec2.DescribeRegionsInput) ([]types.Region, error) {
-	res, err := r.client.EC2().DescribeRegions(r.ctx, query)
+	res, err := r.ec2Client().DescribeRegions(r.ctx, query)
 	if err != nil {
 		return nil, err
 	}

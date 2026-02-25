@@ -68,7 +68,7 @@ func (r *EMRServerlessRepository) ListApplicationsByInput(query *emrserverless.L
 	start := time.Now()
 	var applications []Application
 
-	p := emrserverless.NewListApplicationsPaginator(r.client.EMRServerless(), query)
+	p := emrserverless.NewListApplicationsPaginator(r.emrserverlessClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.
@@ -134,7 +134,7 @@ func (r *EMRServerlessRepository) DescribeApplicationByInput(query *emrserverles
 			Inc()
 	}
 
-	emrApp, err := r.client.EMRServerless().GetApplication(r.ctx, query)
+	emrApp, err := r.emrserverlessClient().GetApplication(r.ctx, query)
 	if err != nil {
 		log.Error().Err(err).
 			Str("application", aws.ToString(query.ApplicationId)).

@@ -18,7 +18,7 @@ func (r *Ec2Repository) ListInstancesByInput(query *ec2.DescribeInstancesInput) 
 	start := time.Now()
 	var instances []Instance
 
-	p := ec2.NewDescribeInstancesPaginator(r.client.EC2(), query)
+	p := ec2.NewDescribeInstancesPaginator(r.ec2Client(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("DescribeInstances", cfg.ResourceTypeInstance)).Inc()
@@ -57,7 +57,7 @@ func (r *Ec2Repository) GetInstanceTypes() ([]types.InstanceType, error) {
 	start := time.Now()
 	instanceTypes := []types.InstanceType{}
 
-	paginator := ec2.NewDescribeInstanceTypesPaginator(r.client.EC2(), &ec2.DescribeInstanceTypesInput{})
+	paginator := ec2.NewDescribeInstanceTypesPaginator(r.ec2Client(), &ec2.DescribeInstanceTypesInput{})
 	for paginator.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("DescribeInstanceTypes", cfg.ResourceTypeInstance)).Inc()

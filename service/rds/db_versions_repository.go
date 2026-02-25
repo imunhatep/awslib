@@ -29,7 +29,7 @@ func (r *RdsRepository) FindMinimalDBEngineVersions(engine DbEngineName) (types.
 func (r *RdsRepository) ListDBEngineVersionsByInput(query *rds.DescribeDBEngineVersionsInput) ([]types.DBEngineVersion, error) {
 	var versions []types.DBEngineVersion
 
-	p := rds.NewDescribeDBEngineVersionsPaginator(r.client.RDS(), query)
+	p := rds.NewDescribeDBEngineVersionsPaginator(r.rdsClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("DescribeDBEngineVersions", ccfg.ResourceTypeDBEngineVersion)).Inc()

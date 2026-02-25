@@ -49,7 +49,7 @@ func (r *GlueRepository) ListTablesByInput(query *glue.GetTablesInput) ([]Table,
 			Inc()
 	}
 
-	resp, err := r.client.Glue().GetTables(r.ctx, query)
+	resp, err := r.glueClient().GetTables(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.

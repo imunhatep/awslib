@@ -54,7 +54,7 @@ func (r *Route53Repository) listResourceRecordsByInput(hostedZone HostedZone, qu
 			metrics.AwsApiRequests.With(r.promLabels("ListResourceRecordSets", cfg2.ResourceTypeRoute53ResourceRecord)).Inc()
 		}
 
-		output, err := r.client.Route53().ListResourceRecordSets(r.ctx, &nextQuery)
+		output, err := r.route53Client().ListResourceRecordSets(r.ctx, &nextQuery)
 		if err != nil {
 			return nil, errors.New(err)
 		}
@@ -96,7 +96,7 @@ func (r *Route53Repository) ChangeResourceRecordSetsByInput(input *route53.Chang
 		metrics.AwsApiRequests.With(r.promLabels("ChangeResourceRecordSets", cfg2.ResourceTypeRoute53ResourceRecord)).Inc()
 	}
 
-	output, err := r.client.Route53().ChangeResourceRecordSets(r.ctx, input)
+	output, err := r.route53Client().ChangeResourceRecordSets(r.ctx, input)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("ChangeResourceRecordSets", cfg2.ResourceTypeRoute53ResourceRecord)).Inc()

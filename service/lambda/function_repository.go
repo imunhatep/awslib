@@ -6,11 +6,13 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/lambda"
+	awslambda "github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/lambda"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
@@ -19,18 +21,21 @@ import (
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	Lambda() *lambda.Client
 }
 
 type LambdaRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewLambdaRepository(ctx context.Context, client AwsClient) *LambdaRepository {
+func NewLambdaRepository(ctx context.Context, client *v3.Client) *LambdaRepository {
 	repo := &LambdaRepository{ctx, client}
 
 	return repo
+}
+
+func (r *LambdaRepository) lambdaClient() *awslambda.Client {
+	return lambda.GetClient(r.client)
 }
 
 func (r *LambdaRepository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {
@@ -47,14 +52,14 @@ func (r *LambdaRepository) GetRegion() ptypes.AwsRegion {
 }
 
 func (r *LambdaRepository) ListFunctionsAll() ([]Function, error) {
-	return r.ListFunctionsByInput(&lambda.ListFunctionsInput{})
+	return r.ListFunctionsByInput(&awslambda.ListFunctionsInput{})
 }
 
-func (r *LambdaRepository) ListFunctionsByInput(query *lambda.ListFunctionsInput) ([]Function, error) {
+func (r *LambdaRepository) ListFunctionsByInput(query *awslambda.ListFunctionsInput) ([]Function, error) {
 	start := time.Now()
 	var functions []Function
 
-	p := lambda.NewListFunctionsPaginator(r.client.Lambda(), query)
+	p := awslambda.NewListFunctionsPaginator(r.lambdaClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("ListFunctions", cfg.ResourceTypeFunction)).Inc()
@@ -94,7 +99,7 @@ func (r *LambdaRepository) ListFunctionTags(fn types.FunctionConfiguration) (map
 		metrics.AwsApiRequests.With(r.promLabels("ListFunctionTags", cfg.ResourceTypeFunction)).Inc()
 	}
 
-	tagOutput, err := r.client.Lambda().ListTags(r.ctx, &lambda.ListTagsInput{Resource: fn.FunctionArn})
+	tagOutput, err := r.lambdaClient().ListTags(r.ctx, &awslambda.ListTagsInput{Resource: fn.FunctionArn})
 
 	if err != nil {
 		log.Debug().Str("function", aws.ToString(fn.FunctionName)).Err(err).Msg("failed to fetch lambda tags")

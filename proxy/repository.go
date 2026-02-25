@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/imunhatep/awslib/cache"
 	ptypes "github.com/imunhatep/awslib/provider/types"
-	v2 "github.com/imunhatep/awslib/provider/v2"
+	v3 "github.com/imunhatep/awslib/provider/v3"
 	"github.com/imunhatep/awslib/service"
 	cfgEntity "github.com/imunhatep/awslib/service/cfg"
 	"github.com/imunhatep/gocollection/dict"
@@ -19,7 +19,7 @@ import (
 type RepoProxyInterface interface {
 	GetAccountID() ptypes.AwsAccountID
 	GetRegion() ptypes.AwsRegion
-	GetClient() *v2.Client
+	GetClient() *v3.Client
 	GetContext() context.Context
 	FindAll(resourceType cfg.ResourceType) ([]service.EntityInterface, error)
 }
@@ -28,7 +28,7 @@ type RepoProxyPool struct {
 	gateways []RepoProxyInterface
 }
 
-func NewRepoProxyPool(ctx context.Context, clients []*v2.Client) *RepoProxyPool {
+func NewRepoProxyPool(ctx context.Context, clients []*v3.Client) *RepoProxyPool {
 	var services []RepoProxyInterface
 	for _, client := range clients {
 		log.Trace().
@@ -90,10 +90,10 @@ func (e *RepoProxyPool) List(resourceType cfg.ResourceType) []RepoProxyInterface
 // RepoGateway is proxy to aws repositories to get all aws resources
 type RepoGateway struct {
 	ctx    context.Context
-	client *v2.Client
+	client *v3.Client
 }
 
-func NewRepoGateway(ctx context.Context, client *v2.Client) *RepoGateway {
+func NewRepoGateway(ctx context.Context, client *v3.Client) *RepoGateway {
 	return &RepoGateway{
 		ctx:    ctx,
 		client: client,
@@ -108,7 +108,7 @@ func (e RepoGateway) GetRegion() ptypes.AwsRegion {
 	return e.client.GetRegion()
 }
 
-func (e RepoGateway) GetClient() *v2.Client {
+func (e RepoGateway) GetClient() *v3.Client {
 	return e.client
 }
 

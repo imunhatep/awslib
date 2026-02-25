@@ -8,6 +8,11 @@ test:
 test-cover:
 	go test -cover ./...
 
+.PHONY: generate-options
+generate-options:
+	@echo ">> generating v3 service options"
+	@go run cmd/generate-options/main.go
+
 .PHONY: update-deps
 update-deps:
 	@echo ">> updating Go dependencies"

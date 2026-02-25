@@ -41,7 +41,7 @@ func (r *EmrRepository) ListClustersByInput(query *emr.ListClustersInput) ([]Clu
 	start := time.Now()
 	var clusters []Cluster
 
-	p := emr.NewListClustersPaginator(r.client.EMR(), query)
+	p := emr.NewListClustersPaginator(r.emrClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.
@@ -109,7 +109,7 @@ func (r *EmrRepository) DescribeCluster(clusterId *string) (*Cluster, error) {
 			Inc()
 	}
 
-	clusterDetails, err := r.client.EMR().DescribeCluster(
+	clusterDetails, err := r.emrClient().DescribeCluster(
 		r.ctx,
 		&emr.DescribeClusterInput{ClusterId: clusterId},
 	)

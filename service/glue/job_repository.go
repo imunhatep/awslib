@@ -30,7 +30,7 @@ func (r *GlueRepository) ListJobsByInput(query *glue.GetJobsInput) ([]Job, error
 			Inc()
 	}
 
-	resp, err := r.client.Glue().GetJobs(r.ctx, query)
+	resp, err := r.glueClient().GetJobs(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.

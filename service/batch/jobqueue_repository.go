@@ -17,7 +17,7 @@ func (r *BatchRepository) ListJobQueueByInput(query *batch.DescribeJobQueuesInpu
 	start := time.Now()
 	var computeEnvs []JobQueue
 
-	p := batch.NewDescribeJobQueuesPaginator(r.client.Batch(), query)
+	p := batch.NewDescribeJobQueuesPaginator(r.batchClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("DescribeJobQueues", cfg.ResourceTypeBatchJobQueue)).Inc()

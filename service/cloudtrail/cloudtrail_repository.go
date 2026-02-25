@@ -3,9 +3,11 @@ package cloudtrail
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
+	awscloudtrail "github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	cloudtrailopts "github.com/imunhatep/awslib/provider/v3/clients/cloudtrail"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -13,21 +15,24 @@ import (
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	CloudTrail() *cloudtrail.Client
 }
 
 type CloudTrailRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewCloudTrailRepository(ctx context.Context, client AwsClient) *CloudTrailRepository {
+func NewCloudTrailRepository(ctx context.Context, client *v3.Client) *CloudTrailRepository {
 	repo := &CloudTrailRepository{
 		ctx:    ctx,
 		client: client,
 	}
 
 	return repo
+}
+
+func (r *CloudTrailRepository) cloudtrailClient() *awscloudtrail.Client {
+	return cloudtrailopts.GetClient(r.client)
 }
 
 func (r *CloudTrailRepository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {

@@ -15,11 +15,11 @@ type RepoProxyCached struct {
 	cache *cache.DataCache
 }
 
-func NewRepoProxyCached(gw RepoProxyInterface, cache *cache.DataCache) *RepoProxyCached {
-	cacheNS := fmt.Sprintf("%s:%s", gw.GetAccountID(), gw.GetRegion())
+func NewRepoProxyCached(px RepoProxyInterface, cache *cache.DataCache) *RepoProxyCached {
+	cacheNS := fmt.Sprintf("%s:%s", px.GetAccountID(), px.GetRegion())
 
 	return &RepoProxyCached{
-		RepoProxyInterface: gw,
+		RepoProxyInterface: px,
 		cache:              cache.WithNamespace(cacheNS),
 	}
 }

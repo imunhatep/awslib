@@ -17,7 +17,7 @@ func (r *RdsRepository) ListDbSnapshotsByInput(query *rds.DescribeDBSnapshotsInp
 	start := time.Now()
 	var snapshots []DbSnapshot
 
-	p := rds.NewDescribeDBSnapshotsPaginator(r.client.RDS(), query)
+	p := rds.NewDescribeDBSnapshotsPaginator(r.rdsClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("DescribeDBSnapshots", cfg.ResourceTypeDBSnapshot)).Inc()

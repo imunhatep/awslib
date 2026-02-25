@@ -66,7 +66,7 @@ func (r *EMRServerlessRepository) ListJobRunsByInput(query *emrserverless.ListJo
 	start := time.Now()
 	var jobRuns []JobRun
 
-	p := emrserverless.NewListJobRunsPaginator(r.client.EMRServerless(), query)
+	p := emrserverless.NewListJobRunsPaginator(r.emrserverlessClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.
@@ -92,7 +92,7 @@ func (r *EMRServerlessRepository) ListJobRunsByInput(query *emrserverless.ListJo
 					Inc()
 			}
 
-			emrApp, err := r.client.EMRServerless().GetJobRun(r.ctx, &emrserverless.GetJobRunInput{
+			emrApp, err := r.emrserverlessClient().GetJobRun(r.ctx, &emrserverless.GetJobRunInput{
 				ApplicationId: jobRunSummary.ApplicationId,
 				JobRunId:      jobRunSummary.Id,
 			})

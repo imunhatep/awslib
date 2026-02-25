@@ -20,7 +20,7 @@ func (r *IamRepository) ListUsersByInput(query *iam.ListUsersInput) ([]User, err
 	start := time.Now()
 	var users []User
 
-	p := iam.NewListUsersPaginator(r.client.IAM(), query)
+	p := iam.NewListUsersPaginator(r.iamClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("ListUsers", cfg.ResourceTypeUser)).Inc()

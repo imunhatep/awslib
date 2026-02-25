@@ -4,8 +4,10 @@ import (
 	"context"
 
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/ecs"
+	awsecs "github.com/aws/aws-sdk-go-v2/service/ecs"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/ecs"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -13,21 +15,24 @@ import (
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	ECS() *ecs.Client
 }
 
 type EcsRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewEcsRepository(ctx context.Context, client AwsClient) *EcsRepository {
+func NewEcsRepository(ctx context.Context, client *v3.Client) *EcsRepository {
 	repo := &EcsRepository{
 		ctx:    ctx,
 		client: client,
 	}
 
 	return repo
+}
+
+func (r *EcsRepository) ecsClient() *awsecs.Client {
+	return ecs.GetClient(r.client)
 }
 
 func (r *EcsRepository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {

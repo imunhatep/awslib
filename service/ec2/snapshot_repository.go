@@ -19,7 +19,7 @@ func (r *Ec2Repository) ListSnapshotsByInput(query *ec2.DescribeSnapshotsInput) 
 	start := time.Now()
 	var snapshots []Snapshot
 
-	p := ec2.NewDescribeSnapshotsPaginator(r.client.EC2(), query)
+	p := ec2.NewDescribeSnapshotsPaginator(r.ec2Client(), query)
 
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {

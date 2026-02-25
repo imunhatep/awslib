@@ -57,7 +57,7 @@ func (r *EcsRepository) ListServicesByInput(query *ecs.ListServicesInput) ([]Ser
 	start := time.Now()
 
 	var services []Service
-	p := ecs.NewListServicesPaginator(r.client.ECS(), query)
+	p := ecs.NewListServicesPaginator(r.ecsClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.
@@ -116,7 +116,7 @@ func (r *EcsRepository) DescribeServicesByInput(query *ecs.DescribeServicesInput
 			Inc()
 	}
 
-	ecsServices, err := r.client.ECS().DescribeServices(r.ctx, query)
+	ecsServices, err := r.ecsClient().DescribeServices(r.ctx, query)
 	for _, ecsService := range ecsServices.Services {
 		if err != nil {
 			log.Error().Err(err).

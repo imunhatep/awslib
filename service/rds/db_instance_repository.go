@@ -17,7 +17,7 @@ func (r *RdsRepository) ListDbInstancesByInput(query *rds.DescribeDBInstancesInp
 	start := time.Now()
 	var instances []DbInstance
 
-	p := rds.NewDescribeDBInstancesPaginator(r.client.RDS(), query)
+	p := rds.NewDescribeDBInstancesPaginator(r.rdsClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.

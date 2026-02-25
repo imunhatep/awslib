@@ -19,7 +19,7 @@ func (r *Route53Repository) ListHostedZonesByInput(query *route53.ListHostedZone
 
 	metrics.AwsApiRequests.With(r.promLabels("ListHostedZones", cfg.ResourceTypeRoute53HostedZone)).Inc()
 
-	output, err := r.client.Route53().ListHostedZones(r.ctx, query)
+	output, err := r.route53Client().ListHostedZones(r.ctx, query)
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -50,7 +50,7 @@ func (r *Route53Repository) GetHostedZoneTags(hostedZone types.HostedZone) []typ
 		ResourceType: types.TagResourceTypeHostedzone,
 	}
 
-	output, err := r.client.Route53().ListTagsForResource(r.ctx, query)
+	output, err := r.route53Client().ListTagsForResource(r.ctx, query)
 	if err != nil {
 		return nil
 	}
@@ -71,7 +71,7 @@ func (r *Route53Repository) GetHostedZoneByInput(query *route53.GetHostedZoneInp
 		metrics.AwsApiRequests.With(r.promLabels("GetHostedZone", cfg.ResourceTypeRoute53HostedZone)).Inc()
 	}
 
-	output, err := r.client.Route53().GetHostedZone(r.ctx, query)
+	output, err := r.route53Client().GetHostedZone(r.ctx, query)
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -102,7 +102,7 @@ func (r *Route53Repository) CreateHostedZone(input *route53.CreateHostedZoneInpu
 		metrics.AwsApiRequests.With(r.promLabels("CreateHostedZone", cfg.ResourceTypeRoute53HostedZone)).Inc()
 	}
 
-	output, err := r.client.Route53().CreateHostedZone(r.ctx, input)
+	output, err := r.route53Client().CreateHostedZone(r.ctx, input)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("CreateHostedZone", cfg.ResourceTypeRoute53HostedZone)).Inc()
@@ -117,7 +117,7 @@ func (r *Route53Repository) CreateHostedZone(input *route53.CreateHostedZoneInpu
 
 	// Fetch the created hosted zone with full details
 	getQuery := &route53.GetHostedZoneInput{Id: output.HostedZone.Id}
-	getOutput, err := r.client.Route53().GetHostedZone(r.ctx, getQuery)
+	getOutput, err := r.route53Client().GetHostedZone(r.ctx, getQuery)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("GetHostedZone", cfg.ResourceTypeRoute53HostedZone)).Inc()
@@ -151,7 +151,7 @@ func (r *Route53Repository) UpdateHostedZoneComment(input *route53.UpdateHostedZ
 			Inc()
 	}
 
-	output, err := r.client.Route53().UpdateHostedZoneComment(r.ctx, input)
+	output, err := r.route53Client().UpdateHostedZoneComment(r.ctx, input)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("UpdateHostedZoneComment", cfg.ResourceTypeRoute53HostedZone)).Inc()
@@ -166,7 +166,7 @@ func (r *Route53Repository) UpdateHostedZoneComment(input *route53.UpdateHostedZ
 
 	// Fetch the updated hosted zone with full details
 	getQuery := &route53.GetHostedZoneInput{Id: output.HostedZone.Id}
-	getOutput, err := r.client.Route53().GetHostedZone(r.ctx, getQuery)
+	getOutput, err := r.route53Client().GetHostedZone(r.ctx, getQuery)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("GetHostedZone", cfg.ResourceTypeRoute53HostedZone)).Inc()
@@ -200,7 +200,7 @@ func (r *Route53Repository) DeleteHostedZoneByInput(input *route53.DeleteHostedZ
 			Inc()
 	}
 
-	_, err := r.client.Route53().DeleteHostedZone(r.ctx, input)
+	_, err := r.route53Client().DeleteHostedZone(r.ctx, input)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("DeleteHostedZone", cfg.ResourceTypeRoute53HostedZone)).Inc()
@@ -228,7 +228,7 @@ func (r *Route53Repository) ChangeTagsForHostedZone(input *route53.ChangeTagsFor
 			Inc()
 	}
 
-	_, err := r.client.Route53().ChangeTagsForResource(r.ctx, input)
+	_, err := r.route53Client().ChangeTagsForResource(r.ctx, input)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("ChangeTagsForResource", cfg.ResourceTypeRoute53HostedZone)).Inc()

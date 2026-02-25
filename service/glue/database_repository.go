@@ -30,7 +30,7 @@ func (r *GlueRepository) ListDatabaseByInput(query *glue.GetDatabasesInput) ([]D
 			Inc()
 	}
 
-	resp, err := r.client.Glue().GetDatabases(r.ctx, query)
+	resp, err := r.glueClient().GetDatabases(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.
