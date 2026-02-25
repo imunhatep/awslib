@@ -17,7 +17,9 @@ func (r *Route53Repository) ListHostedZonesAll() ([]HostedZone, error) {
 func (r *Route53Repository) ListHostedZonesByInput(query *route53.ListHostedZonesInput) ([]HostedZone, error) {
 	start := time.Now()
 
-	metrics.AwsApiRequests.With(r.promLabels("ListHostedZones", cfg.ResourceTypeRoute53HostedZone)).Inc()
+	if metrics.AwsMetricsEnabled {
+		metrics.AwsApiRequests.With(r.promLabels("ListHostedZones", cfg.ResourceTypeRoute53HostedZone)).Inc()
+	}
 
 	output, err := r.route53Client().ListHostedZones(r.ctx, query)
 	if err != nil {

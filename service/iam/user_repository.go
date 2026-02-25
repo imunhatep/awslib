@@ -63,7 +63,7 @@ func (r *IamRepository) ListUserTags(user types.User) ([]types.Tag, error) {
 	}
 
 	query := &iam.ListUserTagsInput{UserName: user.UserName}
-	tagOutput, err := r.client.IAM().ListUserTags(r.ctx, query)
+	tagOutput, err := r.iamClient().ListUserTags(r.ctx, query)
 	if err != nil {
 		log.Debug().Str("user", aws.ToString(user.UserName)).Err(err).Msg("failed to fetch iam user tags")
 		return []types.Tag{}, errors.New(err)

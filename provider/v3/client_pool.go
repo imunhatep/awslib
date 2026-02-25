@@ -2,16 +2,12 @@ package v3
 
 import (
 	"context"
-	"strings"
+	"maps"
 	"sync"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/provider/types"
-	"github.com/imunhatep/awslib/service/iam"
 	"github.com/imunhatep/gocollection/dict"
-	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog/log"
 )
 
@@ -30,12 +26,12 @@ type ClientPool struct {
 // If profiles, regions, or both are empty, credentials and regions are picked up via the usual default provider chain,
 // respectively. For example, if regions are empty, the region is first looked for via the according region environment variable
 // or second the default region for each profile is used from `~/.aws/config`.
-func NewClientPool(ctx context.Context, clientBuilder *ClientBuilder) *ClientPool {
+func NewClientPool(ctx context.Context, clientBuilder *ClientBuilder, assumableRoles map[types.AwsAccountID]types.RoleArn) *ClientPool {
 	clientPool := &ClientPool{
 		ctx:     ctx,
 		builder: clientBuilder,
 		clients: map[types.AwsAccountID]map[types.AwsRegion]*Client{},
-		roles:   map[types.AwsAccountID]types.RoleArn{},
+		roles:   maps.Clone(assumableRoles),
 	}
 
 	return clientPool
@@ -46,33 +42,56 @@ func (p *ClientPool) GetContext() context.Context {
 }
 
 func (p *ClientPool) GetClients(regions ...types.AwsRegion) ([]*Client, error) {
-	roles, err := p.getAssumableRoles()
-	if err != nil {
-		return nil, errors.New(err)
+	// If no roles are set, use default client only
+	if len(p.roles) == 0 {
+		defaultClient, err := p.builder.DefaultClient()
+		if err != nil {
+			return nil, errors.New(err)
+		}
+
+		clients := []*Client{}
+		accountID := defaultClient.GetAccountID()
+
+		for _, region := range regions {
+			client, err := p.GetClient(accountID, region)
+			if err != nil {
+				log.Warn().Err(err).
+					Str("accountID", string(accountID)).
+					Str("region", string(region)).
+					Msg("[ClientPool.GetClients] failed to init aws client. Skipping..")
+				continue
+			}
+			clients = append(clients, client)
+		}
+
+		return clients, nil
 	}
 
+	// Use configured roles for cross-account access
 	clients := []*Client{}
-	for accountID, _ := range roles {
+	for accountID := range p.roles {
 		wg := sync.WaitGroup{}
 
 		for _, region := range regions {
 			wg.Add(1)
 
-			go func() {
+			go func(accID types.AwsAccountID, reg types.AwsRegion) {
 				defer wg.Done()
 
-				client, err := p.GetClient(accountID, region)
+				client, err := p.GetClient(accID, reg)
 				if err != nil {
 					log.Warn().Err(err).
-						Str("accountID", string(accountID)).
-						Str("region", string(region)).
+						Str("accountID", string(accID)).
+						Str("region", string(reg)).
 						Msg("[ClientPool.GetClients] failed to init aws client. IAM role access issue or region might not be enabled. Skipping..")
 
 					return
 				}
 
+				p.Lock()
 				clients = append(clients, client)
-			}()
+				p.Unlock()
+			}(accountID, region)
 		}
 
 		wg.Wait()
@@ -82,30 +101,48 @@ func (p *ClientPool) GetClients(regions ...types.AwsRegion) ([]*Client, error) {
 }
 
 func (p *ClientPool) GetClient(accountID types.AwsAccountID, region types.AwsRegion) (*Client, error) {
+	// Check cache first
 	if clients, ok := p.clients[accountID]; ok {
 		if client, ok := clients[region]; ok {
 			return client, nil
 		}
 	}
 
-	log.Trace().
-		Stringer("accountID", accountID).
-		Stringer("region", region).
-		Msg("[ClientPool.GetClient] fetching assumable roles from local iam role policies")
+	p.Lock()
+	roles := p.roles
+	p.Unlock()
 
-	roles, err := p.getAssumableRoles()
-	if err != nil {
-		return nil, errors.New(err)
-	}
+	var client *Client
+	var err error
 
-	roleArn, ok := roles[accountID]
-	if !ok {
-		return nil, errors.New("role not found")
-	}
+	// If a role is configured for this account, use it
+	if roleArn, ok := roles[accountID]; ok {
+		log.Trace().
+			Stringer("accountID", accountID).
+			Stringer("region", region).
+			Str("roleArn", roleArn.String()).
+			Msg("[ClientPool.GetClient] creating client with assumed role")
 
-	client, err := p.builder.AssumeClient(roleArn, region)
-	if err != nil {
-		return nil, errors.New(err)
+		client, err = p.builder.AssumeClient(roleArn, region)
+		if err != nil {
+			return nil, errors.New(err)
+		}
+	} else {
+		// Use default credentials (no role assumption)
+		log.Trace().
+			Stringer("accountID", accountID).
+			Stringer("region", region).
+			Msg("[ClientPool.GetClient] creating client with default credentials")
+
+		client, err = p.builder.LocalClient(region)
+		if err != nil {
+			return nil, errors.New(err)
+		}
+
+		// Verify the accountID matches
+		if client.GetAccountID() != accountID {
+			return nil, errors.Errorf("accountID mismatch: requested %s but got %s", accountID, client.GetAccountID())
+		}
 	}
 
 	p.setClient(accountID, region, client)
@@ -114,25 +151,27 @@ func (p *ClientPool) GetClient(accountID types.AwsAccountID, region types.AwsReg
 }
 
 func (p *ClientPool) ListAssumableRoleArns() ([]types.RoleArn, error) {
-	log.Trace().Msg("[ClientPool.ListAssumableRoleArns] fetching assumable role arns")
+	p.Lock()
+	defer p.Unlock()
 
-	roles, err := p.getAssumableRoles()
-	if err != nil {
-		return []types.RoleArn{}, errors.New(err)
-	}
-
-	return dict.Values(roles), nil
+	return dict.Values(p.roles), nil
 }
 
 func (p *ClientPool) ListAccountIDs() ([]types.AwsAccountID, error) {
-	log.Trace().Msg("[ClientPool.ListAccountIDs] fetching assumable role account ids")
+	p.Lock()
+	defer p.Unlock()
 
-	roles, err := p.getAssumableRoles()
+	if len(p.roles) > 0 {
+		return dict.Keys(p.roles), nil
+	}
+
+	// If no roles configured, return the default client's account
+	defaultClient, err := p.builder.DefaultClient()
 	if err != nil {
 		return []types.AwsAccountID{}, errors.New(err)
 	}
 
-	return dict.Keys(roles), nil
+	return []types.AwsAccountID{defaultClient.GetAccountID()}, nil
 }
 
 func (p *ClientPool) setClient(accountID types.AwsAccountID, region types.AwsRegion, client *Client) {
@@ -143,86 +182,4 @@ func (p *ClientPool) setClient(accountID types.AwsAccountID, region types.AwsReg
 
 	p.clients[accountID][region] = client
 	p.Unlock()
-}
-
-// getAssumableRoles fetches the assumable roles by parsing the local IAM role policies
-func (p *ClientPool) getAssumableRoles() (map[types.AwsAccountID]types.RoleArn, error) {
-	p.Lock()
-	defer p.Unlock()
-
-	if len(p.roles) > 0 {
-		return p.roles, nil
-	}
-
-	log.Trace().Msg("[ClientPool.getAssumableRoles] fetching assumable roles from local iam role policies")
-
-	defaultClient, err := p.builder.DefaultClient()
-	if err != nil {
-		return p.roles, errors.New(err)
-	}
-
-	// Get the caller identity
-	callerIdentity, err := defaultClient.GetCallerIdentity(p.ctx)
-	if err != nil {
-		return p.roles, errors.New(err)
-	}
-
-	// Parse the callerIdentity to fetch role ARN
-	roleArn, err := arn.Parse(aws.ToString(callerIdentity.Arn))
-	if err != nil {
-		return p.roles, errors.New(err)
-	}
-
-	// Assuming the role name is in the format "role/RoleName"
-	var roleName string
-	if parts := strings.Split(roleArn.Resource, "/"); len(parts) > 1 {
-		roleName = parts[1]
-	} else {
-		log.Error().
-			Str("roleArn", aws.ToString(callerIdentity.Arn)).
-			Msg("[ClientPool.getAssumableRoles] invalid role ARN format")
-
-		return p.roles, errors.New("invalid role ARN format")
-	}
-
-	log.Debug().
-		Stringer("roleArn", roleArn).
-		Str("roleName", roleName).
-		Msg("[ClientPool.getAssumableRoles] fetching assumable roles from local iam role policies")
-
-	iamRepo := iam.NewIamRepository(p.ctx, defaultClient)
-	versions, err := iamRepo.ListAttachedRolePolicyVersionsByRoleName(roleName)
-	if err != nil {
-		return p.roles, errors.New(err)
-	}
-	roleArnList := []types.RoleArn{}
-
-	// fetch
-	for _, version := range versions {
-		assumedRoles := iamRepo.ListAssumedRoleArn(version)
-		// Convert iam.RoleArn to types.RoleArn
-		for _, assumedRole := range assumedRoles {
-			roleArnList = append(roleArnList, types.RoleArn(assumedRole))
-		}
-	}
-
-	log.Trace().
-		Strs("roleArnList", slice.Map(roleArnList, func(v types.RoleArn) string { return string(v) })).
-		Msg("[ClientPool.getAssumableRoles] fetched assumable roles from local iam role policies")
-
-	for _, assumedRoleArn := range roleArnList {
-		arnRoleArn, err := arn.Parse(assumedRoleArn.String())
-		if err != nil {
-			return p.roles, errors.New(err)
-		}
-
-		log.Trace().
-			Str("accountID", arnRoleArn.AccountID).
-			Str("role", assumedRoleArn.String()).
-			Msg("[ClientPool.getAssumableRoles] adding assumed role mapping")
-
-		p.roles[types.AwsAccountID(arnRoleArn.AccountID)] = assumedRoleArn
-	}
-
-	return p.roles, nil
 }

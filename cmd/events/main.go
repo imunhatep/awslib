@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -15,7 +17,7 @@ import (
 	"github.com/imunhatep/awslib/cache/handlers"
 	"github.com/imunhatep/awslib/provider"
 	ptypes "github.com/imunhatep/awslib/provider/types"
-	v2 "github.com/imunhatep/awslib/provider/v2"
+	"github.com/imunhatep/awslib/provider/v3"
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/cloudtrail"
 	"github.com/imunhatep/gocollection/slice"
@@ -91,7 +93,7 @@ func awsEvents() error {
 		fin(err)
 	}
 
-	clientPool := provider.NewClientPool(ctx, v2.NewClientBuilder(ctx, providers...))
+	clientPool := provider.NewClientPool(ctx, v3.NewClientBuilder(ctx, providers...))
 	clients, err := clientPool.GetClients(awsRegions...)
 	if err != nil {
 		return errors.New(err)
