@@ -42,7 +42,7 @@ func NewResourceRecord(client AwsClient, hostedZone HostedZone, resourceRecord t
 }
 
 func (e ResourceRecord) GetName() string {
-	return aws.ToString(e.Name)
+	return EnsureFQDN(NormalizeRoute53Name(aws.ToString(e.Name)))
 }
 
 func (e ResourceRecord) GetHostedZone() HostedZone {

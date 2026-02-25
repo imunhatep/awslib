@@ -1,6 +1,7 @@
 package route53
 
 import (
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -122,6 +123,7 @@ func (r *Route53Repository) ChangeResourceRecordSetsByInput(input *route53.Chang
 
 // CreateResourceRecord creates new resource records with CREATE action
 // Smartly initializes input if nil or adds to existing changes
+// Automatically normalizes record names and ensures proper FQDN format
 func (r *Route53Repository) CreateResourceRecord(hostedZoneId *string, recordSets ...types.ResourceRecordSet) (*route53.ChangeResourceRecordSetsOutput, error) {
 	if hostedZoneId == nil || aws.ToString(hostedZoneId) == "" {
 		return nil, errors.New("hostedZoneId cannot be empty")
@@ -134,6 +136,12 @@ func (r *Route53Repository) CreateResourceRecord(hostedZoneId *string, recordSet
 	changes := make([]types.Change, 0, len(recordSets))
 	for _, recordSet := range recordSets {
 		rs := recordSet // capture loop variable
+		// Automatically normalize and ensure FQDN for record name
+		if rs.Name != nil {
+			normalizedName := NormalizeRoute53Name(aws.ToString(rs.Name))
+			fqdnName := EnsureFQDN(normalizedName)
+			rs.Name = aws.String(fqdnName)
+		}
 		changes = append(changes, types.Change{
 			Action:            types.ChangeActionCreate,
 			ResourceRecordSet: &rs,
@@ -152,6 +160,7 @@ func (r *Route53Repository) CreateResourceRecord(hostedZoneId *string, recordSet
 
 // UpsertResourceRecord updates (upserts) resource records with UPSERT action
 // Smartly initializes input if nil or adds to existing changes
+// Automatically normalizes record names and ensures proper FQDN format
 func (r *Route53Repository) UpsertResourceRecord(hostedZoneId *string, recordSets ...types.ResourceRecordSet) (*route53.ChangeResourceRecordSetsOutput, error) {
 	if hostedZoneId == nil || aws.ToString(hostedZoneId) == "" {
 		return nil, errors.New("hostedZoneId cannot be empty")
@@ -164,6 +173,12 @@ func (r *Route53Repository) UpsertResourceRecord(hostedZoneId *string, recordSet
 	changes := make([]types.Change, 0, len(recordSets))
 	for _, recordSet := range recordSets {
 		rs := recordSet // capture loop variable
+		// Automatically normalize and ensure FQDN for record name
+		if rs.Name != nil {
+			normalizedName := NormalizeRoute53Name(aws.ToString(rs.Name))
+			fqdnName := EnsureFQDN(normalizedName)
+			rs.Name = aws.String(fqdnName)
+		}
 		changes = append(changes, types.Change{
 			Action:            types.ChangeActionUpsert,
 			ResourceRecordSet: &rs,
@@ -182,6 +197,7 @@ func (r *Route53Repository) UpsertResourceRecord(hostedZoneId *string, recordSet
 
 // DeleteResourceRecord deletes resource records with DELETE action
 // Smartly initializes input if nil or adds to existing changes
+// Automatically normalizes record names and ensures proper FQDN format
 func (r *Route53Repository) DeleteResourceRecord(hostedZoneId *string, recordSets ...types.ResourceRecordSet) error {
 	if hostedZoneId == nil || aws.ToString(hostedZoneId) == "" {
 		return errors.New("hostedZoneId cannot be empty")
@@ -194,6 +210,12 @@ func (r *Route53Repository) DeleteResourceRecord(hostedZoneId *string, recordSet
 	changes := make([]types.Change, 0, len(recordSets))
 	for _, recordSet := range recordSets {
 		rs := recordSet // capture loop variable
+		// Automatically normalize and ensure FQDN for record name
+		if rs.Name != nil {
+			normalizedName := NormalizeRoute53Name(aws.ToString(rs.Name))
+			fqdnName := EnsureFQDN(normalizedName)
+			rs.Name = aws.String(fqdnName)
+		}
 		changes = append(changes, types.Change{
 			Action:            types.ChangeActionDelete,
 			ResourceRecordSet: &rs,
@@ -209,4 +231,28 @@ func (r *Route53Repository) DeleteResourceRecord(hostedZoneId *string, recordSet
 
 	_, err := r.ChangeResourceRecordSetsByInput(input)
 	return err
+}
+
+// NormalizeRoute53Name handles escaped characters in Route53 record names
+// AWS Route53 API sometimes returns special characters like asterisk as octal escapes (\052)
+// This function is exported so it can be used by applications when needed
+// Note: This normalization is automatically applied in repository CRUD operations
+func NormalizeRoute53Name(name string) string {
+	normalized := strings.TrimSpace(name)
+	// Handle asterisk character which is commonly escaped as \052 (octal)
+	normalized = strings.ReplaceAll(normalized, "\\052", "*")
+	// Handle other common escaped characters if they appear
+	normalized = strings.ReplaceAll(normalized, "\\\\052", "*") // double-escaped
+	normalized = strings.ReplaceAll(normalized, "\\\\", "\\")   // double backslashes
+	return normalized
+}
+
+// EnsureFQDN ensures the domain name ends with a dot to be a proper FQDN
+// This is a utility function that can be used when creating Route53 records
+// Note: This FQDN formatting is automatically applied in repository CRUD operations
+func EnsureFQDN(name string) string {
+	if !strings.HasSuffix(name, ".") {
+		return name + "."
+	}
+	return name
 }
