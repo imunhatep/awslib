@@ -3,6 +3,7 @@ package route53
 import (
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/route53/types"
@@ -98,6 +99,10 @@ func (r *Route53Repository) GetHostedZoneByInput(query *route53.GetHostedZoneInp
 
 // CreateHostedZone creates a new hosted zone
 func (r *Route53Repository) CreateHostedZone(input *route53.CreateHostedZoneInput) (*HostedZone, error) {
+	if aws.ToString(input.CallerReference) == "" {
+		return nil, errors.New("CallerReference cannot be empty: hosted zone creation requests must ensure idempotency")
+	}
+	
 	start := time.Now()
 
 	if metrics.AwsMetricsEnabled {
