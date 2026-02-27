@@ -36,7 +36,7 @@ func NewRepoProxyPool(ctx context.Context, clients []*v3.Client) *RepoProxyPool 
 			Str("region", client.GetRegion().String()).
 			Msg("[RepoProxyPool.NewRepoProxyPool] adding client to the pool")
 
-		services = append(services, NewRepoGateway(ctx, client))
+		services = append(services, NewRepoProxy(ctx, client))
 	}
 
 	return &RepoProxyPool{services}
@@ -93,7 +93,7 @@ type RepoProxy struct {
 	client *v3.Client
 }
 
-func NewRepoGateway(ctx context.Context, client *v3.Client) *RepoProxy {
+func NewRepoProxy(ctx context.Context, client *v3.Client) *RepoProxy {
 	return &RepoProxy{
 		ctx:    ctx,
 		client: client,
@@ -158,6 +158,12 @@ func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.Enti
 		items, err = FindCloudWatchLogGroups(e.ctx, e.client)
 	case cfg.ResourceTypeRoute53HostedZone:
 		items, err = FindRoute53HostedZones(e.ctx, e.client)
+	case cfgEntity.ResourceTypeRoute53DomainSummary:
+		items, err = FindRoute53DomainSummaries(e.ctx, e.client)
+	case cfgEntity.ResourceTypeRoute53Domain:
+		items, err = FindRoute53Domains(e.ctx, e.client)
+	case cfgEntity.ResourceTypeRoute53ResourceRecord:
+		items, err = FindRoute53ResourceRecords(e.ctx, e.client)
 	case cfgEntity.ResourceTypeSnapshot:
 		items, err = FindEc2Snapshots(e.ctx, e.client)
 	case cfg.ResourceTypeVolume:

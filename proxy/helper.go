@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 
+	"github.com/aws/aws-sdk-go-v2/service/route53domains"
 	"github.com/imunhatep/awslib/provider/v3"
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/autoscaling"
@@ -217,6 +218,41 @@ func FindRoute53HostedZones(ctx context.Context, client *v3.Client) ([]service.E
 	items, err := route53.NewRoute53Repository(ctx, client).ListHostedZonesAll()
 
 	return slice.Map(items, cast[route53.HostedZone]), err
+}
+
+// FindRoute53DomainSummaries returns a list of Route 53 registered domain summaries
+func FindRoute53DomainSummaries(ctx context.Context, client *v3.Client) ([]service.EntityInterface, error) {
+	items, err := route53.NewRoute53Repository(ctx, client).ListDomainsAll()
+
+	return slice.Map(items, cast[route53.DomainSummary]), err
+}
+
+// FindRoute53Domains returns a list of Route 53 registered domains with full details
+func FindRoute53Domains(ctx context.Context, client *v3.Client) ([]service.EntityInterface, error) {
+	items, err := route53.NewRoute53Repository(ctx, client).ListDomainsDetailsByInput(&route53domains.ListDomainsInput{})
+
+	return slice.Map(items, cast[route53.Domain]), err
+}
+
+// FindRoute53ResourceRecords returns a list of Route 53 resource records across all hosted zones
+func FindRoute53ResourceRecords(ctx context.Context, client *v3.Client) ([]service.EntityInterface, error) {
+	repo := route53.NewRoute53Repository(ctx, client)
+
+	hostedZones, err := repo.ListHostedZonesAll()
+	if err != nil {
+		return nil, err
+	}
+
+	var all []service.EntityInterface
+	for _, hz := range hostedZones {
+		records, err := repo.ListResourceRecords(hz)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, slice.Map(records, cast[route53.ResourceRecord])...)
+	}
+
+	return all, nil
 }
 
 // FindSecretManagerSecrets returns a list of Secrets Manager secrets
