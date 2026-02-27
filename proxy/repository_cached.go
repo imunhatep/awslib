@@ -24,7 +24,7 @@ func NewRepoProxyCached(px RepoProxyInterface, cache *cache.DataCache) *RepoProx
 	}
 }
 
-// FindAll a wrapper of RepoGateway method with reading and writing results into a cache
+// FindAll a wrapper of RepoProxy method with reading and writing results into a cache
 func (e *RepoProxyCached) FindAll(resourceType types.ResourceType) (items []service.EntityInterface, err error) {
 	items = []service.EntityInterface{}
 

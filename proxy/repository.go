@@ -87,36 +87,36 @@ func (e *RepoProxyPool) List(resourceType cfg.ResourceType) []RepoProxyInterface
 	return dict.Values(anyGwMap)
 }
 
-// RepoGateway is proxy to aws repositories to get all aws resources
-type RepoGateway struct {
+// RepoProxy is proxy to aws repositories to get all aws resources
+type RepoProxy struct {
 	ctx    context.Context
 	client *v3.Client
 }
 
-func NewRepoGateway(ctx context.Context, client *v3.Client) *RepoGateway {
-	return &RepoGateway{
+func NewRepoGateway(ctx context.Context, client *v3.Client) *RepoProxy {
+	return &RepoProxy{
 		ctx:    ctx,
 		client: client,
 	}
 }
 
-func (e RepoGateway) GetAccountID() ptypes.AwsAccountID {
+func (e RepoProxy) GetAccountID() ptypes.AwsAccountID {
 	return e.client.GetAccountID()
 }
 
-func (e RepoGateway) GetRegion() ptypes.AwsRegion {
+func (e RepoProxy) GetRegion() ptypes.AwsRegion {
 	return e.client.GetRegion()
 }
 
-func (e RepoGateway) GetClient() *v3.Client {
+func (e RepoProxy) GetClient() *v3.Client {
 	return e.client
 }
 
-func (e *RepoGateway) GetContext() context.Context {
+func (e *RepoProxy) GetContext() context.Context {
 	return e.ctx
 }
 
-func (e *RepoGateway) FindAll(resourceType cfg.ResourceType) (items []service.EntityInterface, err error) {
+func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.EntityInterface, err error) {
 	switch resourceType {
 	case cfg.ResourceTypeAutoScalingGroup:
 		items, err = FindAutoScaleGroups(e.ctx, e.client)
@@ -184,12 +184,12 @@ func (e *RepoGateway) FindAll(resourceType cfg.ResourceType) (items []service.En
 		Str("accountID", e.client.GetAccountID().String()).
 		Str("region", e.client.GetRegion().String()).
 		Str("type", cfgEntity.ResourceTypeToString(resourceType)).
-		Msgf("[RepoGateway.FindAll] aws resources found: %d", len(items))
+		Msgf("[RepoProxy.FindAll] aws resources found: %d", len(items))
 
 	return items, err
 }
 
-func (e *RepoGateway) FindAllCC(resourceType cfg.ResourceType) (items []service.EntityInterface, err error) {
+func (e *RepoProxy) FindAllCC(resourceType cfg.ResourceType) (items []service.EntityInterface, err error) {
 	switch resourceType {
 	case cfg.ResourceTypeBucket:
 		items, err = FindS3CCBuckets(e.ctx, e.client)
@@ -205,7 +205,7 @@ func (e *RepoGateway) FindAllCC(resourceType cfg.ResourceType) (items []service.
 		Str("accountID", e.client.GetAccountID().String()).
 		Str("region", e.client.GetRegion().String()).
 		Str("type", cfgEntity.ResourceTypeToString(resourceType)).
-		Msgf("[RepoGateway.FindAll] aws resources found: %d", len(items))
+		Msgf("[RepoProxy.FindAll] aws resources found: %d", len(items))
 
 	return items, err
 }
