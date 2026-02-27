@@ -102,9 +102,7 @@ func NewClient(ctx context.Context, providers ...func(*config.LoadOptions) error
 		return nil, err
 	}
 
-	return &Client{
-		v3Client: v3Client,
-	}, nil
+	return &Client{v3Client: v3Client}, nil
 }
 
 func (c *Client) GetRegion() types.AwsRegion {

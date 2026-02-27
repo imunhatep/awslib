@@ -5,9 +5,11 @@ import (
 
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	awsr53 "github.com/aws/aws-sdk-go-v2/service/route53"
+	awsdomains "github.com/aws/aws-sdk-go-v2/service/route53domains"
 	ptypes "github.com/imunhatep/awslib/provider/types"
 	v3 "github.com/imunhatep/awslib/provider/v3"
 	"github.com/imunhatep/awslib/provider/v3/clients/route53"
+	"github.com/imunhatep/awslib/provider/v3/clients/route53domains"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -33,6 +35,10 @@ func NewRoute53Repository(ctx context.Context, client *v3.Client) *Route53Reposi
 
 func (r *Route53Repository) route53Client() *awsr53.Client {
 	return route53.GetClient(r.client)
+}
+
+func (r *Route53Repository) domainsClient() *awsdomains.Client {
+	return route53domains.GetClient(r.client)
 }
 
 func (r *Route53Repository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {

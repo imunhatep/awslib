@@ -6,7 +6,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/provider/types"
@@ -86,30 +85,6 @@ func (c *Client) Sts() *sts.Client {
 	}
 
 	return c.stsClient
-}
-
-// GetIAMClient returns a cached or new IAM client
-func (c *Client) GetIAMClient(optFns ...func(*iam.Options)) *iam.Client {
-	const serviceName = "iam"
-
-	// Check cache first
-	if cached, ok := c.GetCachedService(serviceName); ok {
-		return cached.(*iam.Client)
-	}
-
-	// Create new client with lock
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	// Double-check after acquiring lock
-	if cached, ok := c.GetCachedService(serviceName); ok {
-		return cached.(*iam.Client)
-	}
-
-	svc := iam.NewFromConfig(c.cfg, optFns...)
-	c.CacheService(serviceName, svc)
-
-	return svc
 }
 
 // GetCallerIdentity returns the caller identity

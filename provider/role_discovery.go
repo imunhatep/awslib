@@ -13,6 +13,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/provider/types"
 	"github.com/imunhatep/awslib/provider/v3"
+	iam2 "github.com/imunhatep/awslib/provider/v3/clients/iam"
 	"github.com/rs/zerolog/log"
 )
 
@@ -53,8 +54,7 @@ type statement struct {
 //
 //	client, _ := v3.NewClient(ctx)
 //	roles, _ := v3.DiscoverAssumableRolesFromCurrentRole(ctx, client)
-//	clientPool := v3.NewClientPool(ctx, builder)
-//	clientPool.SetAssumableRoles(roles)
+//	clientPool := v3.NewClientPool(ctx, builder, roles)
 func DiscoverAssumableRolesFromCurrentRole(ctx context.Context, client *v3.Client) (map[types.AwsAccountID]types.RoleArn, error) {
 	// Get the caller identity
 	callerIdentity, err := client.GetCallerIdentity(ctx)
@@ -116,7 +116,7 @@ func DiscoverAssumableRolesFromCurrentRole(ctx context.Context, client *v3.Clien
 
 // discoverAssumableRoles discovers IAM roles that can be assumed by parsing attached role policies
 func discoverAssumableRoles(ctx context.Context, client *v3.Client, roleName string) ([]types.RoleArn, error) {
-	iamClient := client.GetIAMClient()
+	iamClient := iam2.GetClient(client)
 
 	// List attached role policies
 	policies, err := listAttachedRolePolicies(ctx, iamClient, roleName)

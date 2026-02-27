@@ -30,7 +30,7 @@ func (r *EksRepository) ListClustersByInput(query *eks.ListClustersInput) ([]Clu
 			Inc()
 	}
 
-	clustersOutput, err := r.client.EKS().ListClusters(r.ctx, query)
+	clustersOutput, err := r.eksClient().ListClusters(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.
@@ -43,7 +43,7 @@ func (r *EksRepository) ListClustersByInput(query *eks.ListClustersInput) ([]Clu
 
 	for _, clusterName := range clustersOutput.Clusters {
 
-		eksCluster, err := r.client.EKS().DescribeCluster(r.ctx, &eks.DescribeClusterInput{Name: aws.String(clusterName)})
+		eksCluster, err := r.eksClient().DescribeCluster(r.ctx, &eks.DescribeClusterInput{Name: aws.String(clusterName)})
 		if err != nil {
 			log.Error().Err(err).
 				Str("cluster", clusterName).

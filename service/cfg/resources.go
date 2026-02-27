@@ -20,6 +20,8 @@ const (
 	ResourceTypeTrailEvent               awscfg.ResourceType = "AWS::CloudTrail::Event"
 	ResourceTypeHealthEvent              awscfg.ResourceType = "AWS::Health::Event"
 	ResourceTypeRoute53ResourceRecord    awscfg.ResourceType = "AWS::Route53::ResourceRecord"
+	ResourceTypeRoute53DomainSummary     awscfg.ResourceType = "AWS::Route53Domains::DomainSummary"
+	ResourceTypeRoute53Domain            awscfg.ResourceType = "AWS::Route53Domains::Domain"
 )
 
 func ResourceTypeToString(r awscfg.ResourceType) string {

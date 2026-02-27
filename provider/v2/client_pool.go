@@ -190,7 +190,7 @@ func (p *ClientPool) getAssumableRoles() (map[types.AwsAccountID]types.RoleArn, 
 		Str("roleName", roleName).
 		Msg("[ClientPool.getAssumableRoles] fetching assumable roles from local iam role policies")
 
-	iamRepo := iam.NewIamRepository(p.ctx, defaultClient)
+	iamRepo := iam.NewIamRepository(p.ctx, defaultClient.v3Client)
 	versions, err := iamRepo.ListAttachedRolePolicyVersionsByRoleName(roleName)
 	if err != nil {
 		return p.roles, errors.New(err)
