@@ -15,13 +15,13 @@ import (
 const ResourceBusSize = 10000
 
 type Provider struct {
-	gatewayPool  []proxy.RepoProxyInterface
+	proxyPool    []proxy.RepoProxyInterface
 	resourceType types.ResourceType
 }
 
-func NewProvider(resourceType types.ResourceType, gatewayPool ...proxy.RepoProxyInterface) Provider {
+func NewProvider(resourceType types.ResourceType, proxyPool ...proxy.RepoProxyInterface) Provider {
 	ro := Provider{
-		gatewayPool:  gatewayPool,
+		proxyPool:    proxyPool,
 		resourceType: resourceType,
 	}
 
@@ -59,7 +59,7 @@ func (r Provider) findResources(stream chan<- service.EntityInterface) {
 		Msg("[AwsProvider.findResources] resource update")
 
 	var wg sync.WaitGroup
-	for _, gw := range r.gatewayPool {
+	for _, gw := range r.proxyPool {
 		wg.Add(1)
 
 		go func() {

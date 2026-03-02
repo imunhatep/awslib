@@ -57,17 +57,25 @@ func (e *RepoProxyPool) List(resourceType cfg.ResourceType) []RepoProxyInterface
 		return e.gateways
 	}
 
-	// for global resources prefer eu-central-1
+	// for global resources prefer us-east-1
+	filterUsEast1 := func(p RepoProxyInterface) bool {
+		return p.GetRegion() == ptypes.AwsRegion(types.VPCRegionUsEast1)
+	}
+
+	if ea1Proxy := slice.Filter(e.gateways, filterUsEast1); !slice.IsEmpty(ea1Proxy) {
+		return ea1Proxy
+	}
+
+	// try eu-central-1
 	filterEuCentral1 := func(p RepoProxyInterface) bool {
 		return p.GetRegion() == ptypes.AwsRegion(types.VPCRegionEuCentral1)
 	}
 
-	regionalGws := slice.Filter(e.gateways, filterEuCentral1)
-	if !slice.IsEmpty(regionalGws) {
-		return regionalGws
+	if eu1Proxy := slice.Filter(e.gateways, filterEuCentral1); !slice.IsEmpty(eu1Proxy) {
+		return eu1Proxy
 	}
 
-	// eu-central-1 not in the list, then any region will do
+	// return the first one
 	anyGwMap := map[ptypes.AwsAccountID]RepoProxyInterface{}
 	for _, gw := range e.gateways {
 		if _, ok := anyGwMap[gw.GetAccountID()]; ok {

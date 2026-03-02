@@ -124,11 +124,7 @@ func (r *Route53Repository) ChangeResourceRecordSetsByInput(input *awsr53.Change
 // CreateResourceRecord creates new resource records with CREATE action
 // Smartly initializes input if nil or adds to existing changes
 // Automatically normalizes record names and ensures proper FQDN format
-func (r *Route53Repository) CreateResourceRecord(hostedZoneId *string, recordSets ...types.ResourceRecordSet) (*awsr53.ChangeResourceRecordSetsOutput, error) {
-	if hostedZoneId == nil || aws.ToString(hostedZoneId) == "" {
-		return nil, errors.New("hostedZoneId cannot be empty")
-	}
-
+func (r *Route53Repository) CreateResourceRecord(hostedZone HostedZone, recordSets ...types.ResourceRecordSet) (*awsr53.ChangeResourceRecordSetsOutput, error) {
 	if len(recordSets) == 0 {
 		return nil, errors.New("at least one resource record set is required")
 	}
@@ -149,7 +145,7 @@ func (r *Route53Repository) CreateResourceRecord(hostedZoneId *string, recordSet
 	}
 
 	input := &awsr53.ChangeResourceRecordSetsInput{
-		HostedZoneId: hostedZoneId,
+		HostedZoneId: aws.String(hostedZone.GetId()),
 		ChangeBatch: &types.ChangeBatch{
 			Changes: changes,
 		},
@@ -161,11 +157,7 @@ func (r *Route53Repository) CreateResourceRecord(hostedZoneId *string, recordSet
 // UpsertResourceRecord updates (upserts) resource records with UPSERT action
 // Smartly initializes input if nil or adds to existing changes
 // Automatically normalizes record names and ensures proper FQDN format
-func (r *Route53Repository) UpsertResourceRecord(hostedZoneId *string, recordSets ...types.ResourceRecordSet) (*awsr53.ChangeResourceRecordSetsOutput, error) {
-	if hostedZoneId == nil || aws.ToString(hostedZoneId) == "" {
-		return nil, errors.New("hostedZoneId cannot be empty")
-	}
-
+func (r *Route53Repository) UpsertResourceRecord(hostedZone HostedZone, recordSets ...types.ResourceRecordSet) (*awsr53.ChangeResourceRecordSetsOutput, error) {
 	if len(recordSets) == 0 {
 		return nil, errors.New("at least one resource record set is required")
 	}
@@ -179,6 +171,7 @@ func (r *Route53Repository) UpsertResourceRecord(hostedZoneId *string, recordSet
 			fqdnName := EnsureFQDN(normalizedName)
 			rs.Name = aws.String(fqdnName)
 		}
+
 		changes = append(changes, types.Change{
 			Action:            types.ChangeActionUpsert,
 			ResourceRecordSet: &rs,
@@ -186,7 +179,7 @@ func (r *Route53Repository) UpsertResourceRecord(hostedZoneId *string, recordSet
 	}
 
 	input := &awsr53.ChangeResourceRecordSetsInput{
-		HostedZoneId: hostedZoneId,
+		HostedZoneId: aws.String(hostedZone.GetId()),
 		ChangeBatch: &types.ChangeBatch{
 			Changes: changes,
 		},
@@ -198,11 +191,7 @@ func (r *Route53Repository) UpsertResourceRecord(hostedZoneId *string, recordSet
 // DeleteResourceRecord deletes resource records with DELETE action
 // Smartly initializes input if nil or adds to existing changes
 // Automatically normalizes record names and ensures proper FQDN format
-func (r *Route53Repository) DeleteResourceRecord(hostedZoneId *string, recordSets ...types.ResourceRecordSet) error {
-	if hostedZoneId == nil || aws.ToString(hostedZoneId) == "" {
-		return errors.New("hostedZoneId cannot be empty")
-	}
-
+func (r *Route53Repository) DeleteResourceRecord(hostedZone HostedZone, recordSets ...types.ResourceRecordSet) error {
 	if len(recordSets) == 0 {
 		return errors.New("at least one resource record set is required")
 	}
@@ -223,7 +212,7 @@ func (r *Route53Repository) DeleteResourceRecord(hostedZoneId *string, recordSet
 	}
 
 	input := &awsr53.ChangeResourceRecordSetsInput{
-		HostedZoneId: hostedZoneId,
+		HostedZoneId: aws.String(hostedZone.GetId()),
 		ChangeBatch: &types.ChangeBatch{
 			Changes: changes,
 		},
