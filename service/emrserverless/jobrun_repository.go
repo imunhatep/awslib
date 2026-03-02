@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/emrserverless"
+	awsemr "github.com/aws/aws-sdk-go-v2/service/emrserverless"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/imunhatep/awslib/service"
@@ -28,7 +28,7 @@ func (r *EMRServerlessRepository) ListJobRunsAll() ([]JobRun, error) {
 	}
 
 	for _, app := range applications {
-		query := &emrserverless.ListJobRunsInput{
+		query := &awsemr.ListJobRunsInput{
 			ApplicationId:  app.Application.ApplicationId,
 			CreatedAtAfter: service.LastDays(7),
 		}
@@ -56,7 +56,7 @@ func (r *EMRServerlessRepository) ListJobRunsAll() ([]JobRun, error) {
 }
 
 // ListJobRunsByInput returns all job runs for a given Input
-func (r *EMRServerlessRepository) ListJobRunsByInput(query *emrserverless.ListJobRunsInput) ([]JobRun, error) {
+func (r *EMRServerlessRepository) ListJobRunsByInput(query *awsemr.ListJobRunsInput) ([]JobRun, error) {
 	log.Debug().
 		Str("accountID", r.client.GetAccountID().String()).
 		Str("region", r.client.GetRegion().String()).
@@ -66,7 +66,7 @@ func (r *EMRServerlessRepository) ListJobRunsByInput(query *emrserverless.ListJo
 	start := time.Now()
 	var jobRuns []JobRun
 
-	p := emrserverless.NewListJobRunsPaginator(r.emrserverlessClient(), query)
+	p := awsemr.NewListJobRunsPaginator(r.emrserverlessClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.
@@ -92,7 +92,7 @@ func (r *EMRServerlessRepository) ListJobRunsByInput(query *emrserverless.ListJo
 					Inc()
 			}
 
-			emrApp, err := r.emrserverlessClient().GetJobRun(r.ctx, &emrserverless.GetJobRunInput{
+			emrApp, err := r.emrserverlessClient().GetJobRun(r.ctx, &awsemr.GetJobRunInput{
 				ApplicationId: jobRunSummary.ApplicationId,
 				JobRunId:      jobRunSummary.Id,
 			})

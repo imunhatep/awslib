@@ -4,20 +4,20 @@ import (
 	"time"
 
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/rds"
+	awsrds "github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 )
 
 func (r *RdsRepository) ListDbInstancesAll() ([]DbInstance, error) {
-	return r.ListDbInstancesByInput(&rds.DescribeDBInstancesInput{})
+	return r.ListDbInstancesByInput(&awsrds.DescribeDBInstancesInput{})
 }
 
-func (r *RdsRepository) ListDbInstancesByInput(query *rds.DescribeDBInstancesInput) ([]DbInstance, error) {
+func (r *RdsRepository) ListDbInstancesByInput(query *awsrds.DescribeDBInstancesInput) ([]DbInstance, error) {
 	start := time.Now()
 	var instances []DbInstance
 
-	p := rds.NewDescribeDBInstancesPaginator(r.rdsClient(), query)
+	p := awsrds.NewDescribeDBInstancesPaginator(r.rdsClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.

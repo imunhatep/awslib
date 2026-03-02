@@ -3,7 +3,7 @@ package glue
 import (
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/service/glue"
+	awsglue "github.com/aws/aws-sdk-go-v2/service/glue"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/imunhatep/awslib/service/cfg"
@@ -11,10 +11,10 @@ import (
 )
 
 func (r *GlueRepository) ListJobsAll() ([]Job, error) {
-	return r.ListJobsByInput(&glue.GetJobsInput{})
+	return r.ListJobsByInput(&awsglue.GetJobsInput{})
 }
 
-func (r *GlueRepository) ListJobsByInput(query *glue.GetJobsInput) ([]Job, error) {
+func (r *GlueRepository) ListJobsByInput(query *awsglue.GetJobsInput) ([]Job, error) {
 	log.Debug().
 		Str("accountID", r.client.GetAccountID().String()).
 		Str("region", r.client.GetRegion().String()).

@@ -5,17 +5,17 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/route53"
+	awsr53 "github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 )
 
 func (r *Route53Repository) ListHostedZonesAll() ([]HostedZone, error) {
-	return r.ListHostedZonesByInput(&route53.ListHostedZonesInput{})
+	return r.ListHostedZonesByInput(&awsr53.ListHostedZonesInput{})
 }
 
-func (r *Route53Repository) ListHostedZonesByInput(query *route53.ListHostedZonesInput) ([]HostedZone, error) {
+func (r *Route53Repository) ListHostedZonesByInput(query *awsr53.ListHostedZonesInput) ([]HostedZone, error) {
 	start := time.Now()
 
 	if metrics.AwsMetricsEnabled {
@@ -48,7 +48,7 @@ func (r *Route53Repository) ListHostedZonesByInput(query *route53.ListHostedZone
 func (r *Route53Repository) GetHostedZoneTags(hostedZone types.HostedZone) []types.Tag {
 	start := time.Now()
 
-	query := &route53.ListTagsForResourceInput{
+	query := &awsr53.ListTagsForResourceInput{
 		ResourceId:   hostedZone.Id,
 		ResourceType: types.TagResourceTypeHostedzone,
 	}
@@ -67,7 +67,7 @@ func (r *Route53Repository) GetHostedZoneTags(hostedZone types.HostedZone) []typ
 	return output.ResourceTagSet.Tags
 }
 
-func (r *Route53Repository) GetHostedZoneByInput(query *route53.GetHostedZoneInput) (*HostedZone, error) {
+func (r *Route53Repository) GetHostedZoneByInput(query *awsr53.GetHostedZoneInput) (*HostedZone, error) {
 	start := time.Now()
 
 	if metrics.AwsMetricsEnabled {
@@ -98,11 +98,11 @@ func (r *Route53Repository) GetHostedZoneByInput(query *route53.GetHostedZoneInp
 }
 
 // CreateHostedZone creates a new hosted zone
-func (r *Route53Repository) CreateHostedZone(input *route53.CreateHostedZoneInput) (*HostedZone, error) {
+func (r *Route53Repository) CreateHostedZone(input *awsr53.CreateHostedZoneInput) (*HostedZone, error) {
 	if aws.ToString(input.CallerReference) == "" {
 		return nil, errors.New("CallerReference cannot be empty: hosted zone creation requests must ensure idempotency")
 	}
-	
+
 	start := time.Now()
 
 	if metrics.AwsMetricsEnabled {
@@ -123,7 +123,7 @@ func (r *Route53Repository) CreateHostedZone(input *route53.CreateHostedZoneInpu
 	}
 
 	// Fetch the created hosted zone with full details
-	getQuery := &route53.GetHostedZoneInput{Id: output.HostedZone.Id}
+	getQuery := &awsr53.GetHostedZoneInput{Id: output.HostedZone.Id}
 	getOutput, err := r.route53Client().GetHostedZone(r.ctx, getQuery)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
@@ -149,7 +149,7 @@ func (r *Route53Repository) CreateHostedZone(input *route53.CreateHostedZoneInpu
 }
 
 // UpdateHostedZoneComment updates the comment of a hosted zone
-func (r *Route53Repository) UpdateHostedZoneComment(input *route53.UpdateHostedZoneCommentInput) (*HostedZone, error) {
+func (r *Route53Repository) UpdateHostedZoneComment(input *awsr53.UpdateHostedZoneCommentInput) (*HostedZone, error) {
 	start := time.Now()
 
 	if metrics.AwsMetricsEnabled {
@@ -172,7 +172,7 @@ func (r *Route53Repository) UpdateHostedZoneComment(input *route53.UpdateHostedZ
 	}
 
 	// Fetch the updated hosted zone with full details
-	getQuery := &route53.GetHostedZoneInput{Id: output.HostedZone.Id}
+	getQuery := &awsr53.GetHostedZoneInput{Id: output.HostedZone.Id}
 	getOutput, err := r.route53Client().GetHostedZone(r.ctx, getQuery)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
@@ -198,7 +198,7 @@ func (r *Route53Repository) UpdateHostedZoneComment(input *route53.UpdateHostedZ
 }
 
 // DeleteHostedZoneByInput deletes a hosted zone
-func (r *Route53Repository) DeleteHostedZoneByInput(input *route53.DeleteHostedZoneInput) error {
+func (r *Route53Repository) DeleteHostedZoneByInput(input *awsr53.DeleteHostedZoneInput) error {
 	start := time.Now()
 
 	if metrics.AwsMetricsEnabled {
@@ -226,7 +226,7 @@ func (r *Route53Repository) DeleteHostedZoneByInput(input *route53.DeleteHostedZ
 }
 
 // ChangeTagsForHostedZone adds or removes tags for a hosted zone
-func (r *Route53Repository) ChangeTagsForHostedZone(input *route53.ChangeTagsForResourceInput) error {
+func (r *Route53Repository) ChangeTagsForHostedZone(input *awsr53.ChangeTagsForResourceInput) error {
 	start := time.Now()
 
 	if metrics.AwsMetricsEnabled {

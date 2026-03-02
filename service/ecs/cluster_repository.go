@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/ecs"
+	awsecs "github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/imunhatep/awslib/service/cfg"
@@ -13,10 +13,10 @@ import (
 )
 
 func (r *EcsRepository) ListClustersAll() ([]Cluster, error) {
-	return r.ListClustersByInput(&ecs.ListClustersInput{})
+	return r.ListClustersByInput(&awsecs.ListClustersInput{})
 }
 
-func (r *EcsRepository) ListClustersByInput(query *ecs.ListClustersInput) ([]Cluster, error) {
+func (r *EcsRepository) ListClustersByInput(query *awsecs.ListClustersInput) ([]Cluster, error) {
 	log.Debug().
 		Str("type", cfg.ResourceTypeToString(types.ResourceTypeECSCluster)).
 		Msg("[EcsRepository.ListClustersByInput] searching for clusters")
@@ -24,7 +24,7 @@ func (r *EcsRepository) ListClustersByInput(query *ecs.ListClustersInput) ([]Clu
 	start := time.Now()
 	var clusters []Cluster
 
-	p := ecs.NewListClustersPaginator(r.ecsClient(), query)
+	p := awsecs.NewListClustersPaginator(r.ecsClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.
@@ -46,7 +46,7 @@ func (r *EcsRepository) ListClustersByInput(query *ecs.ListClustersInput) ([]Clu
 		// list clusters
 		ecsClusters, err := r.ecsClient().DescribeClusters(
 			r.ctx,
-			&ecs.DescribeClustersInput{Clusters: resp.ClusterArns},
+			&awsecs.DescribeClustersInput{Clusters: resp.ClusterArns},
 		)
 
 		for _, ecsCluster := range ecsClusters.Clusters {

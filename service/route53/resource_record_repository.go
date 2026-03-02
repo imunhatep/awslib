@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/route53"
+	awsr53 "github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
@@ -13,20 +13,20 @@ import (
 )
 
 func (r *Route53Repository) ListResourceRecords(hostedZone HostedZone) ([]ResourceRecord, error) {
-	query := &route53.ListResourceRecordSetsInput{
+	query := &awsr53.ListResourceRecordSetsInput{
 		HostedZoneId: hostedZone.Id,
 	}
 
 	return r.listResourceRecordsByInput(hostedZone, query)
 }
 
-func (r *Route53Repository) ListResourceRecordsByInput(query *route53.ListResourceRecordSetsInput) ([]ResourceRecord, error) {
+func (r *Route53Repository) ListResourceRecordsByInput(query *awsr53.ListResourceRecordSetsInput) ([]ResourceRecord, error) {
 	if query.HostedZoneId == nil || aws.ToString(query.HostedZoneId) == "" {
 		return nil, errors.New("failed listing records, HostedZoneId cannot be empty")
 	}
 
 	// Fetch the hosted zone metadata so we can include it in the returned records if needed
-	hostedZoneInput := &route53.GetHostedZoneInput{Id: query.HostedZoneId}
+	hostedZoneInput := &awsr53.GetHostedZoneInput{Id: query.HostedZoneId}
 	hostedZone, err := r.GetHostedZoneByInput(hostedZoneInput)
 	if err != nil {
 		return nil, errors.New(err)
@@ -39,7 +39,7 @@ func (r *Route53Repository) ListResourceRecordsByInput(query *route53.ListResour
 	return r.listResourceRecordsByInput(*hostedZone, query)
 }
 
-func (r *Route53Repository) listResourceRecordsByInput(hostedZone HostedZone, query *route53.ListResourceRecordSetsInput) ([]ResourceRecord, error) {
+func (r *Route53Repository) listResourceRecordsByInput(hostedZone HostedZone, query *awsr53.ListResourceRecordSetsInput) ([]ResourceRecord, error) {
 	start := time.Now()
 
 	if query.HostedZoneId == nil || aws.ToString(query.HostedZoneId) == "" {
@@ -90,7 +90,7 @@ func (r *Route53Repository) listResourceRecordsByInput(hostedZone HostedZone, qu
 }
 
 // ChangeResourceRecordSetsByInput performs batch changes (create, upsert, delete) on resource records
-func (r *Route53Repository) ChangeResourceRecordSetsByInput(input *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
+func (r *Route53Repository) ChangeResourceRecordSetsByInput(input *awsr53.ChangeResourceRecordSetsInput) (*awsr53.ChangeResourceRecordSetsOutput, error) {
 	start := time.Now()
 
 	if metrics.AwsMetricsEnabled {
@@ -124,7 +124,7 @@ func (r *Route53Repository) ChangeResourceRecordSetsByInput(input *route53.Chang
 // CreateResourceRecord creates new resource records with CREATE action
 // Smartly initializes input if nil or adds to existing changes
 // Automatically normalizes record names and ensures proper FQDN format
-func (r *Route53Repository) CreateResourceRecord(hostedZoneId *string, recordSets ...types.ResourceRecordSet) (*route53.ChangeResourceRecordSetsOutput, error) {
+func (r *Route53Repository) CreateResourceRecord(hostedZoneId *string, recordSets ...types.ResourceRecordSet) (*awsr53.ChangeResourceRecordSetsOutput, error) {
 	if hostedZoneId == nil || aws.ToString(hostedZoneId) == "" {
 		return nil, errors.New("hostedZoneId cannot be empty")
 	}
@@ -148,7 +148,7 @@ func (r *Route53Repository) CreateResourceRecord(hostedZoneId *string, recordSet
 		})
 	}
 
-	input := &route53.ChangeResourceRecordSetsInput{
+	input := &awsr53.ChangeResourceRecordSetsInput{
 		HostedZoneId: hostedZoneId,
 		ChangeBatch: &types.ChangeBatch{
 			Changes: changes,
@@ -161,7 +161,7 @@ func (r *Route53Repository) CreateResourceRecord(hostedZoneId *string, recordSet
 // UpsertResourceRecord updates (upserts) resource records with UPSERT action
 // Smartly initializes input if nil or adds to existing changes
 // Automatically normalizes record names and ensures proper FQDN format
-func (r *Route53Repository) UpsertResourceRecord(hostedZoneId *string, recordSets ...types.ResourceRecordSet) (*route53.ChangeResourceRecordSetsOutput, error) {
+func (r *Route53Repository) UpsertResourceRecord(hostedZoneId *string, recordSets ...types.ResourceRecordSet) (*awsr53.ChangeResourceRecordSetsOutput, error) {
 	if hostedZoneId == nil || aws.ToString(hostedZoneId) == "" {
 		return nil, errors.New("hostedZoneId cannot be empty")
 	}
@@ -185,7 +185,7 @@ func (r *Route53Repository) UpsertResourceRecord(hostedZoneId *string, recordSet
 		})
 	}
 
-	input := &route53.ChangeResourceRecordSetsInput{
+	input := &awsr53.ChangeResourceRecordSetsInput{
 		HostedZoneId: hostedZoneId,
 		ChangeBatch: &types.ChangeBatch{
 			Changes: changes,
@@ -222,7 +222,7 @@ func (r *Route53Repository) DeleteResourceRecord(hostedZoneId *string, recordSet
 		})
 	}
 
-	input := &route53.ChangeResourceRecordSetsInput{
+	input := &awsr53.ChangeResourceRecordSetsInput{
 		HostedZoneId: hostedZoneId,
 		ChangeBatch: &types.ChangeBatch{
 			Changes: changes,

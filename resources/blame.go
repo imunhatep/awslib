@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/go-errors/errors"
 	ptypes "github.com/imunhatep/awslib/provider/types"
-	"github.com/imunhatep/awslib/provider/v2"
+	"github.com/imunhatep/awslib/provider/v3"
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/cfg"
 	"github.com/imunhatep/awslib/service/cloudtrail"
@@ -18,7 +18,7 @@ import (
 
 type AwsClientPool interface {
 	GetContext() context.Context
-	GetClient(ptypes.AwsAccountID, ptypes.AwsRegion) (*v2.Client, error)
+	GetClient(ptypes.AwsAccountID, ptypes.AwsRegion) (*v3.Client, error)
 }
 
 const ResourceCreatorUnknown = "unknown"

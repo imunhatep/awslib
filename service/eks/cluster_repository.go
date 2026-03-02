@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/eks"
+	awseks "github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/imunhatep/awslib/service/cfg"
@@ -13,10 +13,10 @@ import (
 )
 
 func (r *EksRepository) ListClustersAll() ([]Cluster, error) {
-	return r.ListClustersByInput(&eks.ListClustersInput{})
+	return r.ListClustersByInput(&awseks.ListClustersInput{})
 }
 
-func (r *EksRepository) ListClustersByInput(query *eks.ListClustersInput) ([]Cluster, error) {
+func (r *EksRepository) ListClustersByInput(query *awseks.ListClustersInput) ([]Cluster, error) {
 	log.Debug().
 		Str("type", cfg.ResourceTypeToString(types.ResourceTypeECSCluster)).
 		Msg("[EksRepository.ListClustersByInput] searching for clusters")
@@ -43,7 +43,7 @@ func (r *EksRepository) ListClustersByInput(query *eks.ListClustersInput) ([]Clu
 
 	for _, clusterName := range clustersOutput.Clusters {
 
-		eksCluster, err := r.eksClient().DescribeCluster(r.ctx, &eks.DescribeClusterInput{Name: aws.String(clusterName)})
+		eksCluster, err := r.eksClient().DescribeCluster(r.ctx, &awseks.DescribeClusterInput{Name: aws.String(clusterName)})
 		if err != nil {
 			log.Error().Err(err).
 				Str("cluster", clusterName).

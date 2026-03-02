@@ -3,7 +3,7 @@ package glue
 import (
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/service/glue"
+	awsglue "github.com/aws/aws-sdk-go-v2/service/glue"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/imunhatep/awslib/service/cfg"
@@ -11,10 +11,10 @@ import (
 )
 
 func (r *GlueRepository) ListDatabaseAll() ([]Database, error) {
-	return r.ListDatabaseByInput(&glue.GetDatabasesInput{})
+	return r.ListDatabaseByInput(&awsglue.GetDatabasesInput{})
 }
 
-func (r *GlueRepository) ListDatabaseByInput(query *glue.GetDatabasesInput) ([]Database, error) {
+func (r *GlueRepository) ListDatabaseByInput(query *awsglue.GetDatabasesInput) ([]Database, error) {
 	log.Debug().
 		Str("accountID", r.client.GetAccountID().String()).
 		Str("region", r.client.GetRegion().String()).

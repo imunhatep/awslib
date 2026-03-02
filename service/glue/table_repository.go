@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/glue"
+	awsglue "github.com/aws/aws-sdk-go-v2/service/glue"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/imunhatep/awslib/service/cfg"
@@ -19,7 +19,7 @@ func (r *GlueRepository) ListTablesAll() ([]Table, error) {
 
 	tables := []Table{}
 	for _, db := range databases {
-		query := &glue.GetTablesInput{DatabaseName: aws.String(db.GetId())}
+		query := &awsglue.GetTablesInput{DatabaseName: aws.String(db.GetId())}
 
 		dbTables, err := r.ListTablesByInput(query)
 		if err != nil {
@@ -33,7 +33,7 @@ func (r *GlueRepository) ListTablesAll() ([]Table, error) {
 	return tables, nil
 }
 
-func (r *GlueRepository) ListTablesByInput(query *glue.GetTablesInput) ([]Table, error) {
+func (r *GlueRepository) ListTablesByInput(query *awsglue.GetTablesInput) ([]Table, error) {
 	log.Debug().
 		Str("accountID", r.client.GetAccountID().String()).
 		Str("region", r.client.GetRegion().String()).
