@@ -124,7 +124,11 @@ func (r *Route53Repository) ChangeResourceRecordSetsByInput(input *awsr53.Change
 // CreateResourceRecord creates new resource records with CREATE action
 // Smartly initializes input if nil or adds to existing changes
 // Automatically normalizes record names and ensures proper FQDN format
-func (r *Route53Repository) CreateResourceRecord(hostedZone HostedZone, recordSets ...types.ResourceRecordSet) (*awsr53.ChangeResourceRecordSetsOutput, error) {
+func (r *Route53Repository) CreateResourceRecord(hostedZone *HostedZone, recordSets ...types.ResourceRecordSet) (*awsr53.ChangeResourceRecordSetsOutput, error) {
+	if hostedZone == nil {
+		return nil, errors.New("hostedZoneId cannot be empty")
+	}
+
 	if len(recordSets) == 0 {
 		return nil, errors.New("at least one resource record set is required")
 	}
@@ -157,7 +161,11 @@ func (r *Route53Repository) CreateResourceRecord(hostedZone HostedZone, recordSe
 // UpsertResourceRecord updates (upserts) resource records with UPSERT action
 // Smartly initializes input if nil or adds to existing changes
 // Automatically normalizes record names and ensures proper FQDN format
-func (r *Route53Repository) UpsertResourceRecord(hostedZone HostedZone, recordSets ...types.ResourceRecordSet) (*awsr53.ChangeResourceRecordSetsOutput, error) {
+func (r *Route53Repository) UpsertResourceRecord(hostedZone *HostedZone, recordSets ...types.ResourceRecordSet) (*awsr53.ChangeResourceRecordSetsOutput, error) {
+	if hostedZone == nil {
+		return nil, errors.New("hostedZoneId cannot be empty")
+	}
+
 	if len(recordSets) == 0 {
 		return nil, errors.New("at least one resource record set is required")
 	}
@@ -191,7 +199,11 @@ func (r *Route53Repository) UpsertResourceRecord(hostedZone HostedZone, recordSe
 // DeleteResourceRecord deletes resource records with DELETE action
 // Smartly initializes input if nil or adds to existing changes
 // Automatically normalizes record names and ensures proper FQDN format
-func (r *Route53Repository) DeleteResourceRecord(hostedZone HostedZone, recordSets ...types.ResourceRecordSet) error {
+func (r *Route53Repository) DeleteResourceRecord(hostedZone *HostedZone, recordSets ...types.ResourceRecordSet) error {
+	if hostedZone == nil {
+		return errors.New("hostedZoneId cannot be empty")
+	}
+
 	if len(recordSets) == 0 {
 		return errors.New("at least one resource record set is required")
 	}
