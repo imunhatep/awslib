@@ -35,6 +35,18 @@ List of AWS Services that have normalized interface EntityInterface{}
  - sns
  - sqs
 
+## Code Generation
+
+The library provides code generation tools to bootstrap AWS service clients and repositories:
+
+```sh
+# Generate cached repositories for all services
+go run cmd/generate-cached/main.go
+
+# Generate service options and configurations
+go run cmd/generate-options/main.go
+```
+
 ## Usage
                       
 ### Logging verbosity
@@ -104,9 +116,6 @@ type EntityInterface interface {
 ### AWS Client Pool
 Initialize AWS client pool.
 
-## Provider v3 (Recommended)
-
-Provider v3 is the latest and recommended version with improved service client caching and better performance.
 
 ### Basic Client Usage
 
@@ -359,213 +368,261 @@ func ExampleMultipleServices() error {
 }
 ```
 
-## Provider v2 (Legacy)
+### AWS Service RepoProxy
+The RepoProxy provides a higher-level interface for fetching AWS resources from AWS services with built-in caching support.
 
-#### Use credentials to access account directly
 ```go
 package main
 
 import (
   "context"
-  "github.com/allegro/bigcache/v3"
-  "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-  "github.com/rs/zerolog/log"
-  "github.com/imunhatep/awslib/cache"
-  "github.com/imunhatep/awslib/cache/handlers"
-  "github.com/imunhatep/awslib/gateway"
-  "github.com/imunhatep/awslib/provider"
-  ptypes "github.com/imunhatep/awslib/provider/types"
-  "github.com/imunhatep/awslib/provider/v2"
-  "github.com/imunhatep/awslib/resources"
-)
-
-type AwsClientPool interface {
-  GetContext() context.Context
-  GetClient(ptypes.AwsAccountID, ptypes.AwsRegion) (*v2.Client, error)
-  GetClients(...ptypes.AwsRegion) ([]*v2.Client, error)
-}
-
-func NewClientPool() (AwsClientPool, error) {
-  awsRegions := []ptypes.AwsRegion{ "us-east-1", "us-west-2" }
-
-  providers, err := v2.DefaultAwsClientProviders()
-  if err != nil {
-    return nil, err
-  }
-
-  ctx := context.Background()
-  localClientPool := provider.NewClientPool(ctx, v2.NewClientBuilder(ctx, providers...))
-
-  clients, err := localClientPool.GetClients(awsRegions...)
-  if err != nil {
-    return nil, err
-  }
-
-  for _, client := range clients {
-    // Do something with the client per region
-  }
-  
-  return localClientPool, nil
-}
-```
-
-#### Use credentials to assume roles, e.g. cross-account access
-```go
-package main
-
-import (
-  "context"
-  "github.com/allegro/bigcache/v3"
-  "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-  "github.com/rs/zerolog/log"
-  "github.com/imunhatep/awslib/cache"
-  "github.com/imunhatep/awslib/cache/handlers"
-  "github.com/imunhatep/awslib/gateway"
-  "github.com/imunhatep/awslib/metrics"
-  "github.com/imunhatep/awslib/provider"
-  ptypes "github.com/imunhatep/awslib/provider/types"
-  "github.com/imunhatep/awslib/provider/v2"
-  "github.com/imunhatep/awslib/resources"
-)
-
-type AwsClientPool interface {
-  GetContext() context.Context
-  GetClient(ptypes.AwsAccountID, ptypes.AwsRegion) (*v2.Client, error)
-  GetClients(...ptypes.AwsRegion) ([]*v2.Client, error)
-}
-
-func NewClientPool() (AwsClientPool, error) {
-  // enable metrics, optional
-  metrics.InitMetrics(metrics.AwslibSubsystem)
-  
-  awsRegions := []ptypes.AwsRegion{ "us-east-1", "us-west-2" }
-
-  ctx := context.Background()
-  clientBuilder, err := v2.NewClientBuilder(ctx)
-  if err != nil {
-    return nil, err
-  }
-  
-  assumedClientPool := v2.NewClientPool(ctx, clientBuilder)
-
-  clients, err := assumedClientPool.GetClients(awsRegions...)
-  if err != nil {
-    return nil, err
-  }
-
-  for _, client := range clients {
-    // Do something with the client per region
-  }
-  
-  return assumedClientPool, nil
-}
-```
-
-##### AWS IAM Role
-AWS IAM Role example for wiring with IRSA
-```json
-{
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-              "iam:GenerateCredentialReport",
-              "iam:GenerateServiceLastAccessedDetails",
-              "iam:Get*",
-              "iam:List*",
-              "iam:SimulateCustomPolicy",
-              "iam:SimulatePrincipalPolicy"
-            ],
-            "Resource": "*"
-        },
-        {
-            "Action": [
-                "sts:TagSession",
-                "sts:AssumeRole"
-            ],
-            "Effect": "Allow",
-            "Resource": [
-                "arn:aws:iam::123456789012:role/awslib-assumed1",
-                "arn:aws:iam::123456789013:role/awslib-assumed2",
-                "arn:aws:iam::123456789014:role/awslib-assumed3"
-            ]
-        }
-    ],
-    "Version": "2012-10-17"
-}
-```
-
-#### AWS Service RepoGateway
-This structure helps fetching AWS resources from AWS services.
-```go
-package main
-
-import (
-  "context"
-  "github.com/allegro/bigcache/v3"
-  "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-  "github.com/rs/zerolog/log"
-  "github.com/imunhatep/awslib/cache"
-  "github.com/imunhatep/awslib/cache/handlers"
-  "github.com/imunhatep/awslib/gateway"
-  "github.com/imunhatep/awslib/provider"
-  ptypes "github.com/imunhatep/awslib/provider/types"
-  "github.com/imunhatep/awslib/provider/v2"
-  "github.com/imunhatep/awslib/resources"
-  "github.com/imunhatep/awslib/service"
   "fmt"
   "time"
+  
+  "github.com/allegro/bigcache/v3"
+  "github.com/aws/aws-sdk-go-v2/service/configservice/types"
+  
+  "github.com/imunhatep/awslib/cache"
+  "github.com/imunhatep/awslib/cache/handlers"
+  "github.com/imunhatep/awslib/proxy"
+  "github.com/imunhatep/awslib/provider/v3"
+  ptypes "github.com/imunhatep/awslib/provider/types"
+  "github.com/imunhatep/awslib/resources"
 )
 
-type AwsClientPool interface {
-  GetContext() context.Context
-  GetClient(ptypes.AwsAccountID, ptypes.AwsRegion) (*v2.Client, error)
-  GetClients(...ptypes.AwsRegion) ([]*v2.Client, error)
-}
-
-func InitRepo() error {
-  awsRegions := []ptypes.AwsRegion{ "us-east-1", "us-west-2" }
+func InitRepoProxy() error {
+  ctx := context.Background()
+  awsRegions := []ptypes.AwsRegion{"us-east-1", "us-west-2"}
   
-  clientPool, _ := NewClientPool()
-
+  // Create v3 client pool
+  clientBuilder := v3.NewClientBuilder(ctx)
+  assumableRoles := map[ptypes.AwsAccountID]ptypes.RoleArn{
+    "123456789012": "arn:aws:iam::123456789012:role/awslib-assumed1",
+  }
+  clientPool := v3.NewClientPool(ctx, clientBuilder, assumableRoles)
+  
   clients, err := clientPool.GetClients(awsRegions...)
   if err != nil {
     return err 
   }
     
-  ctx := context.Background()
-  gatewayPool := gateway.NewRepoGatewayPool(ctx, clients)
+  // Create proxy pool
+  proxyPool := proxy.NewRepoProxyPool(ctx, clients)
   
-  // enable resource cache
+  // Enable resource caching (optional)
   cacheTtl := 300 * time.Second
   
   bigCache, _ := bigcache.New(ctx, bigcache.DefaultConfig(cacheTtl))
   inMem := handlers.NewInMemory(bigCache)
-
   inFile, _ := handlers.NewInFile("/tmp", cacheTtl)
-
   dataCache := cache.NewDataCache().WithHandlers(inMem, inFile)
+  
+  proxyPool.WithCache(dataCache)
 
-  // enable resource cache
-  gatewayPool.WithCache(dataCache)
-
+  // Fetch resources
   resourceType := types.ResourceTypeInstance
-  awsProvider := resources.NewProvider(resourceType, gatewayPool.List(resourceType)...)
+  awsProvider := resources.NewProvider(resourceType, proxyPool.List(resourceType)...)
   reader := awsProvider.Run()
   
-  // resource service.EntityInterface
   for _, resource := range reader.Read() {
-    fmt.Println(resource.GetArn())
+    fmt.Printf("Resource ARN: %s\n", resource.GetArn())
   }
   
   return nil
 }
 ```
 
+### Repository Caching
+
+The library supports caching of AWS API responses to reduce API calls and improve performance:
+
+#### In-Memory Caching
+```go
+package main
+
+import (
+    "context"
+    "time"
+    
+    "github.com/allegro/bigcache/v3"
+    "github.com/imunhatep/awslib/cache"
+    "github.com/imunhatep/awslib/cache/handlers"
+    "github.com/imunhatep/awslib/service/ec2"
+    v3 "github.com/imunhatep/awslib/provider/v3"
+)
+
+func ExampleInMemoryCache() error {
+    ctx := context.Background()
+    
+    // Create bigcache
+    cacheTtl := 300 * time.Second
+    bigCache, err := bigcache.New(ctx, bigcache.DefaultConfig(cacheTtl))
+    if err != nil {
+        return err
+    }
+    
+    // Create cache handler
+    inMem := handlers.NewInMemory(bigCache)
+    dataCache := cache.NewDataCache().WithHandlers(inMem)
+    
+    // Create client
+    client, err := v3.NewClient(ctx)
+    if err != nil {
+        return err
+    }
+    
+    // Use cached repository
+    repo := ec2.NewCachedEc2Repository(ctx, client, dataCache)
+    
+    // First call hits AWS API
+    instances, err := repo.ListInstancesAll()
+    if err != nil {
+        return err
+    }
+    
+    // Second call uses cached result
+    instances, err = repo.ListInstancesAll()
+    if err != nil {
+        return err
+    }
+    
+    return nil
+}
+```
+
+#### File System Caching
+```go
+package main
+
+import (
+    "context"
+    "time"
+    
+    "github.com/imunhatep/awslib/cache"
+    "github.com/imunhatep/awslib/cache/handlers"
+    "github.com/imunhatep/awslib/service/s3"
+    v3 "github.com/imunhatep/awslib/provider/v3"
+)
+
+func ExampleFileSystemCache() error {
+    ctx := context.Background()
+    
+    // Create file cache
+    cacheTtl := 300 * time.Second
+    cacheDir := "/tmp/awslib-cache"
+    inFile, err := handlers.NewInFile(cacheDir, cacheTtl)
+    if err != nil {
+        return err
+    }
+    
+    dataCache := cache.NewDataCache().WithHandlers(inFile)
+    
+    // Create client
+    client, err := v3.NewClient(ctx)
+    if err != nil {
+        return err
+    }
+    
+    // Use cached repository
+    repo := s3.NewCachedS3Repository(ctx, client, dataCache)
+    
+    // API results are cached to file system
+    buckets, err := repo.ListBucketsAll()
+    if err != nil {
+        return err
+    }
+    
+    return nil
+}
+```
+
+#### Combined Caching (Memory + File)
+```go
+package main
+
+import (
+    "context"
+    "time"
+    
+    "github.com/allegro/bigcache/v3"
+    "github.com/imunhatep/awslib/cache"
+    "github.com/imunhatep/awslib/cache/handlers"
+    "github.com/imunhatep/awslib/service/iam"
+    v3 "github.com/imunhatep/awslib/provider/v3"
+)
+
+func ExampleCombinedCache() error {
+    ctx := context.Background()
+    cacheTtl := 300 * time.Second
+    
+    // Create multiple cache handlers
+    bigCache, _ := bigcache.New(ctx, bigcache.DefaultConfig(cacheTtl))
+    inMem := handlers.NewInMemory(bigCache)
+    inFile, _ := handlers.NewInFile("/tmp/awslib-cache", cacheTtl)
+    
+    // Combine handlers - tries memory first, then file, then API
+    dataCache := cache.NewDataCache().WithHandlers(inMem, inFile)
+    
+    client, err := v3.NewClient(ctx)
+    if err != nil {
+        return err
+    }
+    
+    // Use cached repository with multi-level caching
+    repo := iam.NewCachedIamRepository(ctx, client, dataCache)
+    
+    users, err := repo.ListUsersAll()
+    if err != nil {
+        return err
+    }
+    
+    return nil
+}
+```
+
+### Code Generation
+
+Generate cached repository wrappers for all AWS services:
+
+```go
+package main
+
+import (
+    "fmt"
+    "os"
+    "os/exec"
+)
+
+// Generate cached repositories
+func generateCachedRepos() error {
+    cmd := exec.Command("go", "run", "cmd/generate-cached/main.go")
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
+    
+    if err := cmd.Run(); err != nil {
+        return fmt.Errorf("failed to generate cached repos: %w", err)
+    }
+    
+    return nil
+}
+
+// Generate service options
+func generateOptions() error {
+    cmd := exec.Command("go", "run", "cmd/generate-options/main.go")
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
+    
+    if err := cmd.Run(); err != nil {
+        return fmt.Errorf("failed to generate options: %w", err)
+    }
+    
+    return nil
+}
+```
 
 ### AWS EC2
 
-#### List All Instances (v3)
+#### List All Instances
 
 To list all EC2 instances using v3 provider:
 
@@ -606,9 +663,9 @@ func main() {
 }
 ```
 
-#### List All Instances (v2)
 
-To list all EC2 insatnces:
+#### Get Volume Tags
+To get tags for a specific EC2 volume using the v3 provider and cached repository:
 
 ```go
 package main
@@ -616,56 +673,53 @@ package main
 import (
   "context"
   "fmt"
+  
+  v3 "github.com/imunhatep/awslib/provider/v3"
   "github.com/imunhatep/awslib/service/ec2"
+  "github.com/imunhatep/awslib/cache"
+  "github.com/imunhatep/awslib/cache/handlers"
+  "github.com/allegro/bigcache/v3"
+  "time"
 )
 
 func main() {
   ctx := context.Background()
   
-  client := NewAwsClient() // Assume NewAwsClient is a function that returns an initialized AWS client
-  repo := ec2.NewEc2Repository(ctx, client)
-
-  instances, err := repo.ListInstancesAll()
-  if err != nil {
-    fmt.Println("Error listing instances:", err)
-    return
-  }
-
-  for _, instance := range instances {
-    fmt.Println("EC2 ID:", instance.GetID())
-  }
-}
-```
-
-#### Get Volume Tags
-To get tags for a specific EC2 volume:
-```go
-package main
-
-import (
-  "context"
-  "fmt"
-  "github.com/imunhatep/awslib/service/ec2"
-)
-
-func main() {
-  ctx := context.Background()
-  client := NewAwsClient() // Assume NewAwsClient is a function that returns an initialized AWS client
-  repo := ec2.NewEc2Repository(ctx, client)
+  // Create client and cache
+  client, _ := v3.NewClient(ctx)
+  
+  cacheTtl := 300 * time.Second
+  bigCache, _ := bigcache.New(ctx, bigcache.DefaultConfig(cacheTtl))
+  inMem := handlers.NewInMemory(bigCache)
+  dataCache := cache.NewDataCache().WithHandlers(inMem)
+  
+  // Create cached repository
+  repo := ec2.NewCachedEc2Repository(ctx, client, dataCache)
 
   volumeID := "vol-0123456789abcdef0"
-  volume := ec2.Volume{ID: volumeID}
-
-  tags := volume.GetTags()
-  for key, value := range tags {
-    fmt.Printf("Key: %s, Value: %s\n", key, value)
+  
+  // Get all volumes and find the one we want
+  volumes, err := repo.ListVolumesAll()
+  if err != nil {
+    fmt.Printf("Error listing volumes: %v\n", err)
+    return
+  }
+  
+  for _, volume := range volumes {
+    if volume.GetId() == volumeID {
+      tags := volume.GetTags()
+      for key, value := range tags {
+        fmt.Printf("Key: %s, Value: %s\n", key, value)
+      }
+      break
+    }
   }
 }
 ```
 
 ### S3 (Simple Storage Service)
 
-#### List All Buckets (v3)
+#### List All Buckets
 To list all S3 buckets using v3 provider:
 
 ```go
@@ -703,7 +757,7 @@ func main() {
 }
 ```
 
-#### Get Bucket Tags (v3)
+#### Get Bucket Tags
 To get tags for a specific S3 bucket using v3 provider:
 
 ```go
@@ -744,68 +798,6 @@ func main() {
 }
 ```
 
-#### List All Buckets (v2)
-To list all S3 buckets:
-```go
-package main
-
-import (
-  "context"
-  "fmt"
-  "github.com/imunhatep/awslib/service/s3"
-)
-
-func main() {
-  ctx := context.Background()
-  client := NewAwsClient() // Assume NewAwsClient is a function that returns an initialized AWS client
-  repo := s3.NewS3Repository(ctx, client)
-  
-  buckets, err := repo.ListBucketsAll()
-  if err != nil {
-    fmt.Println("Error listing buckets:", err)
-    return
-  }
-  
-  for _, bucket := range buckets {
-    fmt.Println("Bucket Name:", bucket.GetName())
-
-    for key, value := range bucket.GetTags() {
-      fmt.Printf("Key: %s, Value: %s\n", key, value)
-    }
-  }
-}
-```
-
-#### Get Bucket Tags
-To get tags for a specific S3 bucket:
-```go
-package main
-
-import (
-  "context"
-  "fmt"
-  "github.com/imunhatep/awslib/service/s3"
-)
-
-func main() {
-  ctx := context.Background()
-  client := NewAwsClient() // Assume NewAwsClient is a function that returns an initialized AWS client
-  repo := s3.NewS3Repository(ctx, client)
-
-  bucketName := "my-bucket"
-  bucket := s3.Bucket{Name: &bucketName}
-  
-  tags, err := repo.GetTags(bucket)
-  if err != nil {
-    fmt.Println("Error getting bucket tags:", err)
-    return
-  }
-
-  for key, value := range tags {
-    fmt.Printf("Key: %s, Value: %s\n", key, value)
-  }
-}
-```
 
 ## Monitoring
 The library integrates with Prometheus to monitor AWS API requests and errors. Metrics are collected and can be visualized using Prometheus-compatible tools.
