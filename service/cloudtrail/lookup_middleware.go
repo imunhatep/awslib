@@ -88,7 +88,7 @@ func (l *LookupMiddleware) WithResourceType(value cfg.ResourceType) *LookupMiddl
 	return l.WithHandler(LookupEventByAttribute(types.LookupAttributeKeyResourceType, string(value)))
 }
 
-func (l *LookupMiddleware) WithResource(value service.EntityInterface) *LookupMiddleware {
+func (l *LookupMiddleware) WithResource(value service.ResourceInterface) *LookupMiddleware {
 	return l.WithHandler(LookupResourceHandler(value))
 }
 
@@ -161,7 +161,7 @@ func LookupLimitHandler(limit int32) LookupHandler {
 	}
 }
 
-func LookupResourceHandler(e service.EntityInterface) LookupHandler {
+func LookupResourceHandler(e service.ResourceInterface) LookupHandler {
 	return func(q *cloudtrail.LookupEventsInput) (*cloudtrail.LookupEventsInput, error) {
 		log.Trace().Str("key", "ResourceName").Str("name", e.GetIdOrArn()).Msg("lookup: query")
 

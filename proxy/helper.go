@@ -32,7 +32,7 @@ import (
 )
 
 // FindAutoScaleGroups returns a list of Auto Scaling groups
-func FindAutoScaleGroups(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindAutoScaleGroups(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := autoscaling.NewAsgRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListAutoScalingGroupsAll()
@@ -43,7 +43,7 @@ func FindAutoScaleGroups(ctx context.Context, client *v3.Client, dc *cache.DataC
 }
 
 // FindBatchComputeEnvironments returns a list of Batch compute environments
-func FindBatchComputeEnvironments(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindBatchComputeEnvironments(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := batch.NewBatchRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListComputeEnvironmentAll()
@@ -54,7 +54,7 @@ func FindBatchComputeEnvironments(ctx context.Context, client *v3.Client, dc *ca
 }
 
 // FindBatchJobQueues returns a list of Batch job queues
-func FindBatchJobQueues(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindBatchJobQueues(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := batch.NewBatchRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListJobQueueAll()
@@ -65,7 +65,7 @@ func FindBatchJobQueues(ctx context.Context, client *v3.Client, dc *cache.DataCa
 }
 
 // FindCloudWatchLogGroups returns a list of CloudWatch log groups
-func FindCloudWatchLogGroups(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindCloudWatchLogGroups(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := cloudwatchlogs.NewCloudWatchLogsRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListLogGroupsAll()
@@ -76,7 +76,7 @@ func FindCloudWatchLogGroups(ctx context.Context, client *v3.Client, dc *cache.D
 }
 
 // FindDbInstances returns a list of RDS instances
-func FindDbInstances(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindDbInstances(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := rds.NewRdsRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListDbInstancesAll()
@@ -87,7 +87,7 @@ func FindDbInstances(ctx context.Context, client *v3.Client, dc *cache.DataCache
 }
 
 // FindDynamodbTables returns a list of DynamoDB tables
-func FindDynamodbTables(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindDynamodbTables(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := dynamodb.NewDynamoDBRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListTablesAll()
@@ -98,7 +98,7 @@ func FindDynamodbTables(ctx context.Context, client *v3.Client, dc *cache.DataCa
 }
 
 // FindDbSnapshots returns a list of RDS snapshots
-func FindDbSnapshots(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindDbSnapshots(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := rds.NewRdsRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListDbSnapshotsAll()
@@ -109,7 +109,7 @@ func FindDbSnapshots(ctx context.Context, client *v3.Client, dc *cache.DataCache
 }
 
 // FindEc2Snapshots returns a list of EBS snapshots
-func FindEc2Snapshots(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindEc2Snapshots(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := ec2.NewEc2Repository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListSnapshotsAll()
@@ -120,7 +120,7 @@ func FindEc2Snapshots(ctx context.Context, client *v3.Client, dc *cache.DataCach
 }
 
 // FindEc2Volumes returns a list of EBS volumes
-func FindEc2Volumes(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindEc2Volumes(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := ec2.NewEc2Repository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListVolumesAll()
@@ -131,7 +131,7 @@ func FindEc2Volumes(ctx context.Context, client *v3.Client, dc *cache.DataCache)
 }
 
 // FindEc2Vpcs returns a list of VPC
-func FindEc2Vpcs(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindEc2Vpcs(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := ec2.NewEc2Repository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListVpcsAll()
@@ -142,7 +142,7 @@ func FindEc2Vpcs(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([
 }
 
 // FindEbsCCVolumes returns a list of EBS volumes via CloudControl
-func FindEbsCCVolumes(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindEbsCCVolumes(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := cloudcontrol.NewCloudControlRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListVolumesAll()
@@ -153,7 +153,7 @@ func FindEbsCCVolumes(ctx context.Context, client *v3.Client, dc *cache.DataCach
 }
 
 // FindEc2Instances returns a list of EC2 instances
-func FindEc2Instances(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindEc2Instances(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := ec2.NewEc2Repository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListInstancesAll()
@@ -164,7 +164,7 @@ func FindEc2Instances(ctx context.Context, client *v3.Client, dc *cache.DataCach
 }
 
 // FindEc2CCInstances returns a list of EC2 instances via CloudControl
-func FindEc2CCInstances(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindEc2CCInstances(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := cloudcontrol.NewCloudControlRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListInstancesAll()
@@ -175,7 +175,7 @@ func FindEc2CCInstances(ctx context.Context, client *v3.Client, dc *cache.DataCa
 }
 
 // FindEcsClusters returns a list of ECS clusters
-func FindEcsClusters(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindEcsClusters(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := ecs.NewEcsRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListClustersAll()
@@ -186,7 +186,7 @@ func FindEcsClusters(ctx context.Context, client *v3.Client, dc *cache.DataCache
 }
 
 // FindEksClusters returns a list of EKS clusters
-func FindEksClusters(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindEksClusters(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := eks.NewEksRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListClustersAll()
@@ -197,7 +197,7 @@ func FindEksClusters(ctx context.Context, client *v3.Client, dc *cache.DataCache
 }
 
 // FindEcsServices returns a list of ECS services
-func FindEcsServices(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindEcsServices(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := ecs.NewEcsRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListServicesAll()
@@ -208,7 +208,7 @@ func FindEcsServices(ctx context.Context, client *v3.Client, dc *cache.DataCache
 }
 
 // FindEfsFileSystems returns a list of EFS file systems
-func FindEfsFileSystems(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindEfsFileSystems(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := efs.NewEfsRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListFileSystemsAll()
@@ -219,7 +219,7 @@ func FindEfsFileSystems(ctx context.Context, client *v3.Client, dc *cache.DataCa
 }
 
 // FindEmrClusters returns a list of EMR clusters
-func FindEmrClusters(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindEmrClusters(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := emr.NewEmrRepository(ctx, client)
 	if dc != nil {
 		// ListClustersLatest is overkill with FindAll; use the cached variant
@@ -231,7 +231,7 @@ func FindEmrClusters(ctx context.Context, client *v3.Client, dc *cache.DataCache
 }
 
 // FindEmrServerlessApplications returns a list of EMR serverless applications
-func FindEmrServerlessApplications(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindEmrServerlessApplications(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := emrserverless.NewEMRServerlessRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListApplicationsActive()
@@ -242,7 +242,7 @@ func FindEmrServerlessApplications(ctx context.Context, client *v3.Client, dc *c
 }
 
 // FindEmrServerlessJobRuns returns a list of EMR serverless job runs
-func FindEmrServerlessJobRuns(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindEmrServerlessJobRuns(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := emrserverless.NewEMRServerlessRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListJobRunsAll()
@@ -253,7 +253,7 @@ func FindEmrServerlessJobRuns(ctx context.Context, client *v3.Client, dc *cache.
 }
 
 // FindGlueDatabases returns a list of Glue databases
-func FindGlueDatabases(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindGlueDatabases(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := glue.NewGlueRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListDatabaseAll()
@@ -264,7 +264,7 @@ func FindGlueDatabases(ctx context.Context, client *v3.Client, dc *cache.DataCac
 }
 
 // FindGlueJobs returns a list of Glue jobs
-func FindGlueJobs(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindGlueJobs(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := glue.NewGlueRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListJobsAll()
@@ -275,7 +275,7 @@ func FindGlueJobs(ctx context.Context, client *v3.Client, dc *cache.DataCache) (
 }
 
 // FindGlueTables returns a list of Glue tables
-func FindGlueTables(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindGlueTables(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := glue.NewGlueRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListTablesAll()
@@ -286,7 +286,7 @@ func FindGlueTables(ctx context.Context, client *v3.Client, dc *cache.DataCache)
 }
 
 // FindLambdaFunctions returns a list of Lambda functions
-func FindLambdaFunctions(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindLambdaFunctions(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := lambda.NewLambdaRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListFunctionsAll()
@@ -297,7 +297,7 @@ func FindLambdaFunctions(ctx context.Context, client *v3.Client, dc *cache.DataC
 }
 
 // FindIamUsers returns a list of IAM users
-func FindIamUsers(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindIamUsers(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := iam.NewIamRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListUsersAll()
@@ -308,7 +308,7 @@ func FindIamUsers(ctx context.Context, client *v3.Client, dc *cache.DataCache) (
 }
 
 // FindLoadBalancers returns a list of Load Balancers
-func FindLoadBalancers(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindLoadBalancers(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := elb.NewLoadBalancerRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListLoadBalancersAll()
@@ -319,7 +319,7 @@ func FindLoadBalancers(ctx context.Context, client *v3.Client, dc *cache.DataCac
 }
 
 // FindRoute53HostedZones returns a list of Route 53 hosted zones
-func FindRoute53HostedZones(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindRoute53HostedZones(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := route53.NewRoute53Repository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListHostedZonesAll()
@@ -330,7 +330,7 @@ func FindRoute53HostedZones(ctx context.Context, client *v3.Client, dc *cache.Da
 }
 
 // FindRoute53DomainSummaries returns a list of Route 53 registered domain summaries
-func FindRoute53DomainSummaries(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindRoute53DomainSummaries(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := route53.NewRoute53Repository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListDomainsAll()
@@ -341,7 +341,7 @@ func FindRoute53DomainSummaries(ctx context.Context, client *v3.Client, dc *cach
 }
 
 // FindRoute53Domains returns a list of Route 53 registered domains with full details
-func FindRoute53Domains(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindRoute53Domains(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := route53.NewRoute53Repository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListDomainsDetailsByInput(&route53domains.ListDomainsInput{})
@@ -352,7 +352,7 @@ func FindRoute53Domains(ctx context.Context, client *v3.Client, dc *cache.DataCa
 }
 
 // FindRoute53ResourceRecords returns a list of Route 53 resource records across all hosted zones
-func FindRoute53ResourceRecords(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindRoute53ResourceRecords(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := route53.NewRoute53Repository(ctx, client)
 
 	var hostedZones []route53.HostedZone
@@ -365,7 +365,7 @@ func FindRoute53ResourceRecords(ctx context.Context, client *v3.Client, dc *cach
 			return nil, err
 		}
 
-		var all []service.EntityInterface
+		var all []service.ResourceInterface
 		for _, hz := range hostedZones {
 			records, err := cachedRepo.ListResourceRecords(hz)
 			if err != nil {
@@ -381,7 +381,7 @@ func FindRoute53ResourceRecords(ctx context.Context, client *v3.Client, dc *cach
 		return nil, err
 	}
 
-	var all []service.EntityInterface
+	var all []service.ResourceInterface
 	for _, hz := range hostedZones {
 		records, err := repo.ListResourceRecords(hz)
 		if err != nil {
@@ -394,7 +394,7 @@ func FindRoute53ResourceRecords(ctx context.Context, client *v3.Client, dc *cach
 }
 
 // FindSecretManagerSecrets returns a list of Secrets Manager secrets
-func FindSecretManagerSecrets(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindSecretManagerSecrets(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := secretmanager.NewSecretManagerRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListSecretsAll()
@@ -405,7 +405,7 @@ func FindSecretManagerSecrets(ctx context.Context, client *v3.Client, dc *cache.
 }
 
 // FindSqsQueues returns a list of SQS queues
-func FindSqsQueues(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindSqsQueues(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := sqs.NewSqsRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListQueuesAll()
@@ -416,7 +416,7 @@ func FindSqsQueues(ctx context.Context, client *v3.Client, dc *cache.DataCache) 
 }
 
 // FindSnsTopics returns a list of SNS topics
-func FindSnsTopics(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindSnsTopics(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := sns.NewSnsRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListTopicsAll()
@@ -427,7 +427,7 @@ func FindSnsTopics(ctx context.Context, client *v3.Client, dc *cache.DataCache) 
 }
 
 // FindS3CCBuckets returns a list of S3 Buckets via CloudControl
-func FindS3CCBuckets(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindS3CCBuckets(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := cloudcontrol.NewCloudControlRepository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListBucketsAll()
@@ -438,7 +438,7 @@ func FindS3CCBuckets(ctx context.Context, client *v3.Client, dc *cache.DataCache
 }
 
 // FindS3Buckets returns a list of S3 buckets
-func FindS3Buckets(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.EntityInterface, error) {
+func FindS3Buckets(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := s3.NewS3Repository(ctx, client)
 	if dc != nil {
 		items, err := repo.WithCache(dc).ListBucketsAll()
@@ -448,7 +448,7 @@ func FindS3Buckets(ctx context.Context, client *v3.Client, dc *cache.DataCache) 
 	return slice.Map(items, cast[s3.Bucket]), err
 }
 
-// cast casts exact type of entities to EntityInterface
-func cast[T service.EntityInterface](e T) service.EntityInterface {
+// cast casts exact type of entities to ResourceInterface
+func cast[T service.ResourceInterface](e T) service.ResourceInterface {
 	return e
 }

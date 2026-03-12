@@ -11,11 +11,12 @@ import (
 type ResourceInterface interface {
 	GetAccountID() ptypes.AwsAccountID
 	GetRegion() ptypes.AwsRegion
-	GetCreatedAt() time.Time
+	GetType() cfg.ResourceType
 	GetArn() string
 	GetId() string
 	GetIdOrArn() string
-	GetType() cfg.ResourceType
+	GetName() string
+	GetCreatedAt() time.Time
 	GetTags() map[string]string
 }
 

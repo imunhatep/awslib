@@ -15,23 +15,23 @@ import (
 )
 
 type ResourcePoolMiddleware struct {
-	resourceList map[types.ResourceType][]service.EntityInterface
+	resourceList map[types.ResourceType][]service.ResourceInterface
 	running      bool
 	writeLock    sync.RWMutex
 }
 
 func NewResourcePoolMiddleware() *ResourcePoolMiddleware {
 	return &ResourcePoolMiddleware{
-		resourceList: map[types.ResourceType][]service.EntityInterface{},
+		resourceList: map[types.ResourceType][]service.ResourceInterface{},
 	}
 }
 
 // GetResources returns all resources
-func (m *ResourcePoolMiddleware) GetResources() []service.EntityInterface {
+func (m *ResourcePoolMiddleware) GetResources() []service.ResourceInterface {
 	m.writeLock.RLock()
 	defer m.writeLock.RUnlock()
 
-	resourceList := []service.EntityInterface{}
+	resourceList := []service.ResourceInterface{}
 	for _, rsr := range dict.Values(m.resourceList) {
 		resourceList = append(resourceList, rsr...)
 	}
@@ -40,7 +40,7 @@ func (m *ResourcePoolMiddleware) GetResources() []service.EntityInterface {
 }
 
 // GetResourcesByType returns resources by type
-func (m *ResourcePoolMiddleware) GetResourcesByType(resourceType types.ResourceType) []service.EntityInterface {
+func (m *ResourcePoolMiddleware) GetResourcesByType(resourceType types.ResourceType) []service.ResourceInterface {
 	m.writeLock.RLock()
 	defer m.writeLock.RUnlock()
 
@@ -48,7 +48,7 @@ func (m *ResourcePoolMiddleware) GetResourcesByType(resourceType types.ResourceT
 		return resourceList
 	}
 
-	return []service.EntityInterface{}
+	return []service.ResourceInterface{}
 }
 
 // HandleResourceReader is a middleware that processes resources from the resource reader
@@ -71,7 +71,7 @@ func (m *ResourcePoolMiddleware) HandleResourceReader(next resources.HandlerFunc
 }
 
 // resourceList receives unix timestamp with refresh initialized time
-func (m *ResourcePoolMiddleware) flush(resourceType types.ResourceType, resourceList []service.EntityInterface) {
+func (m *ResourcePoolMiddleware) flush(resourceType types.ResourceType, resourceList []service.ResourceInterface) {
 	if slice.IsEmpty(resourceList) {
 		log.Debug().Msg("[ResourcePoolMiddleware.flush] flushing resources, list is empty")
 	}

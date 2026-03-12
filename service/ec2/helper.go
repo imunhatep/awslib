@@ -8,7 +8,7 @@ import (
 	"github.com/imunhatep/gocollection/dict"
 )
 
-func BuildCreateTagsInput(tags map[string]string, resources ...service.EntityInterface) *ec2.CreateTagsInput {
+func BuildCreateTagsInput(tags map[string]string, resources ...service.ResourceInterface) *ec2.CreateTagsInput {
 	// Filter out resources that do not have the tag key in the tags
 	resourceTagMissing := func(resourceTags map[string]string) bool {
 		for tag, value := range tags {
@@ -44,7 +44,7 @@ func BuildCreateTagsInput(tags map[string]string, resources ...service.EntityInt
 	return tagsInput
 }
 
-func BuildDeleteTagsInput(tags map[string]string, resources ...service.EntityInterface) *ec2.DeleteTagsInput {
+func BuildDeleteTagsInput(tags map[string]string, resources ...service.ResourceInterface) *ec2.DeleteTagsInput {
 	removeTags := map[string]string{}
 	resourceIds := map[string]string{}
 	for _, resource := range resources {

@@ -37,7 +37,7 @@ func TestBuildDeleteTagsInput(t *testing.T) {
 		"app": "myapp",
 	}
 
-	resources := []service.EntityInterface{
+	resources := []service.ResourceInterface{
 		MockEntity{id: "i-1234567890abcdef0", tags: map[string]string{"env": "production", "app": "myapp"}},
 		MockEntity{id: "i-0987654321fedcba0", tags: map[string]string{"env": "staging", "app": "myapp"}},
 		MockEntity{id: "i-11223344556677889", tags: map[string]string{"env": "production", "app": "otherapp"}},
@@ -58,7 +58,7 @@ func TestBuildDeleteTagsInput(t *testing.T) {
 func TestBuildDeleteTagsInput_EmptyTags(t *testing.T) {
 	tags := map[string]string{}
 
-	resources := []service.EntityInterface{
+	resources := []service.ResourceInterface{
 		MockEntity{id: "i-1234567890abcdef0", tags: map[string]string{"env": "production", "app": "myapp"}},
 	}
 
@@ -72,7 +72,7 @@ func TestBuildDeleteTagsInput_NoMatchingTags(t *testing.T) {
 		"env": "development",
 	}
 
-	resources := []service.EntityInterface{
+	resources := []service.ResourceInterface{
 		MockEntity{id: "i-1234567890abcdef0", tags: map[string]string{"env": "production", "app": "myapp"}},
 	}
 

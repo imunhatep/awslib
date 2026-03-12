@@ -18,7 +18,7 @@ type RepoProxyInterface interface {
 	GetRegion() ptypes.AwsRegion
 	GetClient() *v3.Client
 	GetContext() context.Context
-	FindAll(resourceType cfg.ResourceType) ([]service.EntityInterface, error)
+	FindAll(resourceType cfg.ResourceType) ([]service.ResourceInterface, error)
 }
 
 // RepoProxy is proxy to aws repositories to get all aws resources
@@ -60,7 +60,7 @@ func (e *RepoProxy) GetContext() context.Context {
 	return e.ctx
 }
 
-func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.EntityInterface, err error) {
+func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.ResourceInterface, err error) {
 	switch resourceType {
 	case cfg.ResourceTypeAutoScalingGroup:
 		items, err = FindAutoScaleGroups(e.ctx, e.client, e.cache)
@@ -139,7 +139,7 @@ func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.Enti
 	return items, err
 }
 
-func (e *RepoProxy) FindAllCC(resourceType cfg.ResourceType) (items []service.EntityInterface, err error) {
+func (e *RepoProxy) FindAllCC(resourceType cfg.ResourceType) (items []service.ResourceInterface, err error) {
 	switch resourceType {
 	case cfg.ResourceTypeBucket:
 		items, err = FindS3CCBuckets(e.ctx, e.client, e.cache)
