@@ -52,7 +52,7 @@ func (b *AwsBlame) getRepo(accountID ptypes.AwsAccountID, region ptypes.AwsRegio
 	return cloudtrail.NewCloudTrailRepository(b.ctx, client), err
 }
 
-func (b *AwsBlame) LookupAll(items ...service.EntityInterface) (map[string]*ResourceEvents, error) {
+func (b *AwsBlame) LookupAll(items ...service.ResourceInterface) (map[string]*ResourceEvents, error) {
 	resources := map[string]*ResourceEvents{}
 	for _, resource := range items {
 		events, err := b.Lookup(resource)
@@ -66,7 +66,7 @@ func (b *AwsBlame) LookupAll(items ...service.EntityInterface) (map[string]*Reso
 	return resources, nil
 }
 
-func (b *AwsBlame) Lookup(resource service.EntityInterface) (*ResourceEvents, error) {
+func (b *AwsBlame) Lookup(resource service.ResourceInterface) (*ResourceEvents, error) {
 	if !slice.IsEmpty(b.resourceTypes) && !slice.Contains(b.resourceTypes, resource.GetType()) {
 		log.
 			Trace().
@@ -106,11 +106,11 @@ func (b *AwsBlame) Lookup(resource service.EntityInterface) (*ResourceEvents, er
 }
 
 type ResourceEvents struct {
-	resource service.EntityInterface
+	resource service.ResourceInterface
 	events   []cloudtrail.Event
 }
 
-func NewResourceEvents(resource service.EntityInterface, events ...cloudtrail.Event) *ResourceEvents {
+func NewResourceEvents(resource service.ResourceInterface, events ...cloudtrail.Event) *ResourceEvents {
 	return &ResourceEvents{resource: resource, events: events}
 }
 
@@ -118,7 +118,7 @@ func (r *ResourceEvents) GetEvents() []cloudtrail.Event {
 	return r.events
 }
 
-func (r *ResourceEvents) GetEntity() service.EntityInterface {
+func (r *ResourceEvents) GetEntity() service.ResourceInterface {
 	return r.resource
 }
 

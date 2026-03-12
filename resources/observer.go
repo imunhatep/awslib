@@ -13,7 +13,7 @@ import (
 
 type ResourceReaderInterface interface {
 	ResourceType() types.ResourceType
-	Read() []service.EntityInterface
+	Read() []service.ResourceInterface
 }
 
 type HandlerFunc func(c ResourceReaderInterface) error

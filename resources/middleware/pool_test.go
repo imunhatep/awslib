@@ -31,14 +31,14 @@ func (m MockEntity) GetTagValue(name string) string {
 
 type ResourceReaderMock struct {
 	Type      types.ResourceType
-	Resources []service.EntityInterface
+	Resources []service.ResourceInterface
 }
 
 func (r ResourceReaderMock) ResourceType() types.ResourceType {
 	return r.Type
 }
 
-func (r ResourceReaderMock) Read() []service.EntityInterface {
+func (r ResourceReaderMock) Read() []service.ResourceInterface {
 	return r.Resources
 }
 
@@ -51,7 +51,7 @@ func TestNewResourcePoolMiddleware(t *testing.T) {
 func TestResourcePoolMiddleware_GetResources(t *testing.T) {
 	middleware := NewResourcePoolMiddleware()
 	resource := MockEntity{id: "1", tags: map[string]string{"key": "value"}}
-	middleware.flush(types.ResourceTypeInstance, []service.EntityInterface{resource})
+	middleware.flush(types.ResourceTypeInstance, []service.ResourceInterface{resource})
 
 	resources := middleware.GetResources()
 	assert.Len(t, resources, 1)
@@ -61,7 +61,7 @@ func TestResourcePoolMiddleware_GetResources(t *testing.T) {
 func TestResourcePoolMiddleware_GetResourcesByType(t *testing.T) {
 	middleware := NewResourcePoolMiddleware()
 	resource := MockEntity{id: "1", tags: map[string]string{"key": "value"}}
-	middleware.flush(types.ResourceTypeInstance, []service.EntityInterface{resource})
+	middleware.flush(types.ResourceTypeInstance, []service.ResourceInterface{resource})
 
 	resources := middleware.GetResourcesByType(types.ResourceTypeInstance)
 	assert.Len(t, resources, 1)
@@ -74,7 +74,7 @@ func TestResourcePoolMiddleware_GetResourcesByType(t *testing.T) {
 func TestResourcePoolMiddleware_HandleResourceReader(t *testing.T) {
 	middleware := NewResourcePoolMiddleware()
 	resource := MockEntity{id: "1", tags: map[string]string{"key": "value"}}
-	reader := ResourceReaderMock{types.ResourceTypeInstance, []service.EntityInterface{resource}}
+	reader := ResourceReaderMock{types.ResourceTypeInstance, []service.ResourceInterface{resource}}
 
 	handler := middleware.HandleResourceReader(func(reader resources.ResourceReaderInterface) error {
 		return nil

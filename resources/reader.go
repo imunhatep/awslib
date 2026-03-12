@@ -12,14 +12,14 @@ type ResourceReader struct {
 	resourceType types.ResourceType
 
 	// stored values
-	values []service.EntityInterface
+	values []service.ResourceInterface
 	wg     sync.WaitGroup
 }
 
-func NewResourceReader(resourceType types.ResourceType, channel <-chan service.EntityInterface) *ResourceReader {
+func NewResourceReader(resourceType types.ResourceType, channel <-chan service.ResourceInterface) *ResourceReader {
 	cr := &ResourceReader{
 		resourceType: resourceType,
-		values:       []service.EntityInterface{},
+		values:       []service.ResourceInterface{},
 		wg:           sync.WaitGroup{},
 	}
 
@@ -29,7 +29,7 @@ func NewResourceReader(resourceType types.ResourceType, channel <-chan service.E
 	return cr
 }
 
-func (cr *ResourceReader) await(channel <-chan service.EntityInterface) {
+func (cr *ResourceReader) await(channel <-chan service.ResourceInterface) {
 	defer cr.wg.Done()
 
 	log.Trace().Msg("[ResourceReader.await] reading channel..")
@@ -39,10 +39,10 @@ func (cr *ResourceReader) await(channel <-chan service.EntityInterface) {
 	log.Trace().Msgf("[ResourceReader.await] resources found: %d", len(cr.values))
 }
 
-func (cr *ResourceReader) Read() []service.EntityInterface {
+func (cr *ResourceReader) Read() []service.ResourceInterface {
 	cr.wg.Wait()
 
-	result := make([]service.EntityInterface, len(cr.values))
+	result := make([]service.ResourceInterface, len(cr.values))
 	copy(result, cr.values)
 
 	return result

@@ -39,7 +39,7 @@ func (r Provider) Run() *ResourceReader {
 	}
 
 	// resource transition channel
-	stream := make(chan service.EntityInterface, ResourceBusSize)
+	stream := make(chan service.ResourceInterface, ResourceBusSize)
 
 	// resource reader
 	resourceReader := NewResourceReader(r.resourceType, stream)
@@ -51,7 +51,7 @@ func (r Provider) Run() *ResourceReader {
 }
 
 // findResources fetches resources from all regions
-func (r Provider) findResources(stream chan<- service.EntityInterface) {
+func (r Provider) findResources(stream chan<- service.ResourceInterface) {
 	defer close(stream)
 
 	log.Trace().
@@ -73,7 +73,7 @@ func (r Provider) findResources(stream chan<- service.EntityInterface) {
 	wg.Wait()
 }
 
-func (r Provider) findResourcesInRegion(gw proxy.RepoProxyInterface, stream chan<- service.EntityInterface) {
+func (r Provider) findResourcesInRegion(gw proxy.RepoProxyInterface, stream chan<- service.ResourceInterface) {
 	resources, err := gw.FindAll(r.resourceType)
 	if err != nil {
 		log.Error().Err(err).
@@ -85,7 +85,7 @@ func (r Provider) findResourcesInRegion(gw proxy.RepoProxyInterface, stream chan
 	r.flush(resources, stream)
 }
 
-func (r Provider) flush(resources []service.EntityInterface, stream chan<- service.EntityInterface) {
+func (r Provider) flush(resources []service.ResourceInterface, stream chan<- service.ResourceInterface) {
 	for _, resource := range resources {
 		select {
 		case stream <- resource:
