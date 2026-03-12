@@ -1,6 +1,8 @@
 package iam
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -8,7 +10,6 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 func (r *IamRepository) ListUsersAll() ([]User, error) {
@@ -19,7 +20,7 @@ func (r *IamRepository) ListUsersByInput(query *iam.ListUsersInput) ([]User, err
 	start := time.Now()
 	var users []User
 
-	p := iam.NewListUsersPaginator(r.client.IAM(), query)
+	p := iam.NewListUsersPaginator(r.iamClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("ListUsers", cfg.ResourceTypeUser)).Inc()
@@ -62,7 +63,7 @@ func (r *IamRepository) ListUserTags(user types.User) ([]types.Tag, error) {
 	}
 
 	query := &iam.ListUserTagsInput{UserName: user.UserName}
-	tagOutput, err := r.client.IAM().ListUserTags(r.ctx, query)
+	tagOutput, err := r.iamClient().ListUserTags(r.ctx, query)
 	if err != nil {
 		log.Debug().Str("user", aws.ToString(user.UserName)).Err(err).Msg("failed to fetch iam user tags")
 		return []types.Tag{}, errors.New(err)

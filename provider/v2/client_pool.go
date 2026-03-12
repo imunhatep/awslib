@@ -2,6 +2,9 @@ package v2
 
 import (
 	"context"
+	"strings"
+	"sync"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/go-errors/errors"
@@ -10,8 +13,6 @@ import (
 	"github.com/imunhatep/gocollection/dict"
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog/log"
-	"strings"
-	"sync"
 )
 
 // ClientPool is a concurrent map implementation to store multiple AWS clients.
@@ -22,7 +23,7 @@ type ClientPool struct {
 
 	// lists
 	clients map[types.AwsAccountID]map[types.AwsRegion]*Client
-	roles   map[types.AwsAccountID]iam.RoleArn
+	roles   map[types.AwsAccountID]types.RoleArn
 }
 
 // NewClientPool creates an AWS client for each permutation of the given profiles and regions.
@@ -34,7 +35,7 @@ func NewClientPool(ctx context.Context, clientBuilder *ClientBuilder) *ClientPoo
 		ctx:     ctx,
 		builder: clientBuilder,
 		clients: map[types.AwsAccountID]map[types.AwsRegion]*Client{},
-		roles:   map[types.AwsAccountID]iam.RoleArn{},
+		roles:   map[types.AwsAccountID]types.RoleArn{},
 	}
 
 	return clientPool
@@ -112,12 +113,12 @@ func (p *ClientPool) GetClient(accountID types.AwsAccountID, region types.AwsReg
 	return client, nil
 }
 
-func (p *ClientPool) ListAssumableRoleArns() ([]iam.RoleArn, error) {
+func (p *ClientPool) ListAssumableRoleArns() ([]types.RoleArn, error) {
 	log.Trace().Msg("[ClientPool.ListAssumableRoleArns] fetching assumable role arns")
 
 	roles, err := p.getAssumableRoles()
 	if err != nil {
-		return []iam.RoleArn{}, errors.New(err)
+		return []types.RoleArn{}, errors.New(err)
 	}
 
 	return dict.Values(roles), nil
@@ -145,7 +146,7 @@ func (p *ClientPool) setClient(accountID types.AwsAccountID, region types.AwsReg
 }
 
 // getAssumableRoles fetches the assumable roles by parsing the local IAM role policies
-func (p *ClientPool) getAssumableRoles() (map[types.AwsAccountID]iam.RoleArn, error) {
+func (p *ClientPool) getAssumableRoles() (map[types.AwsAccountID]types.RoleArn, error) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -189,12 +190,12 @@ func (p *ClientPool) getAssumableRoles() (map[types.AwsAccountID]iam.RoleArn, er
 		Str("roleName", roleName).
 		Msg("[ClientPool.getAssumableRoles] fetching assumable roles from local iam role policies")
 
-	iamRepo := iam.NewIamRepository(p.ctx, defaultClient)
+	iamRepo := iam.NewIamRepository(p.ctx, defaultClient.v3Client)
 	versions, err := iamRepo.ListAttachedRolePolicyVersionsByRoleName(roleName)
 	if err != nil {
 		return p.roles, errors.New(err)
 	}
-	roleArnList := []iam.RoleArn{}
+	roleArnList := []types.RoleArn{}
 
 	// fetch
 	for _, version := range versions {
@@ -203,7 +204,7 @@ func (p *ClientPool) getAssumableRoles() (map[types.AwsAccountID]iam.RoleArn, er
 	}
 
 	log.Trace().
-		Strs("roleArnList", slice.Map(roleArnList, func(v iam.RoleArn) string { return string(v) })).
+		Strs("roleArnList", slice.Map(roleArnList, func(v types.RoleArn) string { return string(v) })).
 		Msg("[ClientPool.getAssumableRoles] fetched assumable roles from local iam role policies")
 
 	for _, assumedRoleArn := range roleArnList {

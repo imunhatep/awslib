@@ -2,34 +2,40 @@ package efs
 
 import (
 	"context"
+	"time"
+
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/efs"
+	awsefs "github.com/aws/aws-sdk-go-v2/service/efs"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/efs"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
-	"time"
 )
 
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	EFS() *efs.Client
 }
 
 type EfsRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewEfsRepository(ctx context.Context, client AwsClient) *EfsRepository {
+func NewEfsRepository(ctx context.Context, client *v3.Client) *EfsRepository {
 	repo := &EfsRepository{
 		ctx:    ctx,
 		client: client,
 	}
 
 	return repo
+}
+
+func (r *EfsRepository) efsClient() *awsefs.Client {
+	return efs.GetClient(r.client)
 }
 
 func (r *EfsRepository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {
@@ -46,14 +52,14 @@ func (r *EfsRepository) GetRegion() ptypes.AwsRegion {
 }
 
 func (r *EfsRepository) ListFileSystemsAll() ([]FileSystem, error) {
-	return r.ListFileSystemsByInput(&efs.DescribeFileSystemsInput{})
+	return r.ListFileSystemsByInput(&awsefs.DescribeFileSystemsInput{})
 }
 
-func (r *EfsRepository) ListFileSystemsByInput(query *efs.DescribeFileSystemsInput) ([]FileSystem, error) {
+func (r *EfsRepository) ListFileSystemsByInput(query *awsefs.DescribeFileSystemsInput) ([]FileSystem, error) {
 	start := time.Now()
 	var filesystems []FileSystem
 
-	p := efs.NewDescribeFileSystemsPaginator(r.client.EFS(), query)
+	p := awsefs.NewDescribeFileSystemsPaginator(r.efsClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.

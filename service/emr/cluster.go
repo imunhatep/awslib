@@ -4,9 +4,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/service/emr/types"
+	ptypes "github.com/imunhatep/awslib/provider/types"
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/cfg"
 )
+
+type AwsClient interface {
+	GetRegion() ptypes.AwsRegion
+	GetAccountID() ptypes.AwsAccountID
+}
 
 type ClusterList struct {
 	Items []Cluster

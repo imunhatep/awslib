@@ -2,34 +2,37 @@ package secretmanager
 
 import (
 	"context"
+	"time"
+
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	awssecrets "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/secretsmanager"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
-	"time"
 )
-
-type SecretManagerClient interface {
-}
 
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	SecretsManager() *secretsmanager.Client
 }
 
 type SecretManagerRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewSecretManagerRepository(ctx context.Context, client AwsClient) *SecretManagerRepository {
+func NewSecretManagerRepository(ctx context.Context, client *v3.Client) *SecretManagerRepository {
 	repo := &SecretManagerRepository{ctx, client}
 
 	return repo
+}
+
+func (r *SecretManagerRepository) smClient() *awssecrets.Client {
+	return secretsmanager.GetClient(r.client)
 }
 
 func (r *SecretManagerRepository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {
@@ -46,14 +49,14 @@ func (r *SecretManagerRepository) GetRegion() ptypes.AwsRegion {
 }
 
 func (r *SecretManagerRepository) ListSecretsAll() ([]SecretEntry, error) {
-	return r.ListSecretsByInput(&secretsmanager.ListSecretsInput{})
+	return r.ListSecretsByInput(&awssecrets.ListSecretsInput{})
 }
 
-func (r *SecretManagerRepository) ListSecretsByInput(query *secretsmanager.ListSecretsInput) ([]SecretEntry, error) {
+func (r *SecretManagerRepository) ListSecretsByInput(query *awssecrets.ListSecretsInput) ([]SecretEntry, error) {
 	start := time.Now()
 	var secrets []SecretEntry
 
-	p := secretsmanager.NewListSecretsPaginator(r.client.SecretsManager(), query)
+	p := awssecrets.NewListSecretsPaginator(r.smClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("ListSecretsByInput", cfg.ResourceTypeSecret)).Inc()
@@ -87,14 +90,14 @@ func (r *SecretManagerRepository) ListSecretsByInput(query *secretsmanager.ListS
 	return secrets, nil
 }
 
-func (r *SecretManagerRepository) DescribeSecret(query *secretsmanager.DescribeSecretInput) (*SecretEntry, error) {
+func (r *SecretManagerRepository) DescribeSecret(query *awssecrets.DescribeSecretInput) (*SecretEntry, error) {
 	start := time.Now()
 
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsApiRequests.With(r.promLabels("DescribeSecret", cfg.ResourceTypeSecret)).Inc()
 	}
 
-	secretOutput, err := r.client.SecretsManager().DescribeSecret(r.ctx, query)
+	secretOutput, err := r.smClient().DescribeSecret(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("DescribeSecret", cfg.ResourceTypeSecret)).Inc()
@@ -118,18 +121,7 @@ func (r *SecretManagerRepository) DescribeSecret(query *secretsmanager.DescribeS
 	return &secret, nil
 }
 
-//secretInput := secretsmanager.CreateSecretInput{
-//	KmsKeyId:          entry.KmsKeyId,
-//	Name:              entry.Name,
-//	Description:       entry.Description,
-//	Tags:              entry.Tags,
-//	SecretString:      value.SecretString,
-//	SecretBinary:      value.SecretBinary,
-//	AddReplicaRegions: replicas,
-//}
-
-// CreateSecret a new secret
-func (r *SecretManagerRepository) CreateSecret(secretInput *secretsmanager.CreateSecretInput) (*SecretEntry, error) {
+func (r *SecretManagerRepository) CreateSecret(secretInput *awssecrets.CreateSecretInput) (*SecretEntry, error) {
 	start := time.Now()
 
 	secretInput.ForceOverwriteReplicaSecret = false
@@ -138,7 +130,7 @@ func (r *SecretManagerRepository) CreateSecret(secretInput *secretsmanager.Creat
 		metrics.AwsApiRequests.With(r.promLabels("CreateSecret", cfg.ResourceTypeSecret)).Inc()
 	}
 
-	createSecretOutput, err := r.client.SecretsManager().CreateSecret(r.ctx, secretInput)
+	createSecretOutput, err := r.smClient().CreateSecret(r.ctx, secretInput)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("CreateSecret", cfg.ResourceTypeSecret)).Inc()
@@ -147,8 +139,8 @@ func (r *SecretManagerRepository) CreateSecret(secretInput *secretsmanager.Creat
 		return nil, errors.New(err)
 	}
 
-	query := &secretsmanager.DescribeSecretInput{SecretId: createSecretOutput.ARN}
-	describeSecretOutput, err := r.client.SecretsManager().DescribeSecret(r.ctx, query)
+	query := &awssecrets.DescribeSecretInput{SecretId: createSecretOutput.ARN}
+	describeSecretOutput, err := r.smClient().DescribeSecret(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("DescribeSecret", cfg.ResourceTypeSecret)).Inc()
@@ -173,8 +165,7 @@ func (r *SecretManagerRepository) CreateSecret(secretInput *secretsmanager.Creat
 	return &secret, nil
 }
 
-// UpdateSecretByInput updates a secret
-func (r *SecretManagerRepository) UpdateSecret(input *secretsmanager.UpdateSecretInput) (*SecretEntry, error) {
+func (r *SecretManagerRepository) UpdateSecret(input *awssecrets.UpdateSecretInput) (*SecretEntry, error) {
 	start := time.Now()
 
 	if metrics.AwsMetricsEnabled {
@@ -183,7 +174,7 @@ func (r *SecretManagerRepository) UpdateSecret(input *secretsmanager.UpdateSecre
 			Inc()
 	}
 
-	updateSecretOutput, err := r.client.SecretsManager().UpdateSecret(r.ctx, input)
+	updateSecretOutput, err := r.smClient().UpdateSecret(r.ctx, input)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("UpdateSecret", cfg.ResourceTypeSecret)).Inc()
@@ -192,8 +183,8 @@ func (r *SecretManagerRepository) UpdateSecret(input *secretsmanager.UpdateSecre
 		return nil, errors.New(err)
 	}
 
-	query := &secretsmanager.DescribeSecretInput{SecretId: updateSecretOutput.ARN}
-	describeSecretOutput, err := r.client.SecretsManager().DescribeSecret(r.ctx, query)
+	query := &awssecrets.DescribeSecretInput{SecretId: updateSecretOutput.ARN}
+	describeSecretOutput, err := r.smClient().DescribeSecret(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("DescribeSecret", cfg.ResourceTypeSecret)).Inc()
@@ -218,8 +209,7 @@ func (r *SecretManagerRepository) UpdateSecret(input *secretsmanager.UpdateSecre
 	return &secretUpdated, nil
 }
 
-// DeleteSecretByInput updates a secret
-func (r *SecretManagerRepository) DeleteSecretByInput(input *secretsmanager.DeleteSecretInput) error {
+func (r *SecretManagerRepository) DeleteSecretByInput(input *awssecrets.DeleteSecretInput) error {
 	start := time.Now()
 
 	if metrics.AwsMetricsEnabled {
@@ -228,7 +218,7 @@ func (r *SecretManagerRepository) DeleteSecretByInput(input *secretsmanager.Dele
 			Inc()
 	}
 
-	_, err := r.client.SecretsManager().DeleteSecret(r.ctx, input)
+	_, err := r.smClient().DeleteSecret(r.ctx, input)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("DeleteSecret", cfg.ResourceTypeSecret)).Inc()

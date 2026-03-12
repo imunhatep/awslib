@@ -1,6 +1,8 @@
 package iam
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -8,7 +10,6 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 func (r *IamRepository) ListRolesAll() ([]Role, error) {
@@ -19,7 +20,7 @@ func (r *IamRepository) ListRolesByInput(query *iam.ListRolesInput) ([]Role, err
 	start := time.Now()
 	var roles []Role
 
-	p := iam.NewListRolesPaginator(r.client.IAM(), query)
+	p := iam.NewListRolesPaginator(r.iamClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("ListRoles", cfg.ResourceTypeRole)).Inc()
@@ -62,7 +63,7 @@ func (r *IamRepository) ListRoleTags(role types.Role) ([]types.Tag, error) {
 	}
 
 	query := &iam.ListRoleTagsInput{RoleName: role.RoleName}
-	tagOutput, err := r.client.IAM().ListRoleTags(r.ctx, query)
+	tagOutput, err := r.iamClient().ListRoleTags(r.ctx, query)
 	if err != nil {
 		log.Debug().Str("role", aws.ToString(role.RoleName)).Err(err).Msg("failed to fetch iam role tags")
 		return []types.Tag{}, errors.New(err)
@@ -82,7 +83,7 @@ func (r *IamRepository) DescribeRoleByInput(query *iam.GetRoleInput) (*Role, err
 		metrics.AwsApiRequests.With(r.promLabels("GetRole", cfg.ResourceTypeRole)).Inc()
 	}
 
-	resp, err := r.client.IAM().GetRole(r.ctx, query)
+	resp, err := r.iamClient().GetRole(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("GetRole", cfg.ResourceTypeRole)).Inc()

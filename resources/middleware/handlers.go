@@ -2,10 +2,11 @@ package middleware
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/imunhatep/awslib/resources"
 	"github.com/imunhatep/awslib/service/cfg"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 func SummaryHandler() resources.HandlerFunc {

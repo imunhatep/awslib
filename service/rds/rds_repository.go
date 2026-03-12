@@ -2,9 +2,12 @@ package rds
 
 import (
 	"context"
+
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/rds"
+	awsrds "github.com/aws/aws-sdk-go-v2/service/rds"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/rds"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -12,21 +15,24 @@ import (
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	RDS() *rds.Client
 }
 
 type RdsRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewRdsRepository(ctx context.Context, client AwsClient) *RdsRepository {
+func NewRdsRepository(ctx context.Context, client *v3.Client) *RdsRepository {
 	repo := &RdsRepository{
 		ctx:    ctx,
 		client: client,
 	}
 
 	return repo
+}
+
+func (r *RdsRepository) rdsClient() *awsrds.Client {
+	return rds.GetClient(r.client)
 }
 
 func (r *RdsRepository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {

@@ -1,26 +1,27 @@
 package resources
 
 import (
+	"sync"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/imunhatep/awslib/gateway"
 	"github.com/imunhatep/awslib/metrics"
+	"github.com/imunhatep/awslib/proxy"
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/cfg"
 	"github.com/rs/zerolog/log"
-	"sync"
-	"time"
 )
 
 const ResourceBusSize = 10000
 
 type Provider struct {
-	gatewayPool  []gateway.RepoGatewayInterface
+	proxyPool    []proxy.RepoProxyInterface
 	resourceType types.ResourceType
 }
 
-func NewProvider(resourceType types.ResourceType, gatewayPool ...gateway.RepoGatewayInterface) Provider {
+func NewProvider(resourceType types.ResourceType, proxyPool ...proxy.RepoProxyInterface) Provider {
 	ro := Provider{
-		gatewayPool:  gatewayPool,
+		proxyPool:    proxyPool,
 		resourceType: resourceType,
 	}
 
@@ -58,7 +59,7 @@ func (r Provider) findResources(stream chan<- service.EntityInterface) {
 		Msg("[AwsProvider.findResources] resource update")
 
 	var wg sync.WaitGroup
-	for _, gw := range r.gatewayPool {
+	for _, gw := range r.proxyPool {
 		wg.Add(1)
 
 		go func() {
@@ -72,7 +73,7 @@ func (r Provider) findResources(stream chan<- service.EntityInterface) {
 	wg.Wait()
 }
 
-func (r Provider) findResourcesInRegion(gw gateway.RepoGatewayInterface, stream chan<- service.EntityInterface) {
+func (r Provider) findResourcesInRegion(gw proxy.RepoProxyInterface, stream chan<- service.EntityInterface) {
 	resources, err := gw.FindAll(r.resourceType)
 	if err != nil {
 		log.Error().Err(err).

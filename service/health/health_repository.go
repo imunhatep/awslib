@@ -2,38 +2,44 @@ package health
 
 import (
 	"context"
+	"time"
+
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/health"
+	awshealth "github.com/aws/aws-sdk-go-v2/service/health"
 	"github.com/aws/aws-sdk-go-v2/service/health/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/health"
 	"github.com/imunhatep/awslib/service"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	Health() *health.Client
 }
 
 type HealthRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewHealthRepository(ctx context.Context, client AwsClient) *HealthRepository {
+func NewHealthRepository(ctx context.Context, client *v3.Client) *HealthRepository {
 	repo := &HealthRepository{
 		ctx:    ctx,
 		client: client,
 	}
 
 	return repo
+}
+
+func (r *HealthRepository) healthClient() *awshealth.Client {
+	return health.GetClient(r.client)
 }
 
 func (r *HealthRepository) GetRegion() ptypes.AwsRegion {
@@ -49,7 +55,7 @@ func (r *HealthRepository) promLabels(method string, resourceType cfg.ResourceTy
 	}
 }
 
-func (r *HealthRepository) ListEventsDetailsByInput(query *health.DescribeEventsInput) ([]types.EventDetails, error) {
+func (r *HealthRepository) ListEventsDetailsByInput(query *awshealth.DescribeEventsInput) ([]types.EventDetails, error) {
 	start := time.Now()
 	var eventDetails []types.EventDetails
 
@@ -59,7 +65,7 @@ func (r *HealthRepository) ListEventsDetailsByInput(query *health.DescribeEvents
 			Inc()
 	}
 
-	output, err := r.client.Health().DescribeEvents(r.ctx, query)
+	output, err := r.healthClient().DescribeEvents(r.ctx, query)
 	if err != nil {
 		return eventDetails, errors.New(err)
 	}
@@ -69,10 +75,10 @@ func (r *HealthRepository) ListEventsDetailsByInput(query *health.DescribeEvents
 		eventArns := slice.Map(events, func(e types.Event) string { return *e.Arn })
 
 		// Define the input parameters for the DescribeEventDetails operation
-		detailsInput := &health.DescribeEventDetailsInput{EventArns: eventArns}
+		detailsInput := &awshealth.DescribeEventDetailsInput{EventArns: eventArns}
 
 		// Call the DescribeEventDetails operation
-		details, err := r.client.Health().DescribeEventDetails(r.ctx, detailsInput)
+		details, err := r.healthClient().DescribeEventDetails(r.ctx, detailsInput)
 		if err != nil {
 			if metrics.AwsMetricsEnabled {
 				metrics.AwsApiRequestErrors.

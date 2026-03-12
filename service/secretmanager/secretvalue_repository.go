@@ -1,12 +1,13 @@
 package secretmanager
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
-	"time"
 )
 
 func (r *SecretManagerRepository) DescribeSecretValue(secret SecretEntry) (*SecretValue, error) {
@@ -22,7 +23,7 @@ func (r *SecretManagerRepository) DescribeSecretValueByInput(query *secretsmanag
 		metrics.AwsApiRequests.With(r.promLabels("GetSecretValue", cfg.ResourceTypeSecret)).Inc()
 	}
 
-	secretValueOutput, err := r.client.SecretsManager().GetSecretValue(r.ctx, query)
+	secretValueOutput, err := r.smClient().GetSecretValue(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("GetSecretValue", cfg.ResourceTypeSecret)).Inc()

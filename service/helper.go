@@ -2,10 +2,11 @@ package service
 
 import (
 	"context"
-	"github.com/go-errors/errors"
-	"github.com/rs/zerolog/log"
 	"sync"
 	"time"
+
+	"github.com/go-errors/errors"
+	"github.com/rs/zerolog/log"
 )
 
 func LastDays(days time.Duration) *time.Time {
@@ -98,7 +99,7 @@ func WriteToChan[T any](source chan<- T, value T) {
 func CancelContextOnError(ctx context.Context, cancel context.CancelFunc, errorChan <-chan *errors.Error) {
 	go func() {
 		log.Debug().Msg("Starting error channel listener")
-		
+
 		select {
 		case err, ok := <-errorChan:
 			if ok {

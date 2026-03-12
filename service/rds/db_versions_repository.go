@@ -3,7 +3,7 @@ package rds
 import (
 	"github.com/Masterminds/semver"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/rds"
+	awsrds "github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
@@ -15,7 +15,7 @@ import (
 type DbEngineName string
 
 func (r *RdsRepository) FindMinimalDBEngineVersions(engine DbEngineName) (types.DBEngineVersion, error) {
-	query := &rds.DescribeDBEngineVersionsInput{Engine: aws.String(string(engine))}
+	query := &awsrds.DescribeDBEngineVersionsInput{Engine: aws.String(string(engine))}
 	versions, err := r.ListDBEngineVersionsByInput(query)
 	if err != nil {
 		return types.DBEngineVersion{}, errors.New(err)
@@ -26,10 +26,10 @@ func (r *RdsRepository) FindMinimalDBEngineVersions(engine DbEngineName) (types.
 	return minVer, nil
 }
 
-func (r *RdsRepository) ListDBEngineVersionsByInput(query *rds.DescribeDBEngineVersionsInput) ([]types.DBEngineVersion, error) {
+func (r *RdsRepository) ListDBEngineVersionsByInput(query *awsrds.DescribeDBEngineVersionsInput) ([]types.DBEngineVersion, error) {
 	var versions []types.DBEngineVersion
 
-	p := rds.NewDescribeDBEngineVersionsPaginator(r.client.RDS(), query)
+	p := awsrds.NewDescribeDBEngineVersionsPaginator(r.rdsClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("DescribeDBEngineVersions", ccfg.ResourceTypeDBEngineVersion)).Inc()

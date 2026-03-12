@@ -2,37 +2,43 @@ package dynamodb
 
 import (
 	"context"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	awsdynamo "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/dynamodb"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	DynamoDB() *dynamodb.Client
 }
 
 type DynamoDBRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewDynamoDBRepository(ctx context.Context, client AwsClient) *DynamoDBRepository {
+func NewDynamoDBRepository(ctx context.Context, client *v3.Client) *DynamoDBRepository {
 	repo := &DynamoDBRepository{
 		ctx:    ctx,
 		client: client,
 	}
 
 	return repo
+}
+
+func (r *DynamoDBRepository) dynamoClient() *awsdynamo.Client {
+	return dynamodb.GetClient(r.client)
 }
 
 func (r *DynamoDBRepository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {
@@ -49,10 +55,10 @@ func (r *DynamoDBRepository) GetRegion() ptypes.AwsRegion {
 }
 
 func (r *DynamoDBRepository) ListTablesAll() ([]Table, error) {
-	return r.ListTablesByInput(&dynamodb.ListTablesInput{})
+	return r.ListTablesByInput(&awsdynamo.ListTablesInput{})
 }
 
-func (r *DynamoDBRepository) ListTablesByInput(query *dynamodb.ListTablesInput) ([]Table, error) {
+func (r *DynamoDBRepository) ListTablesByInput(query *awsdynamo.ListTablesInput) ([]Table, error) {
 	start := time.Now()
 	var tables []Table
 
@@ -60,7 +66,7 @@ func (r *DynamoDBRepository) ListTablesByInput(query *dynamodb.ListTablesInput) 
 		metrics.AwsApiRequests.With(r.promLabels("ListTables", cfg.ResourceTypeTable)).Inc()
 	}
 
-	resp, err := r.client.DynamoDB().ListTables(r.ctx, query)
+	resp, err := r.dynamoClient().ListTables(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.
@@ -78,7 +84,7 @@ func (r *DynamoDBRepository) ListTablesByInput(query *dynamodb.ListTablesInput) 
 				Inc()
 		}
 
-		tableOutput, err := r.client.DynamoDB().DescribeTable(r.ctx, &dynamodb.DescribeTableInput{TableName: &tableName})
+		tableOutput, err := r.dynamoClient().DescribeTable(r.ctx, &awsdynamo.DescribeTableInput{TableName: &tableName})
 		if err != nil {
 			if metrics.AwsMetricsEnabled {
 				metrics.AwsApiRequestErrors.With(r.promLabels("DescribeTable", cfg.ResourceTypeTable)).Inc()
@@ -107,7 +113,7 @@ func (r *DynamoDBRepository) GetTableTags(table *types.TableDescription) ([]type
 			Inc()
 	}
 
-	tagOutput, err := r.client.DynamoDB().ListTagsOfResource(r.ctx, &dynamodb.ListTagsOfResourceInput{ResourceArn: table.TableArn})
+	tagOutput, err := r.dynamoClient().ListTagsOfResource(r.ctx, &awsdynamo.ListTagsOfResourceInput{ResourceArn: table.TableArn})
 	if err != nil {
 		log.Debug().Str("table", aws.ToString(table.TableArn)).Err(err).Msg("failed to fetch dynamodb table tags")
 		return []types.Tag{}, errors.New(err)

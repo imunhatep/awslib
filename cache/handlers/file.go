@@ -3,14 +3,15 @@ package handlers
 import (
 	"encoding/gob"
 	"fmt"
-	"github.com/go-errors/errors"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/sys/unix"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-errors/errors"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sys/unix"
 )
 
 const CacheTypeFile = "file"

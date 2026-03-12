@@ -2,38 +2,44 @@ package s3
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
+	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/s3"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
-	"sync"
-	"time"
 )
 
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	S3(optFns ...func(o *s3.Options)) *s3.Client
 }
 
 type S3Repository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewS3Repository(ctx context.Context, client AwsClient) *S3Repository {
+func NewS3Repository(ctx context.Context, client *v3.Client) *S3Repository {
 	repo := &S3Repository{
 		ctx:    ctx,
 		client: client,
 	}
 
 	return repo
+}
+
+func (r *S3Repository) s3Client(optFns ...func(*awss3.Options)) *awss3.Client {
+	return s3.GetClient(r.client, optFns...)
 }
 
 func (r *S3Repository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {
@@ -50,10 +56,10 @@ func (r *S3Repository) GetRegion() ptypes.AwsRegion {
 }
 
 func (r *S3Repository) ListBucketsAll() ([]Bucket, error) {
-	return r.ListBucketsByInput(&s3.ListBucketsInput{})
+	return r.ListBucketsByInput(&awss3.ListBucketsInput{})
 }
 
-func (r *S3Repository) ListBucketsByInput(query *s3.ListBucketsInput) ([]Bucket, error) {
+func (r *S3Repository) ListBucketsByInput(query *awss3.ListBucketsInput) ([]Bucket, error) {
 	log.Trace().
 		Str("region", r.client.GetRegion().String()).
 		Msg("[S3Repository.ListBucketsByInput] list s3 buckets")
@@ -65,7 +71,8 @@ func (r *S3Repository) ListBucketsByInput(query *s3.ListBucketsInput) ([]Bucket,
 		metrics.AwsApiRequests.With(r.promLabels("ListBuckets", cfg.ResourceTypeBucket)).Inc()
 	}
 
-	resp, err := r.client.S3().ListBuckets(r.ctx, query)
+	s3c := r.s3Client()
+	resp, err := s3c.ListBuckets(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("ListBuckets", cfg.ResourceTypeBucket)).Inc()
@@ -81,7 +88,7 @@ func (r *S3Repository) ListBucketsByInput(query *s3.ListBucketsInput) ([]Bucket,
 				Inc()
 		}
 
-		locationOutput, err := getS3BucketLocation(r.ctx, r.client.S3(), aws.ToString(v.Name))
+		locationOutput, err := getS3BucketLocation(r.ctx, s3c, aws.ToString(v.Name))
 		if err != nil {
 			if metrics.AwsMetricsEnabled {
 				metrics.AwsApiRequestErrors.With(r.promLabels("GetBucketLocation", cfg.ResourceTypeBucket)).Inc()
@@ -119,7 +126,7 @@ func (r *S3Repository) GetTags(bucket types.Bucket) ([]types.Tag, error) {
 			Inc()
 	}
 
-	tagOutput, err := r.client.S3().GetBucketTagging(r.ctx, &s3.GetBucketTaggingInput{Bucket: bucket.Name})
+	tagOutput, err := r.s3Client().GetBucketTagging(r.ctx, &awss3.GetBucketTaggingInput{Bucket: bucket.Name})
 	if err != nil {
 		log.Debug().Str("bucket", aws.ToString(bucket.Name)).Err(err).Msg("failed to fetch s3 tags")
 		return []types.Tag{}, errors.New(err)
@@ -130,10 +137,10 @@ func (r *S3Repository) GetTags(bucket types.Bucket) ([]types.Tag, error) {
 
 var s3RegionCacheInstance *s3RegionCache
 
-func getS3BucketLocation(ctx context.Context, client *s3.Client, bucket string) (*s3.GetBucketLocationOutput, error) {
+func getS3BucketLocation(ctx context.Context, client *awss3.Client, bucket string) (*awss3.GetBucketLocationOutput, error) {
 	if s3RegionCacheInstance == nil {
 		s3RegionCacheInstance = &s3RegionCache{
-			data: map[string]*s3.GetBucketLocationOutput{},
+			data: map[string]*awss3.GetBucketLocationOutput{},
 		}
 	}
 
@@ -142,10 +149,10 @@ func getS3BucketLocation(ctx context.Context, client *s3.Client, bucket string) 
 
 type s3RegionCache struct {
 	mu   sync.RWMutex
-	data map[string]*s3.GetBucketLocationOutput
+	data map[string]*awss3.GetBucketLocationOutput
 }
 
-func (c *s3RegionCache) getLocation(ctx context.Context, client *s3.Client, bucket string) (*s3.GetBucketLocationOutput, error) {
+func (c *s3RegionCache) getLocation(ctx context.Context, client *awss3.Client, bucket string) (*awss3.GetBucketLocationOutput, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -153,7 +160,7 @@ func (c *s3RegionCache) getLocation(ctx context.Context, client *s3.Client, buck
 		return locationOutput, nil
 	}
 
-	locationOutput, err := client.GetBucketLocation(ctx, &s3.GetBucketLocationInput{Bucket: &bucket})
+	locationOutput, err := client.GetBucketLocation(ctx, &awss3.GetBucketLocationInput{Bucket: &bucket})
 	if err != nil {
 		return nil, err
 	}

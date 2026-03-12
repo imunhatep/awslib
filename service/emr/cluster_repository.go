@@ -1,19 +1,20 @@
 package emr
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
-	"github.com/aws/aws-sdk-go-v2/service/emr"
+	awsemr "github.com/aws/aws-sdk-go-v2/service/emr"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/imunhatep/awslib/service"
 	cfgEntity "github.com/imunhatep/awslib/service/cfg"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 func (r *EmrRepository) ListClustersAll() ([]Cluster, error) {
-	return r.ListClustersByInput(&emr.ListClustersInput{})
+	return r.ListClustersByInput(&awsemr.ListClustersInput{})
 }
 
 func (r *EmrRepository) ListClustersLatest(createdAfter *time.Time) ([]Cluster, error) {
@@ -27,10 +28,10 @@ func (r *EmrRepository) ListClustersLatest(createdAfter *time.Time) ([]Cluster, 
 		createdAfter = service.LastDays(7)
 	}
 
-	return r.ListClustersByInput(&emr.ListClustersInput{CreatedAfter: createdAfter})
+	return r.ListClustersByInput(&awsemr.ListClustersInput{CreatedAfter: createdAfter})
 }
 
-func (r *EmrRepository) ListClustersByInput(query *emr.ListClustersInput) ([]Cluster, error) {
+func (r *EmrRepository) ListClustersByInput(query *awsemr.ListClustersInput) ([]Cluster, error) {
 	log.Debug().
 		Str("accountID", r.client.GetAccountID().String()).
 		Str("region", r.client.GetRegion().String()).
@@ -40,7 +41,7 @@ func (r *EmrRepository) ListClustersByInput(query *emr.ListClustersInput) ([]Clu
 	start := time.Now()
 	var clusters []Cluster
 
-	p := emr.NewListClustersPaginator(r.client.EMR(), query)
+	p := awsemr.NewListClustersPaginator(r.emrClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.
@@ -108,9 +109,9 @@ func (r *EmrRepository) DescribeCluster(clusterId *string) (*Cluster, error) {
 			Inc()
 	}
 
-	clusterDetails, err := r.client.EMR().DescribeCluster(
+	clusterDetails, err := r.emrClient().DescribeCluster(
 		r.ctx,
-		&emr.DescribeClusterInput{ClusterId: clusterId},
+		&awsemr.DescribeClusterInput{ClusterId: clusterId},
 	)
 
 	if err != nil {

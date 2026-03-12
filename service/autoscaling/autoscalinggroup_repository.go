@@ -1,11 +1,12 @@
 package autoscaling
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/service/autoscaling"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
-	"time"
 )
 
 func (r *AutoscalingRepository) ListAutoScalingGroupsAll() ([]AutoScalingGroup, error) {
@@ -16,7 +17,7 @@ func (r *AutoscalingRepository) ListAutoScalingGroups(query *autoscaling.Describ
 	start := time.Now()
 	var groups []AutoScalingGroup
 
-	p := autoscaling.NewDescribeAutoScalingGroupsPaginator(r.client.Autoscaling(), query)
+	p := autoscaling.NewDescribeAutoScalingGroupsPaginator(r.autoscalingClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.

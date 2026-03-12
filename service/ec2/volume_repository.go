@@ -1,11 +1,12 @@
 package ec2
 
 import (
+	"time"
+
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
-	"time"
 )
 
 func (r *Ec2Repository) ListVolumesAll() ([]Volume, error) {
@@ -20,7 +21,7 @@ func (r *Ec2Repository) ListVolumesByInput(describeInput *ec2.DescribeVolumesInp
 	start := time.Now()
 	var volumes []Volume
 
-	p := ec2.NewDescribeVolumesPaginator(r.client.EC2(), describeInput)
+	p := ec2.NewDescribeVolumesPaginator(r.ec2Client(), describeInput)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.
@@ -72,7 +73,7 @@ func (r *Ec2Repository) DeleteVolume(deleteInput *ec2.DeleteVolumeInput) (*ec2.D
 			Inc()
 	}
 
-	deleteVolumeOutput, err := r.client.EC2().DeleteVolume(r.ctx, deleteInput)
+	deleteVolumeOutput, err := r.ec2Client().DeleteVolume(r.ctx, deleteInput)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.
@@ -105,7 +106,7 @@ func (r *Ec2Repository) CreateVolumeTags(tagsInput *ec2.CreateTagsInput) (*ec2.C
 			Inc()
 	}
 
-	output, err := r.client.EC2().CreateTags(r.ctx, tagsInput)
+	output, err := r.ec2Client().CreateTags(r.ctx, tagsInput)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.
@@ -138,7 +139,7 @@ func (r *Ec2Repository) DeleteVolumeTags(tagsInput *ec2.DeleteTagsInput) (*ec2.D
 			Inc()
 	}
 
-	output, err := r.client.EC2().DeleteTags(r.ctx, tagsInput)
+	output, err := r.ec2Client().DeleteTags(r.ctx, tagsInput)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.

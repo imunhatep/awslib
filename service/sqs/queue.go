@@ -1,11 +1,12 @@
 package sqs
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/imunhatep/awslib/service"
-	"time"
 )
 
 type Queue struct {

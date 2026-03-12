@@ -2,6 +2,7 @@ package pricing
 
 import (
 	"encoding/json"
+
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/go-errors/errors"
 )

@@ -1,11 +1,12 @@
 package ec2
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
-	"time"
 )
 
 func (r *Ec2Repository) ListSnapshotsAll() ([]Snapshot, error) {
@@ -18,7 +19,7 @@ func (r *Ec2Repository) ListSnapshotsByInput(query *ec2.DescribeSnapshotsInput) 
 	start := time.Now()
 	var snapshots []Snapshot
 
-	p := ec2.NewDescribeSnapshotsPaginator(r.client.EC2(), query)
+	p := ec2.NewDescribeSnapshotsPaginator(r.ec2Client(), query)
 
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {

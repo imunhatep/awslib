@@ -2,38 +2,44 @@ package elb
 
 import (
 	"context"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
+	awselbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/elasticloadbalancingv2"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	ELBv2() *elasticloadbalancingv2.Client
 }
 
 type LoadBalancerRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewLoadBalancerRepository(ctx context.Context, client AwsClient) *LoadBalancerRepository {
+func NewLoadBalancerRepository(ctx context.Context, client *v3.Client) *LoadBalancerRepository {
 	repo := &LoadBalancerRepository{
 		ctx:    ctx,
 		client: client,
 	}
 
 	return repo
+}
+
+func (r *LoadBalancerRepository) elbv2Client() *awselbv2.Client {
+	return elasticloadbalancingv2.GetClient(r.client)
 }
 
 func (r *LoadBalancerRepository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {
@@ -50,10 +56,10 @@ func (r *LoadBalancerRepository) GetRegion() ptypes.AwsRegion {
 }
 
 func (r *LoadBalancerRepository) ListLoadBalancersAll() ([]LoadBalancer, error) {
-	return r.ListLoadBalancersByInput(&elasticloadbalancingv2.DescribeLoadBalancersInput{})
+	return r.ListLoadBalancersByInput(&awselbv2.DescribeLoadBalancersInput{})
 }
 
-func (r *LoadBalancerRepository) ListLoadBalancersByInput(query *elasticloadbalancingv2.DescribeLoadBalancersInput) ([]LoadBalancer, error) {
+func (r *LoadBalancerRepository) ListLoadBalancersByInput(query *awselbv2.DescribeLoadBalancersInput) ([]LoadBalancer, error) {
 	start := time.Now()
 	var balancers []LoadBalancer
 
@@ -61,7 +67,7 @@ func (r *LoadBalancerRepository) ListLoadBalancersByInput(query *elasticloadbala
 		metrics.AwsApiRequests.With(r.promLabels("DescribeLoadBalancers", cfg.ResourceTypeLoadBalancerV2)).Inc()
 	}
 
-	resp, err := r.client.ELBv2().DescribeLoadBalancers(r.ctx, query)
+	resp, err := r.elbv2Client().DescribeLoadBalancers(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("DescribeLoadBalancers", cfg.ResourceTypeLoadBalancerV2)).Inc()
@@ -94,8 +100,8 @@ func (r *LoadBalancerRepository) GetLoadBalancerTags(lb types.LoadBalancer) ([]t
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsApiRequests.With(r.promLabels("DescribeTags", cfg.ResourceTypeLoadBalancerV2)).Inc()
 	}
-	
-	tagOutput, err := r.client.ELBv2().DescribeTags(r.ctx, &elasticloadbalancingv2.DescribeTagsInput{
+
+	tagOutput, err := r.elbv2Client().DescribeTags(r.ctx, &awselbv2.DescribeTagsInput{
 		ResourceArns: []string{aws.ToString(lb.LoadBalancerArn)},
 	})
 

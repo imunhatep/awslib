@@ -3,6 +3,8 @@ package cloudtrail
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/cache"
@@ -11,7 +13,6 @@ import (
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 func (r *CloudTrailRepository) ListEventsByInput(query *cloudtrail.LookupEventsInput) ([]Event, error) {
@@ -41,7 +42,7 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 
 	start := time.Now()
 
-	p := cloudtrail.NewLookupEventsPaginator(r.client.CloudTrail(), query)
+	p := cloudtrail.NewLookupEventsPaginator(r.cloudtrailClient(), query)
 
 	// reach end of pages or max results
 	eventsFetchedCount := 0

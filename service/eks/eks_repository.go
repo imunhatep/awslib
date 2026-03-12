@@ -2,9 +2,12 @@ package eks
 
 import (
 	"context"
+
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/eks"
+	awseks "github.com/aws/aws-sdk-go-v2/service/eks"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/eks"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -12,21 +15,24 @@ import (
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	EKS() *eks.Client
 }
 
 type EksRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewEksRepository(ctx context.Context, client AwsClient) *EksRepository {
+func NewEksRepository(ctx context.Context, client *v3.Client) *EksRepository {
 	repo := &EksRepository{
 		ctx:    ctx,
 		client: client,
 	}
 
 	return repo
+}
+
+func (r *EksRepository) eksClient() *awseks.Client {
+	return eks.GetClient(r.client)
 }
 
 func (r *EksRepository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {

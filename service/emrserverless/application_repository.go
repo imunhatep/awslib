@@ -1,14 +1,15 @@
 package emrserverless
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/emrserverless"
+	awsemr "github.com/aws/aws-sdk-go-v2/service/emrserverless"
 	"github.com/aws/aws-sdk-go-v2/service/emrserverless/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/imunhatep/awslib/service/cfg"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 func (r *EMRServerlessRepository) ListApplicationsAll(maxResults *int32) ([]Application, error) {
@@ -18,7 +19,7 @@ func (r *EMRServerlessRepository) ListApplicationsAll(maxResults *int32) ([]Appl
 		Str("type", cfg.ResourceTypeToString(cfg.ResourceTypeEmrServerlessApplication)).
 		Msg("[EMRServerlessRepository.ListApplicationsAll] searching for applications")
 
-	applications, err := r.ListApplicationsByInput(&emrserverless.ListApplicationsInput{MaxResults: maxResults})
+	applications, err := r.ListApplicationsByInput(&awsemr.ListApplicationsInput{MaxResults: maxResults})
 	if err != nil {
 		return applications, err
 	}
@@ -35,7 +36,7 @@ func (r *EMRServerlessRepository) ListApplicationsActive() ([]Application, error
 
 	start := time.Now()
 
-	query := &emrserverless.ListApplicationsInput{
+	query := &awsemr.ListApplicationsInput{
 		States: []types.ApplicationState{
 			types.ApplicationStateCreating,
 			types.ApplicationStateCreated,
@@ -57,7 +58,7 @@ func (r *EMRServerlessRepository) ListApplicationsActive() ([]Application, error
 	return applications, err
 }
 
-func (r *EMRServerlessRepository) ListApplicationsByInput(query *emrserverless.ListApplicationsInput) ([]Application, error) {
+func (r *EMRServerlessRepository) ListApplicationsByInput(query *awsemr.ListApplicationsInput) ([]Application, error) {
 	log.Debug().
 		Str("accountID", r.client.GetAccountID().String()).
 		Str("region", r.client.GetRegion().String()).
@@ -67,7 +68,7 @@ func (r *EMRServerlessRepository) ListApplicationsByInput(query *emrserverless.L
 	start := time.Now()
 	var applications []Application
 
-	p := emrserverless.NewListApplicationsPaginator(r.client.EMRServerless(), query)
+	p := awsemr.NewListApplicationsPaginator(r.emrserverlessClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.
@@ -114,11 +115,11 @@ func (r *EMRServerlessRepository) ListApplicationsByInput(query *emrserverless.L
 }
 
 func (r *EMRServerlessRepository) DescribeApplication(applicationId *string) (*Application, error) {
-	query := &emrserverless.GetApplicationInput{ApplicationId: applicationId}
+	query := &awsemr.GetApplicationInput{ApplicationId: applicationId}
 	return r.DescribeApplicationByInput(query)
 }
 
-func (r *EMRServerlessRepository) DescribeApplicationByInput(query *emrserverless.GetApplicationInput) (*Application, error) {
+func (r *EMRServerlessRepository) DescribeApplicationByInput(query *awsemr.GetApplicationInput) (*Application, error) {
 	log.Debug().
 		Str("accountID", r.client.GetAccountID().String()).
 		Str("region", r.client.GetRegion().String()).
@@ -133,7 +134,7 @@ func (r *EMRServerlessRepository) DescribeApplicationByInput(query *emrserverles
 			Inc()
 	}
 
-	emrApp, err := r.client.EMRServerless().GetApplication(r.ctx, query)
+	emrApp, err := r.emrserverlessClient().GetApplication(r.ctx, query)
 	if err != nil {
 		log.Error().Err(err).
 			Str("application", aws.ToString(query.ApplicationId)).

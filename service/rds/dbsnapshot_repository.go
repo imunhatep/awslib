@@ -1,11 +1,12 @@
 package rds
 
 import (
+	"time"
+
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
-	"time"
 )
 
 func (r *RdsRepository) ListDbSnapshotsAll() ([]DbSnapshot, error) {
@@ -16,7 +17,7 @@ func (r *RdsRepository) ListDbSnapshotsByInput(query *rds.DescribeDBSnapshotsInp
 	start := time.Now()
 	var snapshots []DbSnapshot
 
-	p := rds.NewDescribeDBSnapshotsPaginator(r.client.RDS(), query)
+	p := rds.NewDescribeDBSnapshotsPaginator(r.rdsClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("DescribeDBSnapshots", cfg.ResourceTypeDBSnapshot)).Inc()

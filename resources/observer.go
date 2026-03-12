@@ -2,8 +2,9 @@ package resources
 
 import (
 	"fmt"
+
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/imunhatep/awslib/gateway"
+	"github.com/imunhatep/awslib/proxy"
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/cfg"
 	"github.com/imunhatep/gocollection/slice"
@@ -26,7 +27,7 @@ type ProviderInterface interface {
 }
 
 type ResourceObserver struct {
-	gatewayPool *gateway.RepoGatewayPool
+	gatewayPool *proxy.RepoProxyPool
 	providers   map[types.ResourceType]ProviderInterface
 
 	handler    HandlerFunc
@@ -34,7 +35,7 @@ type ResourceObserver struct {
 }
 
 // NewResourceObserver creates a new resource handler
-func NewResourceObserver(gatewayPool *gateway.RepoGatewayPool, handler HandlerFunc) *ResourceObserver {
+func NewResourceObserver(gatewayPool *proxy.RepoProxyPool, handler HandlerFunc) *ResourceObserver {
 	return &ResourceObserver{
 		gatewayPool: gatewayPool,
 		providers:   map[types.ResourceType]ProviderInterface{},

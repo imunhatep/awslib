@@ -1,19 +1,20 @@
 package glue
 
 import (
-	"github.com/aws/aws-sdk-go-v2/service/glue"
+	"time"
+
+	awsglue "github.com/aws/aws-sdk-go-v2/service/glue"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/imunhatep/awslib/service/cfg"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 func (r *GlueRepository) ListJobsAll() ([]Job, error) {
-	return r.ListJobsByInput(&glue.GetJobsInput{})
+	return r.ListJobsByInput(&awsglue.GetJobsInput{})
 }
 
-func (r *GlueRepository) ListJobsByInput(query *glue.GetJobsInput) ([]Job, error) {
+func (r *GlueRepository) ListJobsByInput(query *awsglue.GetJobsInput) ([]Job, error) {
 	log.Debug().
 		Str("accountID", r.client.GetAccountID().String()).
 		Str("region", r.client.GetRegion().String()).
@@ -29,7 +30,7 @@ func (r *GlueRepository) ListJobsByInput(query *glue.GetJobsInput) ([]Job, error
 			Inc()
 	}
 
-	resp, err := r.client.Glue().GetJobs(r.ctx, query)
+	resp, err := r.glueClient().GetJobs(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.

@@ -1,12 +1,13 @@
 package route53
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/imunhatep/awslib/helper"
 	"github.com/imunhatep/awslib/service"
-	"time"
 )
 
 type HostedZoneList struct {
@@ -16,10 +17,11 @@ type HostedZoneList struct {
 type HostedZone struct {
 	service.AbstractResource
 	types.HostedZone
+	VPCs []types.VPC
 	Tags []types.Tag
 }
 
-func NewHostedZone(client AwsClient, hostedZone types.HostedZone, tags []types.Tag) HostedZone {
+func NewHostedZone(client AwsClient, hostedZone types.HostedZone, vpcs []types.VPC, tags []types.Tag) HostedZone {
 	hzArn := helper.BuildArn(client.GetAccountID(), client.GetRegion(), "route53", "hostedzone/", hostedZone.Id)
 
 	return HostedZone{
@@ -32,6 +34,7 @@ func NewHostedZone(client AwsClient, hostedZone types.HostedZone, tags []types.T
 			Type:      cfg.ResourceTypeRoute53HostedZone,
 		},
 		HostedZone: hostedZone,
+		VPCs:       vpcs,
 		Tags:       tags,
 	}
 }

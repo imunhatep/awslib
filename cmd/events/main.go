@@ -1,8 +1,15 @@
+//go:build ignore
+
 package main
 
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/allegro/bigcache/v3"
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/go-errors/errors"
@@ -10,16 +17,12 @@ import (
 	"github.com/imunhatep/awslib/cache/handlers"
 	"github.com/imunhatep/awslib/provider"
 	ptypes "github.com/imunhatep/awslib/provider/types"
-	v2 "github.com/imunhatep/awslib/provider/v2"
+	"github.com/imunhatep/awslib/provider/v3"
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/cloudtrail"
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func main() {
@@ -90,7 +93,7 @@ func awsEvents() error {
 		fin(err)
 	}
 
-	clientPool := provider.NewClientPool(ctx, v2.NewClientBuilder(ctx, providers...))
+	clientPool := provider.NewClientPool(ctx, v3.NewClientBuilder(ctx, providers...))
 	clients, err := clientPool.GetClients(awsRegions...)
 	if err != nil {
 		return errors.New(err)

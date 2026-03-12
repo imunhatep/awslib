@@ -1,19 +1,20 @@
 package glue
 
 import (
-	"github.com/aws/aws-sdk-go-v2/service/glue"
+	"time"
+
+	awsglue "github.com/aws/aws-sdk-go-v2/service/glue"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/imunhatep/awslib/service/cfg"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 func (r *GlueRepository) ListDatabaseAll() ([]Database, error) {
-	return r.ListDatabaseByInput(&glue.GetDatabasesInput{})
+	return r.ListDatabaseByInput(&awsglue.GetDatabasesInput{})
 }
 
-func (r *GlueRepository) ListDatabaseByInput(query *glue.GetDatabasesInput) ([]Database, error) {
+func (r *GlueRepository) ListDatabaseByInput(query *awsglue.GetDatabasesInput) ([]Database, error) {
 	log.Debug().
 		Str("accountID", r.client.GetAccountID().String()).
 		Str("region", r.client.GetRegion().String()).
@@ -29,7 +30,7 @@ func (r *GlueRepository) ListDatabaseByInput(query *glue.GetDatabasesInput) ([]D
 			Inc()
 	}
 
-	resp, err := r.client.Glue().GetDatabases(r.ctx, query)
+	resp, err := r.glueClient().GetDatabases(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.

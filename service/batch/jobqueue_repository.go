@@ -1,11 +1,12 @@
 package batch
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/service/batch"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
-	"time"
 )
 
 func (r *BatchRepository) ListJobQueueAll() ([]JobQueue, error) {
@@ -16,7 +17,7 @@ func (r *BatchRepository) ListJobQueueByInput(query *batch.DescribeJobQueuesInpu
 	start := time.Now()
 	var computeEnvs []JobQueue
 
-	p := batch.NewDescribeJobQueuesPaginator(r.client.Batch(), query)
+	p := batch.NewDescribeJobQueuesPaginator(r.batchClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("DescribeJobQueues", cfg.ResourceTypeBatchJobQueue)).Inc()

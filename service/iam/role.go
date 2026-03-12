@@ -8,10 +8,6 @@ import (
 	"github.com/imunhatep/awslib/service"
 )
 
-type RoleArn string
-
-func (r RoleArn) String() string { return string(r) }
-
 type RoleList struct {
 	Items []Role
 }

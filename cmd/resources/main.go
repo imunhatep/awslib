@@ -1,22 +1,25 @@
+//go:build ignore
+
 package main
 
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cc "github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/provider"
 	ptypes "github.com/imunhatep/awslib/provider/types"
-	v2 "github.com/imunhatep/awslib/provider/v2"
+	"github.com/imunhatep/awslib/provider/v3"
 	"github.com/imunhatep/awslib/service/cloudcontrol"
 	"github.com/imunhatep/gocollection/dict"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"os"
-	"strconv"
-	"time"
 )
 
 func main() {
@@ -25,13 +28,13 @@ func main() {
 
 	awsRegions := []ptypes.AwsRegion{"eu-central-1"}
 
-	providers, err := v2.DefaultAwsClientProviders()
+	providers, err := v3.DefaultAwsClientProviders()
 	if err != nil {
 		fin(err)
 	}
 
 	ctx := context.Background()
-	localClientPool := provider.NewClientPool(ctx, v2.NewClientBuilder(ctx, providers...))
+	localClientPool := provider.NewClientPool(ctx, v3.NewClientBuilder(ctx, providers...))
 
 	clients, err := localClientPool.GetClients(awsRegions...)
 	if err != nil {

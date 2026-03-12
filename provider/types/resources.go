@@ -6,6 +6,10 @@ type AwsAccountID string
 
 func (a AwsAccountID) String() string { return string(a) }
 
+type RoleArn string
+
+func (r RoleArn) String() string { return string(r) }
+
 const DefaultAwsRegion AwsRegion = "us-east-1"
 
 type AwsRegion string

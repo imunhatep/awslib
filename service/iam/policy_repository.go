@@ -2,15 +2,17 @@ package iam
 
 import (
 	"encoding/json"
+	"net/url"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
+	ptypes "github.com/imunhatep/awslib/provider/types"
 	"github.com/rs/zerolog/log"
-	"net/url"
-	"time"
 )
 
 func (r *IamRepository) ListPoliciesAll() ([]Policy, error) {
@@ -21,7 +23,7 @@ func (r *IamRepository) ListPoliciesByInput(query *iam.ListPoliciesInput) ([]Pol
 	start := time.Now()
 	var policies []Policy
 
-	p := iam.NewListPoliciesPaginator(r.client.IAM(), query)
+	p := iam.NewListPoliciesPaginator(r.iamClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("ListPolicies", cfg.ResourceTypePolicy)).Inc()
@@ -62,7 +64,7 @@ func (r *IamRepository) ListPolicyTags(policy types.Policy) ([]types.Tag, error)
 	}
 
 	query := &iam.ListPolicyTagsInput{PolicyArn: policy.Arn}
-	tagOutput, err := r.client.IAM().ListPolicyTags(r.ctx, query)
+	tagOutput, err := r.iamClient().ListPolicyTags(r.ctx, query)
 	if err != nil {
 		log.Debug().Str("policy", aws.ToString(policy.PolicyName)).Err(err).Msg("failed to fetch iam policy tags")
 		return []types.Tag{}, errors.New(err)
@@ -78,7 +80,7 @@ func (r *IamRepository) DescribePolicyByInput(query *iam.GetPolicyInput) (*Polic
 		metrics.AwsApiRequests.With(r.promLabels("GetPolicy", cfg.ResourceTypePolicy)).Inc()
 	}
 
-	resp, err := r.client.IAM().GetPolicy(r.ctx, query)
+	resp, err := r.iamClient().GetPolicy(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("GetPolicy", cfg.ResourceTypePolicy)).Inc()
@@ -113,7 +115,7 @@ func (r *IamRepository) ListAttachedRolePoliciesByInput(query *iam.ListAttachedR
 		metrics.AwsApiRequests.With(r.promLabels("ListAttachedRolePolicies", cfg.ResourceTypePolicy)).Inc()
 	}
 
-	policiesOutput, err := r.client.IAM().ListAttachedRolePolicies(r.ctx, query)
+	policiesOutput, err := r.iamClient().ListAttachedRolePolicies(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("ListAttachedRolePolicies", cfg.ResourceTypePolicy)).Inc()
@@ -184,7 +186,7 @@ func (r *IamRepository) DescribePolicyVersionByInput(query *iam.GetPolicyVersion
 		metrics.AwsApiRequests.With(r.promLabels("GetPolicyVersion", cfg.ResourceTypePolicy)).Inc()
 	}
 
-	resp, err := r.client.IAM().GetPolicyVersion(r.ctx, query)
+	resp, err := r.iamClient().GetPolicyVersion(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("GetPolicyVersion", cfg.ResourceTypePolicy)).Inc()
@@ -213,8 +215,8 @@ func (r *IamRepository) DescribePolicyVersionByInput(query *iam.GetPolicyVersion
 	return &policyVersion, nil
 }
 
-func (r *IamRepository) ListAssumedRoleArn(policyVersion PolicyVersion) []RoleArn {
-	assumedRoles := []RoleArn{}
+func (r *IamRepository) ListAssumedRoleArn(policyVersion PolicyVersion) []ptypes.RoleArn {
+	assumedRoles := []ptypes.RoleArn{}
 
 	// Iterate over the statements in the policy document
 	for _, statement := range policyVersion.GetDocument().Statement {
@@ -223,11 +225,11 @@ func (r *IamRepository) ListAssumedRoleArn(policyVersion PolicyVersion) []RoleAr
 			// Resource can be a string or a slice of strings
 			switch statementResourceType := statement.Resource.(type) {
 			case string:
-				assumedRoles = append(assumedRoles, RoleArn(statementResourceType))
+				assumedRoles = append(assumedRoles, ptypes.RoleArn(statementResourceType))
 			case []interface{}:
 				for _, resourceType := range statementResourceType {
 					if roleArn, ok := resourceType.(string); ok {
-						assumedRoles = append(assumedRoles, RoleArn(roleArn))
+						assumedRoles = append(assumedRoles, ptypes.RoleArn(roleArn))
 					} else {
 						log.Error().Any("resource", r).Msg("[IamRepository.ListAssumedRoleArn] unexpected type for roleArn")
 					}

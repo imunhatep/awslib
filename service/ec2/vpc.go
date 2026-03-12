@@ -1,12 +1,13 @@
 package ec2
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/imunhatep/awslib/helper"
 	"github.com/imunhatep/awslib/service"
-	"time"
 )
 
 type Vpc struct {

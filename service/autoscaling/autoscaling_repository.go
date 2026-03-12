@@ -2,9 +2,12 @@ package autoscaling
 
 import (
 	"context"
-	"github.com/aws/aws-sdk-go-v2/service/autoscaling"
+
+	awsautoscaling "github.com/aws/aws-sdk-go-v2/service/autoscaling"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/autoscaling"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -12,21 +15,24 @@ import (
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	Autoscaling() *autoscaling.Client
 }
 
 type AutoscalingRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewAsgRepository(ctx context.Context, client AwsClient) *AutoscalingRepository {
+func NewAsgRepository(ctx context.Context, client *v3.Client) *AutoscalingRepository {
 	repo := &AutoscalingRepository{
 		ctx:    ctx,
 		client: client,
 	}
 
 	return repo
+}
+
+func (r *AutoscalingRepository) autoscalingClient() *awsautoscaling.Client {
+	return autoscaling.GetClient(r.client)
 }
 
 func (r *AutoscalingRepository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {

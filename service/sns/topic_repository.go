@@ -2,37 +2,43 @@ package sns
 
 import (
 	"context"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/sns"
+	awssns "github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	ptypes "github.com/imunhatep/awslib/provider/types"
+	v3 "github.com/imunhatep/awslib/provider/v3"
+	"github.com/imunhatep/awslib/provider/v3/clients/sns"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion
 	GetAccountID() ptypes.AwsAccountID
-	SNS() *sns.Client
 }
 
 type SnsRepository struct {
 	ctx    context.Context
-	client AwsClient
+	client *v3.Client
 }
 
-func NewSnsRepository(ctx context.Context, client AwsClient) *SnsRepository {
+func NewSnsRepository(ctx context.Context, client *v3.Client) *SnsRepository {
 	repo := &SnsRepository{
 		ctx:    ctx,
 		client: client,
 	}
 
 	return repo
+}
+
+func (r *SnsRepository) snsClient() *awssns.Client {
+	return sns.GetClient(r.client)
 }
 
 func (r *SnsRepository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {
@@ -49,10 +55,10 @@ func (r *SnsRepository) GetRegion() ptypes.AwsRegion {
 }
 
 func (r *SnsRepository) ListTopicsAll() ([]Topic, error) {
-	return r.ListTopicsByInput(&sns.ListTopicsInput{})
+	return r.ListTopicsByInput(&awssns.ListTopicsInput{})
 }
 
-func (r *SnsRepository) ListTopicsByInput(query *sns.ListTopicsInput) ([]Topic, error) {
+func (r *SnsRepository) ListTopicsByInput(query *awssns.ListTopicsInput) ([]Topic, error) {
 	start := time.Now()
 	var topics []Topic
 
@@ -60,7 +66,7 @@ func (r *SnsRepository) ListTopicsByInput(query *sns.ListTopicsInput) ([]Topic, 
 		metrics.AwsApiRequests.With(r.promLabels("ListTopics", cfg.ResourceTypeTopic)).Inc()
 	}
 
-	resp, err := r.client.SNS().ListTopics(r.ctx, query)
+	resp, err := r.snsClient().ListTopics(r.ctx, query)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("ListTopics", cfg.ResourceTypeTopic)).Inc()
@@ -74,7 +80,7 @@ func (r *SnsRepository) ListTopicsByInput(query *sns.ListTopicsInput) ([]Topic, 
 			metrics.AwsApiRequests.With(r.promLabels("GetTopicAttributes", cfg.ResourceTypeTopic)).Inc()
 		}
 
-		attrsOutput, err := r.client.SNS().GetTopicAttributes(r.ctx, &sns.GetTopicAttributesInput{TopicArn: v.TopicArn})
+		attrsOutput, err := r.snsClient().GetTopicAttributes(r.ctx, &awssns.GetTopicAttributesInput{TopicArn: v.TopicArn})
 		if err != nil {
 			if metrics.AwsMetricsEnabled {
 				metrics.AwsApiRequestErrors.With(r.promLabels("GetTopicAttributes", cfg.ResourceTypeTopic)).Inc()
@@ -106,7 +112,7 @@ func (r *SnsRepository) GetTopicTags(topic types.Topic) ([]types.Tag, error) {
 		metrics.AwsApiRequests.With(r.promLabels("ListTagsForResource", cfg.ResourceTypeTopic)).Inc()
 	}
 
-	tagOutput, err := r.client.SNS().ListTagsForResource(r.ctx, &sns.ListTagsForResourceInput{ResourceArn: topic.TopicArn})
+	tagOutput, err := r.snsClient().ListTagsForResource(r.ctx, &awssns.ListTagsForResourceInput{ResourceArn: topic.TopicArn})
 
 	if err != nil {
 		log.Debug().Str("topic", aws.ToString(topic.TopicArn)).Err(err).Msg("failed to fetch sns.Topic tags")

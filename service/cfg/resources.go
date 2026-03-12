@@ -1,9 +1,10 @@
 package cfg
 
 import (
+	"strings"
+
 	awscfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/imunhatep/gocollection/slice"
-	"strings"
 )
 
 const (
@@ -18,6 +19,9 @@ const (
 	ResourceTypeGlueJob                  awscfg.ResourceType = "AWS::Glue::Job"
 	ResourceTypeTrailEvent               awscfg.ResourceType = "AWS::CloudTrail::Event"
 	ResourceTypeHealthEvent              awscfg.ResourceType = "AWS::Health::Event"
+	ResourceTypeRoute53ResourceRecord    awscfg.ResourceType = "AWS::Route53::ResourceRecord"
+	ResourceTypeRoute53DomainSummary     awscfg.ResourceType = "AWS::Route53Domains::DomainSummary"
+	ResourceTypeRoute53Domain            awscfg.ResourceType = "AWS::Route53Domains::Domain"
 )
 
 func ResourceTypeToString(r awscfg.ResourceType) string {
@@ -44,6 +48,11 @@ func ResourceTypeList() []awscfg.ResourceType {
 func ResourceTypeListGlobal() []awscfg.ResourceType {
 	return []awscfg.ResourceType{
 		awscfg.ResourceTypeUser,
+		// route53
+		awscfg.ResourceTypeRoute53HostedZone,
+		ResourceTypeRoute53ResourceRecord,
+		ResourceTypeRoute53Domain,
+		ResourceTypeRoute53DomainSummary,
 	}
 }
 
@@ -57,9 +66,12 @@ func ResourceTypeListRegional() []awscfg.ResourceType {
 		// batch
 		awscfg.ResourceTypeBatchComputeEnvironment,
 		awscfg.ResourceTypeBatchJobQueue,
-		// s3
-		awscfg.ResourceTypeBucket,
+		// cloudwatch
 		ResourceTypeCloudWatchLogGroup,
+		// cloudtrail
+		awscfg.ResourceTypeTrail,
+		// s3 bucket
+		awscfg.ResourceTypeBucket,
 		// rds
 		awscfg.ResourceTypeDBInstance,
 		awscfg.ResourceTypeDBSnapshot,
@@ -94,12 +106,5 @@ func ResourceTypeListRegional() []awscfg.ResourceType {
 		// sns
 		awscfg.ResourceTypeTable,
 		awscfg.ResourceTypeTopic,
-		// cloudtrail
-		awscfg.ResourceTypeTrail,
-		// batch
-		awscfg.ResourceTypeBatchComputeEnvironment,
-		awscfg.ResourceTypeBatchJobQueue,
-		// route53
-		awscfg.ResourceTypeRoute53HostedZone,
 	}
 }

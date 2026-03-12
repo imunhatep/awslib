@@ -1,11 +1,12 @@
 package batch
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/service/batch"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
-	"time"
 )
 
 // cfg.ResourceTypeBatchComputeEnvironment
@@ -17,7 +18,7 @@ func (r *BatchRepository) ListComputeEnvironmentByInput(query *batch.DescribeCom
 	start := time.Now()
 	var computeEnvs []ComputeEnvironment
 
-	p := batch.NewDescribeComputeEnvironmentsPaginator(r.client.Batch(), query)
+	p := batch.NewDescribeComputeEnvironmentsPaginator(r.batchClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.

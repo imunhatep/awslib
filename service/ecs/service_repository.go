@@ -1,16 +1,16 @@
 package ecs
 
 import (
-	"github.com/aws/aws-sdk-go-v2/aws"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
-	"github.com/aws/aws-sdk-go-v2/service/ecs"
+	awsecs "github.com/aws/aws-sdk-go-v2/service/ecs"
 	types2 "github.com/aws/aws-sdk-go-v2/service/ecs/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/cfg"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 func (r *EcsRepository) ListServicesAll() ([]Service, error) {
@@ -43,10 +43,10 @@ func (r *EcsRepository) ListServicesAll() ([]Service, error) {
 }
 
 func (r *EcsRepository) ListServicesByCluster(cluster Cluster) ([]Service, error) {
-	return r.ListServicesByInput(&ecs.ListServicesInput{Cluster: cluster.ClusterArn})
+	return r.ListServicesByInput(&awsecs.ListServicesInput{Cluster: cluster.ClusterArn})
 }
 
-func (r *EcsRepository) ListServicesByInput(query *ecs.ListServicesInput) ([]Service, error) {
+func (r *EcsRepository) ListServicesByInput(query *awsecs.ListServicesInput) ([]Service, error) {
 	log.Debug().
 		Str("accountID", r.client.GetAccountID().String()).
 		Str("region", r.client.GetRegion().String()).
@@ -56,7 +56,7 @@ func (r *EcsRepository) ListServicesByInput(query *ecs.ListServicesInput) ([]Ser
 	start := time.Now()
 
 	var services []Service
-	p := ecs.NewListServicesPaginator(r.client.ECS(), query)
+	p := awsecs.NewListServicesPaginator(r.ecsClient(), query)
 	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.
@@ -78,7 +78,7 @@ func (r *EcsRepository) ListServicesByInput(query *ecs.ListServicesInput) ([]Ser
 		// list services
 		serviceArnChunks := service.ChunkSliceString(resp.ServiceArns, 10)
 		for _, chunk := range serviceArnChunks {
-			chunkQuery := &ecs.DescribeServicesInput{
+			chunkQuery := &awsecs.DescribeServicesInput{
 				Cluster:  query.Cluster,
 				Services: chunk,
 				Include:  []types2.ServiceField{types2.ServiceFieldTags},
@@ -104,7 +104,7 @@ func (r *EcsRepository) ListServicesByInput(query *ecs.ListServicesInput) ([]Ser
 	return services, nil
 }
 
-func (r *EcsRepository) DescribeServicesByInput(query *ecs.DescribeServicesInput) ([]Service, error) {
+func (r *EcsRepository) DescribeServicesByInput(query *awsecs.DescribeServicesInput) ([]Service, error) {
 	start := time.Now()
 
 	// list services
@@ -115,25 +115,24 @@ func (r *EcsRepository) DescribeServicesByInput(query *ecs.DescribeServicesInput
 			Inc()
 	}
 
-	ecsServices, err := r.client.ECS().DescribeServices(r.ctx, query)
-	for _, ecsService := range ecsServices.Services {
-		if err != nil {
-			log.Error().Err(err).
-				Str("accountID", r.client.GetAccountID().String()).
-				Str("region", r.client.GetRegion().String()).
-				Str("type", cfg.ResourceTypeToString(types.ResourceTypeECSService)).
-				Str("service", aws.ToString(ecsService.ServiceArn)).
-				Msg("[EcsRepository.DescribeResources] failed to fetch EMR Service details")
+	ecsServices, err := r.ecsClient().DescribeServices(r.ctx, query)
+	if err != nil {
+		log.Error().Err(err).
+			Str("accountID", r.client.GetAccountID().String()).
+			Str("region", r.client.GetRegion().String()).
+			Str("type", cfg.ResourceTypeToString(types.ResourceTypeECSService)).
+			Msg("[EcsRepository.DescribeResources] failed to fetch EMR Service details")
 
-			if metrics.AwsMetricsEnabled {
-				metrics.AwsApiRequestErrors.
-					With(r.promLabels("DescribeServices", types.ResourceTypeECSService)).
-					Inc()
-			}
-
-			continue
+		if metrics.AwsMetricsEnabled {
+			metrics.AwsApiRequestErrors.
+				With(r.promLabels("DescribeServices", types.ResourceTypeECSService)).
+				Inc()
 		}
 
+		return nil, err
+	}
+
+	for _, ecsService := range ecsServices.Services {
 		services = append(services, NewService(r.client, ecsService))
 	}
 

@@ -2,6 +2,10 @@ package v2
 
 import (
 	"context"
+	"os"
+	"sync"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -9,12 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/provider/types"
-	"github.com/imunhatep/awslib/service/iam"
 	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog/log"
-	"os"
-	"sync"
-	"time"
 )
 
 const AwsRetryAttempts = 5
@@ -26,14 +26,14 @@ type ClientBuilder struct {
 	ctx         context.Context
 	client      *Client
 	providers   []func(*config.LoadOptions) error
-	credentials map[iam.RoleArn]*aws.CredentialsCache
+	credentials map[types.RoleArn]*aws.CredentialsCache
 }
 
 func NewClientBuilder(ctx context.Context, providers ...func(*config.LoadOptions) error) *ClientBuilder {
 	builder := &ClientBuilder{
 		ctx:         ctx,
 		providers:   providers,
-		credentials: map[iam.RoleArn]*aws.CredentialsCache{},
+		credentials: map[types.RoleArn]*aws.CredentialsCache{},
 	}
 
 	return builder
@@ -58,7 +58,7 @@ func (c *ClientBuilder) DefaultClient() (*Client, error) {
 	return client, nil
 }
 
-func (c *ClientBuilder) getRoleCredentials(role iam.RoleArn) (*aws.CredentialsCache, error) {
+func (c *ClientBuilder) getRoleCredentials(role types.RoleArn) (*aws.CredentialsCache, error) {
 	if creds, ok := c.credentials[role]; ok {
 		return creds, nil
 	}
@@ -84,7 +84,7 @@ func (c *ClientBuilder) getProviders(providers ...func(*config.LoadOptions) erro
 	return append(cfgProviders, providers...)
 }
 
-func (c *ClientBuilder) AssumeClient(role iam.RoleArn, region types.AwsRegion) (*Client, error) {
+func (c *ClientBuilder) AssumeClient(role types.RoleArn, region types.AwsRegion) (*Client, error) {
 	log.Debug().Str("role", role.String()).Str("region", region.String()).Msg("[ClientBuilder.AssumeClient] assuming client")
 
 	roleCredentials, err := c.getRoleCredentials(role)
