@@ -17,11 +17,12 @@ type HostedZoneList struct {
 type HostedZone struct {
 	service.AbstractResource
 	types.HostedZone
-	VPCs []types.VPC
-	Tags []types.Tag
+	DelegationSet *types.DelegationSet
+	VPCs          []types.VPC
+	Tags          []types.Tag
 }
 
-func NewHostedZone(client AwsClient, hostedZone types.HostedZone, vpcs []types.VPC, tags []types.Tag) HostedZone {
+func NewHostedZone(client AwsClient, hostedZone types.HostedZone, delegationSet *types.DelegationSet, vpcs []types.VPC, tags []types.Tag) HostedZone {
 	hzArn := helper.BuildArn(client.GetAccountID(), client.GetRegion(), "route53", "hostedzone/", hostedZone.Id)
 
 	return HostedZone{
@@ -33,9 +34,10 @@ func NewHostedZone(client AwsClient, hostedZone types.HostedZone, vpcs []types.V
 			CreatedAt: time.Unix(0, 0),
 			Type:      cfg.ResourceTypeRoute53HostedZone,
 		},
-		HostedZone: hostedZone,
-		VPCs:       vpcs,
-		Tags:       tags,
+		HostedZone:    hostedZone,
+		DelegationSet: delegationSet,
+		VPCs:          vpcs,
+		Tags:          tags,
 	}
 }
 

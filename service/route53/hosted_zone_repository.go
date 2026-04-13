@@ -29,7 +29,7 @@ func (r *Route53Repository) ListHostedZonesByInput(query *awsr53.ListHostedZones
 
 	var hostedZones []HostedZone
 	for _, hostedZone := range output.HostedZones {
-		hostedZones = append(hostedZones, NewHostedZone(r.client, hostedZone, []types.VPC{}, r.GetHostedZoneTags(hostedZone)))
+		hostedZones = append(hostedZones, NewHostedZone(r.client, hostedZone, nil, []types.VPC{}, r.GetHostedZoneTags(hostedZone)))
 	}
 
 	if metrics.AwsMetricsEnabled {
@@ -83,7 +83,7 @@ func (r *Route53Repository) GetHostedZoneByInput(query *awsr53.GetHostedZoneInpu
 		return nil, nil
 	}
 
-	hostedZone := NewHostedZone(r.client, *output.HostedZone, output.VPCs, r.GetHostedZoneTags(*output.HostedZone))
+	hostedZone := NewHostedZone(r.client, *output.HostedZone, output.DelegationSet, output.VPCs, r.GetHostedZoneTags(*output.HostedZone))
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsApiResourcesFetched.
 			With(r.promLabels("GetHostedZone", cfg.ResourceTypeRoute53HostedZone)).
@@ -137,7 +137,7 @@ func (r *Route53Repository) CreateHostedZone(input *awsr53.CreateHostedZoneInput
 		metrics.AwsApiResourcesFetched.With(r.promLabels("GetHostedZone", cfg.ResourceTypeRoute53HostedZone)).Add(1)
 	}
 
-	hostedZone := NewHostedZone(r.client, *getOutput.HostedZone, getOutput.VPCs, r.GetHostedZoneTags(*getOutput.HostedZone))
+	hostedZone := NewHostedZone(r.client, *getOutput.HostedZone, getOutput.DelegationSet, getOutput.VPCs, r.GetHostedZoneTags(*getOutput.HostedZone))
 
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsRepoCallDuration.
@@ -186,7 +186,7 @@ func (r *Route53Repository) UpdateHostedZoneComment(input *awsr53.UpdateHostedZo
 		metrics.AwsApiResourcesFetched.With(r.promLabels("GetHostedZone", cfg.ResourceTypeRoute53HostedZone)).Add(1)
 	}
 
-	hostedZone := NewHostedZone(r.client, *getOutput.HostedZone, getOutput.VPCs, r.GetHostedZoneTags(*getOutput.HostedZone))
+	hostedZone := NewHostedZone(r.client, *getOutput.HostedZone, getOutput.DelegationSet, getOutput.VPCs, r.GetHostedZoneTags(*getOutput.HostedZone))
 
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsRepoCallDuration.

@@ -22,6 +22,14 @@ type DomainSummary struct {
 	domtypes.DomainSummary
 }
 
+// OperationInfo holds the fields from an OperationSummary that callers need.
+type OperationInfo struct {
+	OperationID string
+	Status      domtypes.OperationStatus
+	Type        domtypes.OperationType
+	DomainName  string
+}
+
 func NewDomainSummary(client AwsClient, summary domtypes.DomainSummary) DomainSummary {
 	domainArn := helper.BuildArn(client.GetAccountID(), client.GetRegion(), "route53domains", "domain/", summary.DomainName)
 
