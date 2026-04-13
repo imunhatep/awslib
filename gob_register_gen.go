@@ -110,6 +110,7 @@ func registerGeneratedServices() {
 	gob.Register(route53.DomainSummaryList{})
 	gob.Register(route53.HostedZone{})
 	gob.Register(route53.HostedZoneList{})
+	gob.Register(route53.OperationInfo{})
 	gob.Register(route53.ResourceRecord{})
 	gob.Register(route53.ResourceRecordList{})
 	gob.Register(s3.Bucket{})

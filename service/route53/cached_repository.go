@@ -91,6 +91,21 @@ func (c *Route53RepositoryCached) GetHostedZoneTags(hostedZone types.HostedZone)
 	return r0
 }
 
+// GetOperationDetail returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Route53RepositoryCached) GetOperationDetail(input *awsdomains.GetOperationDetailInput) (*awsdomains.GetOperationDetailOutput, error) {
+	_ = strings.Join // used by cachedRepoHashKey helper when params are present
+	cacheKey := cachedRepoHashKey(fmt.Sprintf("GetOperationDetail:%s", strings.Join([]string{fmt.Sprintf("%+v", input)}, ":")))
+	var cached *awsdomains.GetOperationDetailOutput
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.GetOperationDetail(input)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // ListDomainsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) ListDomainsAll() ([]DomainSummary, error) {
 	_ = strings.Join // used by cachedRepoHashKey helper when params are present
@@ -160,6 +175,21 @@ func (c *Route53RepositoryCached) ListHostedZonesByInput(query *awsr53.ListHoste
 		return cached, nil
 	}
 	r0, r1 := c.repo.ListHostedZonesByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListOperations returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Route53RepositoryCached) ListOperations(opTypes []domtypes.OperationType, statuses []domtypes.OperationStatus) ([]OperationInfo, error) {
+	_ = strings.Join // used by cachedRepoHashKey helper when params are present
+	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListOperations:%s", strings.Join([]string{fmt.Sprintf("%+v", opTypes), fmt.Sprintf("%+v", statuses)}, ":")))
+	var cached []OperationInfo
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListOperations(opTypes, statuses)
 	if r1 == nil {
 		_ = c.cache.Write(cacheKey, r0)
 	}
