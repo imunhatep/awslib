@@ -195,10 +195,17 @@ func (r *Route53Repository) FindInProgressRegistration(domainName string) (strin
 	return "", nil
 }
 
-// RegisterDomain registers a new domain and returns its full details.
-func (r *Route53Repository) RegisterDomain(input *route53domains.RegisterDomainInput) (*Domain, *string, error) {
+// RegisterDomain submits an asynchronous domain registration request and
+// returns the Route53 OperationId that can be used to track progress via
+// GetOperationDetail. It does NOT fetch domain details after submission
+// because Route53 domain registration is asynchronous: the domain is not
+// visible in the account until the background operation completes (which
+// can take minutes). Callers should poll GetOperationDetail with the
+// returned OperationId and only call GetDomainByInput once the operation
+// status is SUCCESSFUL.
+func (r *Route53Repository) RegisterDomain(input *route53domains.RegisterDomainInput) (*string, error) {
 	if input.DomainName == nil || aws.ToString(input.DomainName) == "" {
-		return nil, nil, errors.New("DomainName cannot be empty")
+		return nil, errors.New("DomainName cannot be empty")
 	}
 
 	start := time.Now()
@@ -213,18 +220,7 @@ func (r *Route53Repository) RegisterDomain(input *route53domains.RegisterDomainI
 			metrics.AwsApiRequestErrors.With(r.promLabels("RegisterDomain", ccfg.ResourceTypeRoute53Domain)).Inc()
 		}
 
-		return nil, nil, errors.New(err)
-	}
-
-	domain, err := r.GetDomainByInput(&route53domains.GetDomainDetailInput{
-		DomainName: input.DomainName,
-	})
-	if err != nil {
-		if metrics.AwsMetricsEnabled {
-			metrics.AwsApiRequestErrors.With(r.promLabels("GetDomainDetail", ccfg.ResourceTypeRoute53Domain)).Inc()
-		}
-
-		return nil, registrationOp.OperationId, err
+		return nil, errors.New(err)
 	}
 
 	if metrics.AwsMetricsEnabled {
@@ -233,7 +229,7 @@ func (r *Route53Repository) RegisterDomain(input *route53domains.RegisterDomainI
 			Observe(time.Since(start).Seconds())
 	}
 
-	return domain, registrationOp.OperationId, nil
+	return registrationOp.OperationId, nil
 }
 
 // DeleteDomain deletes a registered domain.
