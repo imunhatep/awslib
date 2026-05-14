@@ -17,26 +17,49 @@ func (r *Route53Repository) ListHostedZonesAll() ([]HostedZone, error) {
 
 func (r *Route53Repository) ListHostedZonesByInput(query *awsr53.ListHostedZonesInput) ([]HostedZone, error) {
 	start := time.Now()
-
-	if metrics.AwsMetricsEnabled {
-		metrics.AwsApiRequests.With(r.promLabels("ListHostedZones", cfg.ResourceTypeRoute53HostedZone)).Inc()
-	}
-
-	output, err := r.route53Client().ListHostedZones(r.ctx, query)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
 	var hostedZones []HostedZone
-	for _, hostedZone := range output.HostedZones {
-		hostedZones = append(hostedZones, NewHostedZone(r.client, hostedZone, nil, []types.VPC{}, r.GetHostedZoneTags(hostedZone)))
+	marker := ""
+
+	for {
+		if metrics.AwsMetricsEnabled {
+			metrics.AwsApiRequests.With(r.promLabels("ListHostedZones", cfg.ResourceTypeRoute53HostedZone)).Inc()
+		}
+
+		// Set the marker for pagination if this is not the first request
+		if marker != "" {
+			query.Marker = aws.String(marker)
+		}
+
+		output, err := r.route53Client().ListHostedZones(r.ctx, query)
+		if err != nil {
+			return nil, errors.New(err)
+		}
+
+		// Process the current page of results
+		for _, hostedZone := range output.HostedZones {
+			hostedZones = append(hostedZones, NewHostedZone(r.client, hostedZone, nil, []types.VPC{}, r.GetHostedZoneTags(hostedZone)))
+		}
+
+		if metrics.AwsMetricsEnabled {
+			metrics.AwsApiResourcesFetched.
+				With(r.promLabels("ListHostedZones", cfg.ResourceTypeRoute53HostedZone)).
+				Add(float64(len(output.HostedZones)))
+		}
+
+		// Check if there are more results to fetch
+		if !output.IsTruncated {
+			break
+		}
+
+		// Set the marker for the next iteration
+		if output.NextMarker != nil {
+			marker = *output.NextMarker
+		} else {
+			break
+		}
 	}
 
 	if metrics.AwsMetricsEnabled {
-		metrics.AwsApiResourcesFetched.
-			With(r.promLabels("ListHostedZones", cfg.ResourceTypeRoute53HostedZone)).
-			Add(float64(len(hostedZones)))
-
 		metrics.AwsRepoCallDuration.
 			With(r.promLabels("ListHostedZonesByInput", cfg.ResourceTypeRoute53HostedZone)).
 			Observe(time.Since(start).Seconds())
