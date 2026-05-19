@@ -233,9 +233,9 @@ func (r *Route53Repository) RegisterDomain(input *route53domains.RegisterDomainI
 }
 
 // DeleteDomain deletes a registered domain.
-func (r *Route53Repository) DeleteDomain(input *route53domains.DeleteDomainInput) error {
+func (r *Route53Repository) DeleteDomain(input *route53domains.DeleteDomainInput) (*string, error) {
 	if input.DomainName == nil || aws.ToString(input.DomainName) == "" {
-		return errors.New("DomainName cannot be empty")
+		return nil, errors.New("DomainName cannot be empty")
 	}
 
 	start := time.Now()
@@ -244,13 +244,13 @@ func (r *Route53Repository) DeleteDomain(input *route53domains.DeleteDomainInput
 		metrics.AwsApiRequests.With(r.promLabels("DeleteDomain", ccfg.ResourceTypeRoute53Domain)).Inc()
 	}
 
-	_, err := r.domainsClient().DeleteDomain(r.ctx, input)
+	resp, err := r.domainsClient().DeleteDomain(r.ctx, input)
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("DeleteDomain", ccfg.ResourceTypeRoute53Domain)).Inc()
 		}
 
-		return errors.New(err)
+		return nil, errors.New(err)
 	}
 
 	if metrics.AwsMetricsEnabled {
@@ -259,7 +259,7 @@ func (r *Route53Repository) DeleteDomain(input *route53domains.DeleteDomainInput
 			Observe(time.Since(start).Seconds())
 	}
 
-	return nil
+	return resp.OperationId, nil
 }
 
 // ChangeTagsForDomain adds or removes tags for a domain.
