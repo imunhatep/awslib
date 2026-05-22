@@ -18,7 +18,7 @@ import (
 )
 
 const AwsRetryAttempts = 5
-const AwsRetryMaxBackoffDelay = 1 * time.Second
+const AwsRetryMaxBackoffDelay = 3 * time.Second
 
 type ClientBuilder struct {
 	sync.Mutex
@@ -117,10 +117,10 @@ func DefaultAwsClientProviders(providers ...func(*config.LoadOptions) error) ([]
 	log.Debug().Msg("[client.GetAwsClientProviders] creating aws client with env creds")
 
 	// aws retry
-	providers = append(providers,
+	commonProviders := []func(*config.LoadOptions) error{
 		config.WithRetryMaxAttempts(AwsRetryAttempts),
 		config.WithRetryer(func() aws.Retryer { return retry.AddWithMaxBackoffDelay(retry.NewStandard(), AwsRetryMaxBackoffDelay) }),
-	)
+	}
 
 	// aws config credsProvider
 	envConf, err := config.NewEnvConfig()
@@ -131,13 +131,13 @@ func DefaultAwsClientProviders(providers ...func(*config.LoadOptions) error) ([]
 	if envConf.SharedConfigProfile != "" {
 		log.Debug().Str("aws_profile", envConf.SharedConfigProfile).Msg("[client.GetAwsClientProviders] aws credentials with shared profile")
 
-		providers = append(providers, config.WithSharedConfigProfile(envConf.SharedConfigProfile))
+		commonProviders = append(commonProviders, config.WithSharedConfigProfile(envConf.SharedConfigProfile))
 	}
 
 	if envConf.Credentials.HasKeys() {
 		log.Debug().Str("aws_access_key_id", envConf.Credentials.AccessKeyID).Msg("[client.GetAwsClientProviders] aws credentials with static credentials")
 
-		providers = append(providers, config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
+		commonProviders = append(commonProviders, config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
 			Value: envConf.Credentials,
 		}))
 	}
@@ -145,10 +145,12 @@ func DefaultAwsClientProviders(providers ...func(*config.LoadOptions) error) ([]
 	if envConf.RoleARN != "" {
 		log.Debug().Str("aws_role_arn", envConf.RoleARN).Msg("[client.GetAwsClientProviders] aws credentials with web identity")
 
-		providers = append(providers, config.WithWebIdentityRoleCredentialOptions(func(options *stscreds.WebIdentityRoleOptions) {
+		commonProviders = append(commonProviders, config.WithWebIdentityRoleCredentialOptions(func(options *stscreds.WebIdentityRoleOptions) {
 			options.RoleSessionName = "aws_reporting@" + os.Getenv("HOSTNAME")
 		}))
 	}
+
+	providers = append(commonProviders, providers...)
 
 	return providers, nil
 }
