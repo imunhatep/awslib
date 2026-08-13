@@ -3,21 +3,11 @@ package cloudtrail
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awscloudtrail "github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // CloudTrailRepositoryCached wraps CloudTrailRepository and caches results of Get*/List* calls.
 type CloudTrailRepositoryCached struct {
@@ -37,8 +27,7 @@ func (r *CloudTrailRepository) WithCache(dc *cache.DataCache) *CloudTrailReposit
 
 // ListEventsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *CloudTrailRepositoryCached) ListEventsByInput(query *awscloudtrail.LookupEventsInput) ([]Event, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListEventsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListEventsByInput", query)
 	var cached []Event
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -57,8 +46,7 @@ func (c *CloudTrailRepositoryCached) ListEventsByInputAsync(query *awscloudtrail
 
 // ListEventsByLookup returns cached results when available, otherwise delegates to the underlying repository.
 func (c *CloudTrailRepositoryCached) ListEventsByLookup(lookup *LookupMiddleware) ([]Event, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListEventsByLookup:%s", strings.Join([]string{fmt.Sprintf("%+v", lookup)}, ":")))
+	cacheKey := cache.Key("ListEventsByLookup", lookup)
 	var cached []Event
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -76,14 +64,13 @@ func (c *CloudTrailRepositoryCached) ListEventsByLookupAsync(lookup *LookupMiddl
 }
 
 // ListEventsByLookupCached returns cached results when available, otherwise delegates to the underlying repository.
-func (c *CloudTrailRepositoryCached) ListEventsByLookupCached(cache *cache.DataCache, lookup *LookupMiddleware) ([]Event, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListEventsByLookupCached:%s", strings.Join([]string{fmt.Sprintf("%+v", cache), fmt.Sprintf("%+v", lookup)}, ":")))
+func (c *CloudTrailRepositoryCached) ListEventsByLookupCached(p0 *cache.DataCache, lookup *LookupMiddleware) ([]Event, error) {
+	cacheKey := cache.Key("ListEventsByLookupCached", lookup)
 	var cached []Event
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
 	}
-	r0, r1 := c.repo.ListEventsByLookupCached(cache, lookup)
+	r0, r1 := c.repo.ListEventsByLookupCached(p0, lookup)
 	if r1 == nil {
 		_ = c.cache.Write(cacheKey, r0)
 	}

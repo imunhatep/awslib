@@ -3,21 +3,11 @@ package dynamodb
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awsdynamo "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // DynamoDBRepositoryCached wraps DynamoDBRepository and caches results of Get*/List* calls.
 type DynamoDBRepositoryCached struct {
@@ -37,8 +27,7 @@ func (r *DynamoDBRepository) WithCache(dc *cache.DataCache) *DynamoDBRepositoryC
 
 // GetTableTags returns cached results when available, otherwise delegates to the underlying repository.
 func (c *DynamoDBRepositoryCached) GetTableTags(table *types.TableDescription) ([]types.Tag, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("GetTableTags:%s", strings.Join([]string{fmt.Sprintf("%+v", table)}, ":")))
+	cacheKey := cache.Key("GetTableTags", table)
 	var cached []types.Tag
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -52,8 +41,7 @@ func (c *DynamoDBRepositoryCached) GetTableTags(table *types.TableDescription) (
 
 // ListTablesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *DynamoDBRepositoryCached) ListTablesAll() ([]Table, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListTablesAll"
+	cacheKey := cache.Key("ListTablesAll")
 	var cached []Table
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -67,8 +55,7 @@ func (c *DynamoDBRepositoryCached) ListTablesAll() ([]Table, error) {
 
 // ListTablesByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *DynamoDBRepositoryCached) ListTablesByInput(query *awsdynamo.ListTablesInput) ([]Table, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListTablesByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListTablesByInput", query)
 	var cached []Table
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

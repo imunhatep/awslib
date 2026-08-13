@@ -3,20 +3,10 @@ package sqs
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // SqsRepositoryCached wraps SqsRepository and caches results of Get*/List* calls.
 type SqsRepositoryCached struct {
@@ -36,8 +26,7 @@ func (r *SqsRepository) WithCache(dc *cache.DataCache) *SqsRepositoryCached {
 
 // GetQueueTags returns cached results when available, otherwise delegates to the underlying repository.
 func (c *SqsRepositoryCached) GetQueueTags(queueUrl string) (map[string]string, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("GetQueueTags:%s", strings.Join([]string{fmt.Sprintf("%+v", queueUrl)}, ":")))
+	cacheKey := cache.Key("GetQueueTags", queueUrl)
 	var cached map[string]string
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -51,8 +40,7 @@ func (c *SqsRepositoryCached) GetQueueTags(queueUrl string) (map[string]string, 
 
 // ListQueuesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *SqsRepositoryCached) ListQueuesAll() ([]Queue, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListQueuesAll"
+	cacheKey := cache.Key("ListQueuesAll")
 	var cached []Queue
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -66,8 +54,7 @@ func (c *SqsRepositoryCached) ListQueuesAll() ([]Queue, error) {
 
 // ListQueuesByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *SqsRepositoryCached) ListQueuesByInput(query *awssqs.ListQueuesInput) ([]Queue, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListQueuesByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListQueuesByInput", query)
 	var cached []Queue
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

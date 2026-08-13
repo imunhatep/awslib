@@ -3,21 +3,11 @@ package rds
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awsrds "github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // RdsRepositoryCached wraps RdsRepository and caches results of Get*/List* calls.
 type RdsRepositoryCached struct {
@@ -37,8 +27,7 @@ func (r *RdsRepository) WithCache(dc *cache.DataCache) *RdsRepositoryCached {
 
 // ListDBEngineVersionsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *RdsRepositoryCached) ListDBEngineVersionsByInput(query *awsrds.DescribeDBEngineVersionsInput) ([]types.DBEngineVersion, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListDBEngineVersionsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListDBEngineVersionsByInput", query)
 	var cached []types.DBEngineVersion
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -52,8 +41,7 @@ func (c *RdsRepositoryCached) ListDBEngineVersionsByInput(query *awsrds.Describe
 
 // ListDbInstancesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *RdsRepositoryCached) ListDbInstancesAll() ([]DbInstance, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListDbInstancesAll"
+	cacheKey := cache.Key("ListDbInstancesAll")
 	var cached []DbInstance
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -67,8 +55,7 @@ func (c *RdsRepositoryCached) ListDbInstancesAll() ([]DbInstance, error) {
 
 // ListDbInstancesByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *RdsRepositoryCached) ListDbInstancesByInput(query *awsrds.DescribeDBInstancesInput) ([]DbInstance, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListDbInstancesByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListDbInstancesByInput", query)
 	var cached []DbInstance
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -82,8 +69,7 @@ func (c *RdsRepositoryCached) ListDbInstancesByInput(query *awsrds.DescribeDBIns
 
 // ListDbSnapshotsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *RdsRepositoryCached) ListDbSnapshotsAll() ([]DbSnapshot, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListDbSnapshotsAll"
+	cacheKey := cache.Key("ListDbSnapshotsAll")
 	var cached []DbSnapshot
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -97,8 +83,7 @@ func (c *RdsRepositoryCached) ListDbSnapshotsAll() ([]DbSnapshot, error) {
 
 // ListDbSnapshotsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *RdsRepositoryCached) ListDbSnapshotsByInput(query *awsrds.DescribeDBSnapshotsInput) ([]DbSnapshot, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListDbSnapshotsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListDbSnapshotsByInput", query)
 	var cached []DbSnapshot
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

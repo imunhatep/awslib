@@ -3,21 +3,11 @@ package s3
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // S3RepositoryCached wraps S3Repository and caches results of Get*/List* calls.
 type S3RepositoryCached struct {
@@ -37,8 +27,7 @@ func (r *S3Repository) WithCache(dc *cache.DataCache) *S3RepositoryCached {
 
 // GetTags returns cached results when available, otherwise delegates to the underlying repository.
 func (c *S3RepositoryCached) GetTags(bucket types.Bucket) ([]types.Tag, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("GetTags:%s", strings.Join([]string{fmt.Sprintf("%+v", bucket)}, ":")))
+	cacheKey := cache.Key("GetTags", bucket)
 	var cached []types.Tag
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -52,8 +41,7 @@ func (c *S3RepositoryCached) GetTags(bucket types.Bucket) ([]types.Tag, error) {
 
 // ListBucketsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *S3RepositoryCached) ListBucketsAll() ([]Bucket, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListBucketsAll"
+	cacheKey := cache.Key("ListBucketsAll")
 	var cached []Bucket
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -67,8 +55,7 @@ func (c *S3RepositoryCached) ListBucketsAll() ([]Bucket, error) {
 
 // ListBucketsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *S3RepositoryCached) ListBucketsByInput(query *awss3.ListBucketsInput) ([]Bucket, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListBucketsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListBucketsByInput", query)
 	var cached []Bucket
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

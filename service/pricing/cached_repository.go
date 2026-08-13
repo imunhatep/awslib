@@ -3,22 +3,12 @@ package pricing
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	awspricing "github.com/aws/aws-sdk-go-v2/service/pricing"
 	"github.com/imunhatep/awslib/cache"
 	ptypes "github.com/imunhatep/awslib/provider/types"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // PricingRepositoryCached wraps PricingRepository and caches results of Get*/List* calls.
 type PricingRepositoryCached struct {
@@ -38,8 +28,7 @@ func (r *PricingRepository) WithCache(dc *cache.DataCache) *PricingRepositoryCac
 
 // GetInstancePricing returns cached results when available, otherwise delegates to the underlying repository.
 func (c *PricingRepositoryCached) GetInstancePricing(region ptypes.AwsRegion, instanceType ec2types.InstanceType) (*Ec2Product, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("GetInstancePricing:%s", strings.Join([]string{fmt.Sprintf("%+v", region), fmt.Sprintf("%+v", instanceType)}, ":")))
+	cacheKey := cache.Key("GetInstancePricing", region, instanceType)
 	var cached *Ec2Product
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -53,8 +42,7 @@ func (c *PricingRepositoryCached) GetInstancePricing(region ptypes.AwsRegion, in
 
 // GetInstancePricingByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *PricingRepositoryCached) GetInstancePricingByInput(query *awspricing.GetProductsInput) ([]string, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("GetInstancePricingByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("GetInstancePricingByInput", query)
 	var cached []string
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

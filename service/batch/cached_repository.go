@@ -3,20 +3,10 @@ package batch
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awsbatch "github.com/aws/aws-sdk-go-v2/service/batch"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // BatchRepositoryCached wraps BatchRepository and caches results of Get*/List* calls.
 type BatchRepositoryCached struct {
@@ -36,8 +26,7 @@ func (r *BatchRepository) WithCache(dc *cache.DataCache) *BatchRepositoryCached 
 
 // ListComputeEnvironmentAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *BatchRepositoryCached) ListComputeEnvironmentAll() ([]ComputeEnvironment, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListComputeEnvironmentAll"
+	cacheKey := cache.Key("ListComputeEnvironmentAll")
 	var cached []ComputeEnvironment
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -51,8 +40,7 @@ func (c *BatchRepositoryCached) ListComputeEnvironmentAll() ([]ComputeEnvironmen
 
 // ListComputeEnvironmentByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *BatchRepositoryCached) ListComputeEnvironmentByInput(query *awsbatch.DescribeComputeEnvironmentsInput) ([]ComputeEnvironment, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListComputeEnvironmentByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListComputeEnvironmentByInput", query)
 	var cached []ComputeEnvironment
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -66,8 +54,7 @@ func (c *BatchRepositoryCached) ListComputeEnvironmentByInput(query *awsbatch.De
 
 // ListJobQueueAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *BatchRepositoryCached) ListJobQueueAll() ([]JobQueue, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListJobQueueAll"
+	cacheKey := cache.Key("ListJobQueueAll")
 	var cached []JobQueue
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -81,8 +68,7 @@ func (c *BatchRepositoryCached) ListJobQueueAll() ([]JobQueue, error) {
 
 // ListJobQueueByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *BatchRepositoryCached) ListJobQueueByInput(query *awsbatch.DescribeJobQueuesInput) ([]JobQueue, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListJobQueueByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListJobQueueByInput", query)
 	var cached []JobQueue
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

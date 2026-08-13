@@ -3,21 +3,11 @@ package elb
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awselbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2/types"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // LoadBalancerRepositoryCached wraps LoadBalancerRepository and caches results of Get*/List* calls.
 type LoadBalancerRepositoryCached struct {
@@ -37,8 +27,7 @@ func (r *LoadBalancerRepository) WithCache(dc *cache.DataCache) *LoadBalancerRep
 
 // GetLoadBalancerTags returns cached results when available, otherwise delegates to the underlying repository.
 func (c *LoadBalancerRepositoryCached) GetLoadBalancerTags(lb types.LoadBalancer) ([]types.Tag, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("GetLoadBalancerTags:%s", strings.Join([]string{fmt.Sprintf("%+v", lb)}, ":")))
+	cacheKey := cache.Key("GetLoadBalancerTags", lb)
 	var cached []types.Tag
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -52,8 +41,7 @@ func (c *LoadBalancerRepositoryCached) GetLoadBalancerTags(lb types.LoadBalancer
 
 // ListLoadBalancersAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *LoadBalancerRepositoryCached) ListLoadBalancersAll() ([]LoadBalancer, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListLoadBalancersAll"
+	cacheKey := cache.Key("ListLoadBalancersAll")
 	var cached []LoadBalancer
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -67,8 +55,7 @@ func (c *LoadBalancerRepositoryCached) ListLoadBalancersAll() ([]LoadBalancer, e
 
 // ListLoadBalancersByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *LoadBalancerRepositoryCached) ListLoadBalancersByInput(query *awselbv2.DescribeLoadBalancersInput) ([]LoadBalancer, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListLoadBalancersByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListLoadBalancersByInput", query)
 	var cached []LoadBalancer
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

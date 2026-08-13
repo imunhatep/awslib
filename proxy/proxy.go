@@ -108,6 +108,10 @@ func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.Reso
 		items, err = FindRoute53Domains(e.ctx, e.client, e.cache)
 	case cfgEntity.ResourceTypeRoute53ResourceRecord:
 		items, err = FindRoute53ResourceRecords(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeCloudFrontDistributionTenantSummary:
+		items, err = FindCloudFrontDistributionTenants(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeCloudFrontConnectionGroup:
+		items, err = FindCloudFrontConnectionGroups(e.ctx, e.client, e.cache)
 	case cfgEntity.ResourceTypeSnapshot:
 		items, err = FindEc2Snapshots(e.ctx, e.client, e.cache)
 	case cfg.ResourceTypeVolume:

@@ -3,20 +3,10 @@ package glue
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awsglue "github.com/aws/aws-sdk-go-v2/service/glue"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // GlueRepositoryCached wraps GlueRepository and caches results of Get*/List* calls.
 type GlueRepositoryCached struct {
@@ -36,8 +26,7 @@ func (r *GlueRepository) WithCache(dc *cache.DataCache) *GlueRepositoryCached {
 
 // ListDatabaseAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *GlueRepositoryCached) ListDatabaseAll() ([]Database, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListDatabaseAll"
+	cacheKey := cache.Key("ListDatabaseAll")
 	var cached []Database
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -51,8 +40,7 @@ func (c *GlueRepositoryCached) ListDatabaseAll() ([]Database, error) {
 
 // ListDatabaseByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *GlueRepositoryCached) ListDatabaseByInput(query *awsglue.GetDatabasesInput) ([]Database, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListDatabaseByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListDatabaseByInput", query)
 	var cached []Database
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -66,8 +54,7 @@ func (c *GlueRepositoryCached) ListDatabaseByInput(query *awsglue.GetDatabasesIn
 
 // ListJobsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *GlueRepositoryCached) ListJobsAll() ([]Job, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListJobsAll"
+	cacheKey := cache.Key("ListJobsAll")
 	var cached []Job
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -81,8 +68,7 @@ func (c *GlueRepositoryCached) ListJobsAll() ([]Job, error) {
 
 // ListJobsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *GlueRepositoryCached) ListJobsByInput(query *awsglue.GetJobsInput) ([]Job, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListJobsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListJobsByInput", query)
 	var cached []Job
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -96,8 +82,7 @@ func (c *GlueRepositoryCached) ListJobsByInput(query *awsglue.GetJobsInput) ([]J
 
 // ListTablesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *GlueRepositoryCached) ListTablesAll() ([]Table, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListTablesAll"
+	cacheKey := cache.Key("ListTablesAll")
 	var cached []Table
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -111,8 +96,7 @@ func (c *GlueRepositoryCached) ListTablesAll() ([]Table, error) {
 
 // ListTablesByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *GlueRepositoryCached) ListTablesByInput(query *awsglue.GetTablesInput) ([]Table, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListTablesByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListTablesByInput", query)
 	var cached []Table
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

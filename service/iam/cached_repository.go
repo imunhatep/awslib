@@ -3,22 +3,12 @@ package iam
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awsiam "github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/imunhatep/awslib/cache"
 	ptypes "github.com/imunhatep/awslib/provider/types"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // IamRepositoryCached wraps IamRepository and caches results of Get*/List* calls.
 type IamRepositoryCached struct {
@@ -38,8 +28,7 @@ func (r *IamRepository) WithCache(dc *cache.DataCache) *IamRepositoryCached {
 
 // ListAssumedRoleArn returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListAssumedRoleArn(policyVersion PolicyVersion) []ptypes.RoleArn {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListAssumedRoleArn:%s", strings.Join([]string{fmt.Sprintf("%+v", policyVersion)}, ":")))
+	cacheKey := cache.Key("ListAssumedRoleArn", policyVersion)
 	var cached []ptypes.RoleArn
 	if c.cache.Read(cacheKey, &cached) {
 		return cached
@@ -50,8 +39,7 @@ func (c *IamRepositoryCached) ListAssumedRoleArn(policyVersion PolicyVersion) []
 
 // ListAttachedRolePoliciesByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListAttachedRolePoliciesByInput(query *awsiam.ListAttachedRolePoliciesInput) ([]Policy, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListAttachedRolePoliciesByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListAttachedRolePoliciesByInput", query)
 	var cached []Policy
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -65,8 +53,7 @@ func (c *IamRepositoryCached) ListAttachedRolePoliciesByInput(query *awsiam.List
 
 // ListAttachedRolePoliciesByRole returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListAttachedRolePoliciesByRole(role Role) ([]Policy, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListAttachedRolePoliciesByRole:%s", strings.Join([]string{fmt.Sprintf("%+v", role)}, ":")))
+	cacheKey := cache.Key("ListAttachedRolePoliciesByRole", role)
 	var cached []Policy
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -80,8 +67,7 @@ func (c *IamRepositoryCached) ListAttachedRolePoliciesByRole(role Role) ([]Polic
 
 // ListAttachedRolePolicyVersionsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListAttachedRolePolicyVersionsByInput(query *awsiam.ListAttachedRolePoliciesInput) ([]PolicyVersion, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListAttachedRolePolicyVersionsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListAttachedRolePolicyVersionsByInput", query)
 	var cached []PolicyVersion
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -95,8 +81,7 @@ func (c *IamRepositoryCached) ListAttachedRolePolicyVersionsByInput(query *awsia
 
 // ListAttachedRolePolicyVersionsByRole returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListAttachedRolePolicyVersionsByRole(role Role) ([]PolicyVersion, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListAttachedRolePolicyVersionsByRole:%s", strings.Join([]string{fmt.Sprintf("%+v", role)}, ":")))
+	cacheKey := cache.Key("ListAttachedRolePolicyVersionsByRole", role)
 	var cached []PolicyVersion
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -110,8 +95,7 @@ func (c *IamRepositoryCached) ListAttachedRolePolicyVersionsByRole(role Role) ([
 
 // ListAttachedRolePolicyVersionsByRoleName returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListAttachedRolePolicyVersionsByRoleName(name string) ([]PolicyVersion, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListAttachedRolePolicyVersionsByRoleName:%s", strings.Join([]string{fmt.Sprintf("%+v", name)}, ":")))
+	cacheKey := cache.Key("ListAttachedRolePolicyVersionsByRoleName", name)
 	var cached []PolicyVersion
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -125,8 +109,7 @@ func (c *IamRepositoryCached) ListAttachedRolePolicyVersionsByRoleName(name stri
 
 // ListPoliciesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListPoliciesAll() ([]Policy, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListPoliciesAll"
+	cacheKey := cache.Key("ListPoliciesAll")
 	var cached []Policy
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -140,8 +123,7 @@ func (c *IamRepositoryCached) ListPoliciesAll() ([]Policy, error) {
 
 // ListPoliciesByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListPoliciesByInput(query *awsiam.ListPoliciesInput) ([]Policy, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListPoliciesByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListPoliciesByInput", query)
 	var cached []Policy
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -155,8 +137,7 @@ func (c *IamRepositoryCached) ListPoliciesByInput(query *awsiam.ListPoliciesInpu
 
 // ListPolicyTags returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListPolicyTags(policy types.Policy) ([]types.Tag, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListPolicyTags:%s", strings.Join([]string{fmt.Sprintf("%+v", policy)}, ":")))
+	cacheKey := cache.Key("ListPolicyTags", policy)
 	var cached []types.Tag
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -170,8 +151,7 @@ func (c *IamRepositoryCached) ListPolicyTags(policy types.Policy) ([]types.Tag, 
 
 // ListRoleTags returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListRoleTags(role types.Role) ([]types.Tag, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListRoleTags:%s", strings.Join([]string{fmt.Sprintf("%+v", role)}, ":")))
+	cacheKey := cache.Key("ListRoleTags", role)
 	var cached []types.Tag
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -185,8 +165,7 @@ func (c *IamRepositoryCached) ListRoleTags(role types.Role) ([]types.Tag, error)
 
 // ListRolesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListRolesAll() ([]Role, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListRolesAll"
+	cacheKey := cache.Key("ListRolesAll")
 	var cached []Role
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -200,8 +179,7 @@ func (c *IamRepositoryCached) ListRolesAll() ([]Role, error) {
 
 // ListRolesByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListRolesByInput(query *awsiam.ListRolesInput) ([]Role, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListRolesByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListRolesByInput", query)
 	var cached []Role
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -215,8 +193,7 @@ func (c *IamRepositoryCached) ListRolesByInput(query *awsiam.ListRolesInput) ([]
 
 // ListUserTags returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListUserTags(user types.User) ([]types.Tag, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListUserTags:%s", strings.Join([]string{fmt.Sprintf("%+v", user)}, ":")))
+	cacheKey := cache.Key("ListUserTags", user)
 	var cached []types.Tag
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -230,8 +207,7 @@ func (c *IamRepositoryCached) ListUserTags(user types.User) ([]types.Tag, error)
 
 // ListUsersAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListUsersAll() ([]User, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListUsersAll"
+	cacheKey := cache.Key("ListUsersAll")
 	var cached []User
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -245,8 +221,7 @@ func (c *IamRepositoryCached) ListUsersAll() ([]User, error) {
 
 // ListUsersByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListUsersByInput(query *awsiam.ListUsersInput) ([]User, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListUsersByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListUsersByInput", query)
 	var cached []User
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

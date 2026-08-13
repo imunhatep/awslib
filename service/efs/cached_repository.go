@@ -3,20 +3,10 @@ package efs
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awsefs "github.com/aws/aws-sdk-go-v2/service/efs"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // EfsRepositoryCached wraps EfsRepository and caches results of Get*/List* calls.
 type EfsRepositoryCached struct {
@@ -36,8 +26,7 @@ func (r *EfsRepository) WithCache(dc *cache.DataCache) *EfsRepositoryCached {
 
 // ListFileSystemsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EfsRepositoryCached) ListFileSystemsAll() ([]FileSystem, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListFileSystemsAll"
+	cacheKey := cache.Key("ListFileSystemsAll")
 	var cached []FileSystem
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -51,8 +40,7 @@ func (c *EfsRepositoryCached) ListFileSystemsAll() ([]FileSystem, error) {
 
 // ListFileSystemsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EfsRepositoryCached) ListFileSystemsByInput(query *awsefs.DescribeFileSystemsInput) ([]FileSystem, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListFileSystemsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListFileSystemsByInput", query)
 	var cached []FileSystem
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

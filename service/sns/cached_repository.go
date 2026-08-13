@@ -3,21 +3,11 @@ package sns
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awssns "github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // SnsRepositoryCached wraps SnsRepository and caches results of Get*/List* calls.
 type SnsRepositoryCached struct {
@@ -37,8 +27,7 @@ func (r *SnsRepository) WithCache(dc *cache.DataCache) *SnsRepositoryCached {
 
 // GetTopicTags returns cached results when available, otherwise delegates to the underlying repository.
 func (c *SnsRepositoryCached) GetTopicTags(topic types.Topic) ([]types.Tag, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("GetTopicTags:%s", strings.Join([]string{fmt.Sprintf("%+v", topic)}, ":")))
+	cacheKey := cache.Key("GetTopicTags", topic)
 	var cached []types.Tag
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -52,8 +41,7 @@ func (c *SnsRepositoryCached) GetTopicTags(topic types.Topic) ([]types.Tag, erro
 
 // ListTopicsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *SnsRepositoryCached) ListTopicsAll() ([]Topic, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListTopicsAll"
+	cacheKey := cache.Key("ListTopicsAll")
 	var cached []Topic
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -67,8 +55,7 @@ func (c *SnsRepositoryCached) ListTopicsAll() ([]Topic, error) {
 
 // ListTopicsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *SnsRepositoryCached) ListTopicsByInput(query *awssns.ListTopicsInput) ([]Topic, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListTopicsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListTopicsByInput", query)
 	var cached []Topic
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

@@ -3,20 +3,10 @@ package autoscaling
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awsautoscaling "github.com/aws/aws-sdk-go-v2/service/autoscaling"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // AutoscalingRepositoryCached wraps AutoscalingRepository and caches results of Get*/List* calls.
 type AutoscalingRepositoryCached struct {
@@ -36,8 +26,7 @@ func (r *AutoscalingRepository) WithCache(dc *cache.DataCache) *AutoscalingRepos
 
 // ListAutoScalingGroups returns cached results when available, otherwise delegates to the underlying repository.
 func (c *AutoscalingRepositoryCached) ListAutoScalingGroups(query *awsautoscaling.DescribeAutoScalingGroupsInput) ([]AutoScalingGroup, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListAutoScalingGroups:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListAutoScalingGroups", query)
 	var cached []AutoScalingGroup
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -51,8 +40,7 @@ func (c *AutoscalingRepositoryCached) ListAutoScalingGroups(query *awsautoscalin
 
 // ListAutoScalingGroupsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *AutoscalingRepositoryCached) ListAutoScalingGroupsAll() ([]AutoScalingGroup, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListAutoScalingGroupsAll"
+	cacheKey := cache.Key("ListAutoScalingGroupsAll")
 	var cached []AutoScalingGroup
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

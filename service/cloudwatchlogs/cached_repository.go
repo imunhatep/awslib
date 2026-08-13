@@ -3,21 +3,11 @@ package cloudwatchlogs
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awscloudwatchlogs "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // CloudWatchLogsRepositoryCached wraps CloudWatchLogsRepository and caches results of Get*/List* calls.
 type CloudWatchLogsRepositoryCached struct {
@@ -37,8 +27,7 @@ func (r *CloudWatchLogsRepository) WithCache(dc *cache.DataCache) *CloudWatchLog
 
 // GetLogGroupTags returns cached results when available, otherwise delegates to the underlying repository.
 func (c *CloudWatchLogsRepositoryCached) GetLogGroupTags(logGroup types.LogGroup) (map[string]string, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("GetLogGroupTags:%s", strings.Join([]string{fmt.Sprintf("%+v", logGroup)}, ":")))
+	cacheKey := cache.Key("GetLogGroupTags", logGroup)
 	var cached map[string]string
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -52,8 +41,7 @@ func (c *CloudWatchLogsRepositoryCached) GetLogGroupTags(logGroup types.LogGroup
 
 // ListLogGroupsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *CloudWatchLogsRepositoryCached) ListLogGroupsAll() ([]LogGroup, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListLogGroupsAll"
+	cacheKey := cache.Key("ListLogGroupsAll")
 	var cached []LogGroup
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -67,8 +55,7 @@ func (c *CloudWatchLogsRepositoryCached) ListLogGroupsAll() ([]LogGroup, error) 
 
 // ListLogGroupsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *CloudWatchLogsRepositoryCached) ListLogGroupsByInput(query *awscloudwatchlogs.DescribeLogGroupsInput) ([]LogGroup, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListLogGroupsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListLogGroupsByInput", query)
 	var cached []LogGroup
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

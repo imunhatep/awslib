@@ -2,14 +2,11 @@ package v2
 
 import (
 	"context"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/provider/types"
@@ -111,44 +108,4 @@ func (c *ClientBuilder) LocalClient(region types.AwsRegion) (*Client, error) {
 	}
 
 	return client, nil
-}
-
-func DefaultAwsClientProviders(providers ...func(*config.LoadOptions) error) ([]func(options *config.LoadOptions) error, error) {
-	log.Debug().Msg("[client.GetAwsClientProviders] creating aws client with env creds")
-
-	// aws retry
-	providers = append(providers,
-		config.WithRetryMaxAttempts(AwsRetryAttempts),
-		config.WithRetryer(func() aws.Retryer { return retry.AddWithMaxBackoffDelay(retry.NewStandard(), AwsRetryMaxBackoffDelay) }),
-	)
-
-	// aws config credsProvider
-	envConf, err := config.NewEnvConfig()
-	if err != nil {
-		return providers, err
-	}
-
-	if envConf.SharedConfigProfile != "" {
-		log.Debug().Str("aws_profile", envConf.SharedConfigProfile).Msg("[client.GetAwsClientProviders] aws credentials with shared profile")
-
-		providers = append(providers, config.WithSharedConfigProfile(envConf.SharedConfigProfile))
-	}
-
-	if envConf.Credentials.HasKeys() {
-		log.Debug().Str("aws_access_key_id", envConf.Credentials.AccessKeyID).Msg("[client.GetAwsClientProviders] aws credentials with static credentials")
-
-		providers = append(providers, config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
-			Value: envConf.Credentials,
-		}))
-	}
-
-	if envConf.RoleARN != "" {
-		log.Debug().Str("aws_role_arn", envConf.RoleARN).Msg("[client.GetAwsClientProviders] aws credentials with web identity")
-
-		providers = append(providers, config.WithWebIdentityRoleCredentialOptions(func(options *stscreds.WebIdentityRoleOptions) {
-			options.RoleSessionName = "aws_reporting@" + os.Getenv("HOSTNAME")
-		}))
-	}
-
-	return providers, nil
 }

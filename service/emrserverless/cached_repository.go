@@ -3,20 +3,10 @@ package emrserverless
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awsemr "github.com/aws/aws-sdk-go-v2/service/emrserverless"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // EMRServerlessRepositoryCached wraps EMRServerlessRepository and caches results of Get*/List* calls.
 type EMRServerlessRepositoryCached struct {
@@ -36,8 +26,7 @@ func (r *EMRServerlessRepository) WithCache(dc *cache.DataCache) *EMRServerlessR
 
 // ListApplicationsActive returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EMRServerlessRepositoryCached) ListApplicationsActive() ([]Application, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListApplicationsActive"
+	cacheKey := cache.Key("ListApplicationsActive")
 	var cached []Application
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -51,8 +40,7 @@ func (c *EMRServerlessRepositoryCached) ListApplicationsActive() ([]Application,
 
 // ListApplicationsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EMRServerlessRepositoryCached) ListApplicationsAll(maxResults *int32) ([]Application, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListApplicationsAll:%s", strings.Join([]string{fmt.Sprintf("%+v", maxResults)}, ":")))
+	cacheKey := cache.Key("ListApplicationsAll", maxResults)
 	var cached []Application
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -66,8 +54,7 @@ func (c *EMRServerlessRepositoryCached) ListApplicationsAll(maxResults *int32) (
 
 // ListApplicationsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EMRServerlessRepositoryCached) ListApplicationsByInput(query *awsemr.ListApplicationsInput) ([]Application, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListApplicationsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListApplicationsByInput", query)
 	var cached []Application
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -81,8 +68,7 @@ func (c *EMRServerlessRepositoryCached) ListApplicationsByInput(query *awsemr.Li
 
 // ListJobRunsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EMRServerlessRepositoryCached) ListJobRunsAll() ([]JobRun, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListJobRunsAll"
+	cacheKey := cache.Key("ListJobRunsAll")
 	var cached []JobRun
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -96,8 +82,7 @@ func (c *EMRServerlessRepositoryCached) ListJobRunsAll() ([]JobRun, error) {
 
 // ListJobRunsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EMRServerlessRepositoryCached) ListJobRunsByInput(query *awsemr.ListJobRunsInput) ([]JobRun, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListJobRunsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListJobRunsByInput", query)
 	var cached []JobRun
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

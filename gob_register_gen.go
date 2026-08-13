@@ -10,8 +10,10 @@ import (
 	"github.com/imunhatep/awslib/service/autoscaling"
 	"github.com/imunhatep/awslib/service/batch"
 	"github.com/imunhatep/awslib/service/cloudcontrol"
+	"github.com/imunhatep/awslib/service/cloudfront"
 	"github.com/imunhatep/awslib/service/cloudtrail"
 	"github.com/imunhatep/awslib/service/cloudwatchlogs"
+	"github.com/imunhatep/awslib/service/costexplorer"
 	"github.com/imunhatep/awslib/service/dynamodb"
 	"github.com/imunhatep/awslib/service/ec2"
 	"github.com/imunhatep/awslib/service/ecs"
@@ -48,12 +50,24 @@ func registerGeneratedServices() {
 	gob.Register(cloudcontrol.BucketList{})
 	gob.Register(cloudcontrol.Instance{})
 	gob.Register(cloudcontrol.Volume{})
+	gob.Register(cloudfront.ConnectionGroup{})
+	gob.Register(cloudfront.ConnectionGroupList{})
+	gob.Register(cloudfront.DistributionTenant{})
+	gob.Register(cloudfront.DistributionTenantList{})
+	gob.Register(cloudfront.DistributionTenantSummary{})
+	gob.Register(cloudfront.DistributionTenantSummaryList{})
+	gob.Register(cloudfront.TenantCertificate{})
 	gob.Register(cloudtrail.CloudTrailEvent{})
 	gob.Register(cloudtrail.Event{})
 	gob.Register(cloudtrail.LookupMiddleware{})
 	gob.Register(cloudtrail.UserIdentity{})
 	gob.Register(cloudwatchlogs.LogGroup{})
 	gob.Register(cloudwatchlogs.LogGroupList{})
+	gob.Register(costexplorer.CostAndUsage{})
+	gob.Register(costexplorer.CostCategoryFilter{})
+	gob.Register(costexplorer.CostQuery{})
+	gob.Register(costexplorer.DimensionFilter{})
+	gob.Register(costexplorer.TagFilter{})
 	gob.Register(dynamodb.Table{})
 	gob.Register(dynamodb.TableList{})
 	gob.Register(ec2.Instance{})

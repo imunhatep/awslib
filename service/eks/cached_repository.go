@@ -3,20 +3,10 @@ package eks
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awseks "github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // EksRepositoryCached wraps EksRepository and caches results of Get*/List* calls.
 type EksRepositoryCached struct {
@@ -36,8 +26,7 @@ func (r *EksRepository) WithCache(dc *cache.DataCache) *EksRepositoryCached {
 
 // ListClustersAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EksRepositoryCached) ListClustersAll() ([]Cluster, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListClustersAll"
+	cacheKey := cache.Key("ListClustersAll")
 	var cached []Cluster
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -51,8 +40,7 @@ func (c *EksRepositoryCached) ListClustersAll() ([]Cluster, error) {
 
 // ListClustersByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EksRepositoryCached) ListClustersByInput(query *awseks.ListClustersInput) ([]Cluster, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListClustersByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListClustersByInput", query)
 	var cached []Cluster
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

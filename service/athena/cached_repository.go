@@ -3,19 +3,9 @@ package athena
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // AthenaRepositoryCached wraps AthenaRepository and caches results of Get*/List* calls.
 type AthenaRepositoryCached struct {
@@ -35,8 +25,7 @@ func (r *AthenaRepository) WithCache(dc *cache.DataCache) *AthenaRepositoryCache
 
 // ListDataCatalogsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *AthenaRepositoryCached) ListDataCatalogsAll() ([]DataCatalog, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListDataCatalogsAll"
+	cacheKey := cache.Key("ListDataCatalogsAll")
 	var cached []DataCatalog
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -50,8 +39,7 @@ func (c *AthenaRepositoryCached) ListDataCatalogsAll() ([]DataCatalog, error) {
 
 // ListWorkGroupAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *AthenaRepositoryCached) ListWorkGroupAll() ([]WorkGroup, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListWorkGroupAll"
+	cacheKey := cache.Key("ListWorkGroupAll")
 	var cached []WorkGroup
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

@@ -3,8 +3,6 @@ package route53
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awsr53 "github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/route53/types"
@@ -12,14 +10,6 @@ import (
 	domtypes "github.com/aws/aws-sdk-go-v2/service/route53domains/types"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // Route53RepositoryCached wraps Route53Repository and caches results of Get*/List* calls.
 type Route53RepositoryCached struct {
@@ -39,8 +29,7 @@ func (r *Route53Repository) WithCache(dc *cache.DataCache) *Route53RepositoryCac
 
 // GetDomainByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) GetDomainByInput(query *awsdomains.GetDomainDetailInput) (*Domain, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("GetDomainByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("GetDomainByInput", query)
 	var cached *Domain
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -54,8 +43,7 @@ func (c *Route53RepositoryCached) GetDomainByInput(query *awsdomains.GetDomainDe
 
 // GetDomainTags returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) GetDomainTags(domainName string) []domtypes.Tag {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("GetDomainTags:%s", strings.Join([]string{fmt.Sprintf("%+v", domainName)}, ":")))
+	cacheKey := cache.Key("GetDomainTags", domainName)
 	var cached []domtypes.Tag
 	if c.cache.Read(cacheKey, &cached) {
 		return cached
@@ -66,8 +54,7 @@ func (c *Route53RepositoryCached) GetDomainTags(domainName string) []domtypes.Ta
 
 // GetHostedZoneByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) GetHostedZoneByInput(query *awsr53.GetHostedZoneInput) (*HostedZone, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("GetHostedZoneByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("GetHostedZoneByInput", query)
 	var cached *HostedZone
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -81,8 +68,7 @@ func (c *Route53RepositoryCached) GetHostedZoneByInput(query *awsr53.GetHostedZo
 
 // GetHostedZoneTags returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) GetHostedZoneTags(hostedZone types.HostedZone) []types.Tag {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("GetHostedZoneTags:%s", strings.Join([]string{fmt.Sprintf("%+v", hostedZone)}, ":")))
+	cacheKey := cache.Key("GetHostedZoneTags", hostedZone)
 	var cached []types.Tag
 	if c.cache.Read(cacheKey, &cached) {
 		return cached
@@ -93,8 +79,7 @@ func (c *Route53RepositoryCached) GetHostedZoneTags(hostedZone types.HostedZone)
 
 // GetOperationDetail returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) GetOperationDetail(input *awsdomains.GetOperationDetailInput) (*awsdomains.GetOperationDetailOutput, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("GetOperationDetail:%s", strings.Join([]string{fmt.Sprintf("%+v", input)}, ":")))
+	cacheKey := cache.Key("GetOperationDetail", input)
 	var cached *awsdomains.GetOperationDetailOutput
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -108,8 +93,7 @@ func (c *Route53RepositoryCached) GetOperationDetail(input *awsdomains.GetOperat
 
 // ListDomainsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) ListDomainsAll() ([]DomainSummary, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListDomainsAll"
+	cacheKey := cache.Key("ListDomainsAll")
 	var cached []DomainSummary
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -123,8 +107,7 @@ func (c *Route53RepositoryCached) ListDomainsAll() ([]DomainSummary, error) {
 
 // ListDomainsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) ListDomainsByInput(query *awsdomains.ListDomainsInput) ([]DomainSummary, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListDomainsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListDomainsByInput", query)
 	var cached []DomainSummary
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -138,8 +121,7 @@ func (c *Route53RepositoryCached) ListDomainsByInput(query *awsdomains.ListDomai
 
 // ListDomainsDetailsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) ListDomainsDetailsByInput(query *awsdomains.ListDomainsInput) ([]Domain, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListDomainsDetailsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListDomainsDetailsByInput", query)
 	var cached []Domain
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -153,8 +135,7 @@ func (c *Route53RepositoryCached) ListDomainsDetailsByInput(query *awsdomains.Li
 
 // ListHostedZonesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) ListHostedZonesAll() ([]HostedZone, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListHostedZonesAll"
+	cacheKey := cache.Key("ListHostedZonesAll")
 	var cached []HostedZone
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -168,8 +149,7 @@ func (c *Route53RepositoryCached) ListHostedZonesAll() ([]HostedZone, error) {
 
 // ListHostedZonesByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) ListHostedZonesByInput(query *awsr53.ListHostedZonesInput) ([]HostedZone, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListHostedZonesByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListHostedZonesByInput", query)
 	var cached []HostedZone
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -183,8 +163,7 @@ func (c *Route53RepositoryCached) ListHostedZonesByInput(query *awsr53.ListHoste
 
 // ListOperations returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) ListOperations(opTypes []domtypes.OperationType, statuses []domtypes.OperationStatus) ([]OperationInfo, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListOperations:%s", strings.Join([]string{fmt.Sprintf("%+v", opTypes), fmt.Sprintf("%+v", statuses)}, ":")))
+	cacheKey := cache.Key("ListOperations", opTypes, statuses)
 	var cached []OperationInfo
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -198,8 +177,7 @@ func (c *Route53RepositoryCached) ListOperations(opTypes []domtypes.OperationTyp
 
 // ListResourceRecords returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) ListResourceRecords(hostedZone HostedZone) ([]ResourceRecord, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListResourceRecords:%s", strings.Join([]string{fmt.Sprintf("%+v", hostedZone)}, ":")))
+	cacheKey := cache.Key("ListResourceRecords", hostedZone)
 	var cached []ResourceRecord
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -213,8 +191,7 @@ func (c *Route53RepositoryCached) ListResourceRecords(hostedZone HostedZone) ([]
 
 // ListResourceRecordsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) ListResourceRecordsByInput(query *awsr53.ListResourceRecordSetsInput) ([]ResourceRecord, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListResourceRecordsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListResourceRecordsByInput", query)
 	var cached []ResourceRecord
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

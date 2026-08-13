@@ -3,20 +3,10 @@ package ecs
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awsecs "github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // EcsRepositoryCached wraps EcsRepository and caches results of Get*/List* calls.
 type EcsRepositoryCached struct {
@@ -36,8 +26,7 @@ func (r *EcsRepository) WithCache(dc *cache.DataCache) *EcsRepositoryCached {
 
 // ListClustersAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EcsRepositoryCached) ListClustersAll() ([]Cluster, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListClustersAll"
+	cacheKey := cache.Key("ListClustersAll")
 	var cached []Cluster
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -51,8 +40,7 @@ func (c *EcsRepositoryCached) ListClustersAll() ([]Cluster, error) {
 
 // ListClustersByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EcsRepositoryCached) ListClustersByInput(query *awsecs.ListClustersInput) ([]Cluster, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListClustersByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListClustersByInput", query)
 	var cached []Cluster
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -66,8 +54,7 @@ func (c *EcsRepositoryCached) ListClustersByInput(query *awsecs.ListClustersInpu
 
 // ListServicesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EcsRepositoryCached) ListServicesAll() ([]Service, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListServicesAll"
+	cacheKey := cache.Key("ListServicesAll")
 	var cached []Service
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -81,8 +68,7 @@ func (c *EcsRepositoryCached) ListServicesAll() ([]Service, error) {
 
 // ListServicesByCluster returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EcsRepositoryCached) ListServicesByCluster(cluster Cluster) ([]Service, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListServicesByCluster:%s", strings.Join([]string{fmt.Sprintf("%+v", cluster)}, ":")))
+	cacheKey := cache.Key("ListServicesByCluster", cluster)
 	var cached []Service
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -96,8 +82,7 @@ func (c *EcsRepositoryCached) ListServicesByCluster(cluster Cluster) ([]Service,
 
 // ListServicesByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EcsRepositoryCached) ListServicesByInput(query *awsecs.ListServicesInput) ([]Service, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListServicesByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListServicesByInput", query)
 	var cached []Service
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

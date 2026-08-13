@@ -3,21 +3,11 @@ package health
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awshealth "github.com/aws/aws-sdk-go-v2/service/health"
 	"github.com/aws/aws-sdk-go-v2/service/health/types"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // HealthRepositoryCached wraps HealthRepository and caches results of Get*/List* calls.
 type HealthRepositoryCached struct {
@@ -37,8 +27,7 @@ func (r *HealthRepository) WithCache(dc *cache.DataCache) *HealthRepositoryCache
 
 // ListEventsDetailsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *HealthRepositoryCached) ListEventsDetailsByInput(query *awshealth.DescribeEventsInput) ([]types.EventDetails, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListEventsDetailsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListEventsDetailsByInput", query)
 	var cached []types.EventDetails
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

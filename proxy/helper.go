@@ -10,6 +10,7 @@ import (
 	"github.com/imunhatep/awslib/service/autoscaling"
 	"github.com/imunhatep/awslib/service/batch"
 	"github.com/imunhatep/awslib/service/cloudcontrol"
+	"github.com/imunhatep/awslib/service/cloudfront"
 	"github.com/imunhatep/awslib/service/cloudwatchlogs"
 	"github.com/imunhatep/awslib/service/dynamodb"
 	"github.com/imunhatep/awslib/service/ec2"
@@ -316,6 +317,30 @@ func FindLoadBalancers(ctx context.Context, client *v3.Client, dc *cache.DataCac
 	}
 	items, err := repo.ListLoadBalancersAll()
 	return slice.Map(items, cast[elb.LoadBalancer]), err
+}
+
+// FindCloudFrontDistributionTenants returns a list of CloudFront distribution
+// tenants. Certificate state is not part of the list response and is therefore
+// not included here — read it per tenant via GetManagedCertificateDetails.
+func FindCloudFrontDistributionTenants(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := cloudfront.NewCloudFrontRepository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListDistributionTenantsAll()
+		return slice.Map(items, cast[cloudfront.DistributionTenantSummary]), err
+	}
+	items, err := repo.ListDistributionTenantsAll()
+	return slice.Map(items, cast[cloudfront.DistributionTenantSummary]), err
+}
+
+// FindCloudFrontConnectionGroups returns a list of CloudFront connection groups
+func FindCloudFrontConnectionGroups(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := cloudfront.NewCloudFrontRepository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListConnectionGroupsAll()
+		return slice.Map(items, cast[cloudfront.ConnectionGroup]), err
+	}
+	items, err := repo.ListConnectionGroupsAll()
+	return slice.Map(items, cast[cloudfront.ConnectionGroup]), err
 }
 
 // FindRoute53HostedZones returns a list of Route 53 hosted zones

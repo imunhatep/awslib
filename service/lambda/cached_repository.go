@@ -3,21 +3,11 @@ package lambda
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awslambda "github.com/aws/aws-sdk-go-v2/service/lambda"
 	types2 "github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // LambdaRepositoryCached wraps LambdaRepository and caches results of Get*/List* calls.
 type LambdaRepositoryCached struct {
@@ -37,8 +27,7 @@ func (r *LambdaRepository) WithCache(dc *cache.DataCache) *LambdaRepositoryCache
 
 // ListFunctionTags returns cached results when available, otherwise delegates to the underlying repository.
 func (c *LambdaRepositoryCached) ListFunctionTags(fn types2.FunctionConfiguration) (map[string]string, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListFunctionTags:%s", strings.Join([]string{fmt.Sprintf("%+v", fn)}, ":")))
+	cacheKey := cache.Key("ListFunctionTags", fn)
 	var cached map[string]string
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -52,8 +41,7 @@ func (c *LambdaRepositoryCached) ListFunctionTags(fn types2.FunctionConfiguratio
 
 // ListFunctionsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *LambdaRepositoryCached) ListFunctionsAll() ([]Function, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListFunctionsAll"
+	cacheKey := cache.Key("ListFunctionsAll")
 	var cached []Function
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -67,8 +55,7 @@ func (c *LambdaRepositoryCached) ListFunctionsAll() ([]Function, error) {
 
 // ListFunctionsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *LambdaRepositoryCached) ListFunctionsByInput(query *awslambda.ListFunctionsInput) ([]Function, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListFunctionsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListFunctionsByInput", query)
 	var cached []Function
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

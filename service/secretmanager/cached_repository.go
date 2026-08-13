@@ -3,20 +3,10 @@ package secretmanager
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	sm "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // SecretManagerRepositoryCached wraps SecretManagerRepository and caches results of Get*/List* calls.
 type SecretManagerRepositoryCached struct {
@@ -36,8 +26,7 @@ func (r *SecretManagerRepository) WithCache(dc *cache.DataCache) *SecretManagerR
 
 // ListSecretsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *SecretManagerRepositoryCached) ListSecretsAll() ([]SecretEntry, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListSecretsAll"
+	cacheKey := cache.Key("ListSecretsAll")
 	var cached []SecretEntry
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -51,8 +40,7 @@ func (c *SecretManagerRepositoryCached) ListSecretsAll() ([]SecretEntry, error) 
 
 // ListSecretsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *SecretManagerRepositoryCached) ListSecretsByInput(query *sm.ListSecretsInput) ([]SecretEntry, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListSecretsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListSecretsByInput", query)
 	var cached []SecretEntry
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

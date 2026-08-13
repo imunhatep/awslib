@@ -22,6 +22,16 @@ const (
 	ResourceTypeRoute53ResourceRecord    awscfg.ResourceType = "AWS::Route53::ResourceRecord"
 	ResourceTypeRoute53DomainSummary     awscfg.ResourceType = "AWS::Route53Domains::DomainSummary"
 	ResourceTypeRoute53Domain            awscfg.ResourceType = "AWS::Route53Domains::Domain"
+	ResourceTypeCostAndUsage             awscfg.ResourceType = "AWS::CostExplorer::CostAndUsage"
+	ResourceTypeCostForecast             awscfg.ResourceType = "AWS::CostExplorer::CostForecast"
+	ResourceTypeCostDimensionValue       awscfg.ResourceType = "AWS::CostExplorer::DimensionValue"
+
+	// CloudFront SaaS Manager (multi-tenant distributions). ListDistributionTenants
+	// returns summaries; the full tenant only comes back from a Get, so the two are
+	// tracked as distinct resource types.
+	ResourceTypeCloudFrontDistributionTenant        awscfg.ResourceType = "AWS::CloudFront::DistributionTenant"
+	ResourceTypeCloudFrontDistributionTenantSummary awscfg.ResourceType = "AWS::CloudFront::DistributionTenantSummary"
+	ResourceTypeCloudFrontConnectionGroup           awscfg.ResourceType = "AWS::CloudFront::ConnectionGroup"
 )
 
 func ResourceTypeToString(r awscfg.ResourceType) string {
@@ -53,6 +63,9 @@ func ResourceTypeListGlobal() []awscfg.ResourceType {
 		ResourceTypeRoute53ResourceRecord,
 		ResourceTypeRoute53Domain,
 		ResourceTypeRoute53DomainSummary,
+		// cloudfront — the control plane is global, not regional
+		ResourceTypeCloudFrontDistributionTenantSummary,
+		ResourceTypeCloudFrontConnectionGroup,
 	}
 }
 

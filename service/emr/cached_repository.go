@@ -3,21 +3,11 @@ package emr
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awsemr "github.com/aws/aws-sdk-go-v2/service/emr"
 	"github.com/imunhatep/awslib/cache"
 	"time"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // EmrRepositoryCached wraps EmrRepository and caches results of Get*/List* calls.
 type EmrRepositoryCached struct {
@@ -37,8 +27,7 @@ func (r *EmrRepository) WithCache(dc *cache.DataCache) *EmrRepositoryCached {
 
 // ListClustersAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EmrRepositoryCached) ListClustersAll() ([]Cluster, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListClustersAll"
+	cacheKey := cache.Key("ListClustersAll")
 	var cached []Cluster
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -52,8 +41,7 @@ func (c *EmrRepositoryCached) ListClustersAll() ([]Cluster, error) {
 
 // ListClustersByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EmrRepositoryCached) ListClustersByInput(query *awsemr.ListClustersInput) ([]Cluster, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListClustersByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListClustersByInput", query)
 	var cached []Cluster
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -67,8 +55,7 @@ func (c *EmrRepositoryCached) ListClustersByInput(query *awsemr.ListClustersInpu
 
 // ListClustersLatest returns cached results when available, otherwise delegates to the underlying repository.
 func (c *EmrRepositoryCached) ListClustersLatest(createdAfter *time.Time) ([]Cluster, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListClustersLatest:%s", strings.Join([]string{fmt.Sprintf("%+v", createdAfter)}, ":")))
+	cacheKey := cache.Key("ListClustersLatest", createdAfter)
 	var cached []Cluster
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

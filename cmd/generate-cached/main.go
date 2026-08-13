@@ -33,6 +33,9 @@ import (
 type ParamInfo struct {
 	Name string
 	Type string
+	// SkipInKey marks a parameter that carries no query semantics (the
+	// *cache.DataCache a few repositories take) and must stay out of the key.
+	SkipInKey bool
 }
 
 type MethodInfo struct {
@@ -44,19 +47,18 @@ type MethodInfo struct {
 }
 
 // CacheKey returns the Go expression for building the cache key inside the
-// wrapper method body. For parameter-less methods: just the method name.
-// For methods with params: fnv32 hash of "<MethodName>:<fmt.Sprintf params...>".
+// wrapper method body: a cache.Key call taking the method name and every
+// key-bearing parameter. cache.Key renders parameters by value, so nested
+// pointer fields do not leak addresses into the key.
 func (m MethodInfo) CacheKey() string {
-	if len(m.Params) == 0 {
-		return fmt.Sprintf("%q", m.Name)
+	args := []string{fmt.Sprintf("%q", m.Name)}
+	for _, p := range m.Params {
+		if p.SkipInKey {
+			continue
+		}
+		args = append(args, p.Name)
 	}
-	sprintfArgs := make([]string, len(m.Params))
-	for i, p := range m.Params {
-		sprintfArgs[i] = fmt.Sprintf("fmt.Sprintf(\"%%+v\", %s)", p.Name)
-	}
-	raw := fmt.Sprintf(`fmt.Sprintf("%s:%%s", strings.Join([]string{%s}, ":"))`,
-		m.Name, strings.Join(sprintfArgs, ", "))
-	return fmt.Sprintf("cachedRepoHashKey(%s)", raw)
+	return fmt.Sprintf("cache.Key(%s)", strings.Join(args, ", "))
 }
 
 // ResultVars returns comma-separated result variable names (r0, r1, …).
@@ -167,22 +169,12 @@ package {{.Package}}
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	"github.com/imunhatep/awslib/cache"
 {{- range .ExtraImports}}
 	{{if .Alias}}{{.Alias}} {{end}}"{{.Path}}"
 {{- end}}
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // {{.RepoName}}Cached wraps {{.RepoName}} and caches results of Get*/List* calls.
 type {{.RepoName}}Cached struct {
@@ -208,7 +200,6 @@ func (c *{{$.RepoName}}Cached) {{.Name}}({{.ParamSignature}}) ({{.ResultTypes}})
 {{- else}}
 // {{.Name}} returns cached results when available, otherwise delegates to the underlying repository.
 func (c *{{$.RepoName}}Cached) {{.Name}}({{.ParamSignature}}) ({{.ResultTypes}}) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
 	cacheKey := {{.CacheKey}}
 	var cached {{.CacheableResultType}}
 	if c.cache.Read(cacheKey, &cached) {
@@ -289,6 +280,24 @@ func typeString(t types.Type, pkgPath string, aliasMap map[string]string) string
 	default:
 		return t.String()
 	}
+}
+
+// isCacheParam reports whether t is (a pointer to) cache.DataCache. Such a
+// parameter is plumbing rather than query input: it must be excluded from the
+// cache key, both because it does not change the result and because walking a
+// live cache handler to build a key would be pointless work.
+func isCacheParam(t types.Type) bool {
+	if p, ok := t.(*types.Pointer); ok {
+		t = p.Elem()
+	}
+	named, ok := t.(*types.Named)
+	if !ok {
+		return false
+	}
+	obj := named.Obj()
+	return obj.Pkg() != nil &&
+		obj.Pkg().Path() == "github.com/imunhatep/awslib/cache" &&
+		obj.Name() == "DataCache"
 }
 
 func hasChan(t types.Type) bool {
@@ -537,8 +546,9 @@ func main() {
 				for j := 0; j < sig.Params().Len(); j++ {
 					p := sig.Params().At(j)
 					params = append(params, ParamInfo{
-						Name: paramName(p.Name(), j),
-						Type: typeString(p.Type(), pkg.PkgPath, aliasMap),
+						Name:      paramName(p.Name(), j),
+						Type:      typeString(p.Type(), pkg.PkgPath, aliasMap),
+						SkipInKey: isCacheParam(p.Type()),
 					})
 				}
 
@@ -640,8 +650,12 @@ func cleanGeneratedFiles(serviceDir string) {
 	})
 }
 
+// reservedParamNames are package identifiers the generated method bodies rely
+// on; a parameter carrying one of these names would shadow the package.
+var reservedParamNames = map[string]bool{"cache": true, "fmt": true}
+
 func paramName(name string, idx int) string {
-	if name == "" || name == "_" {
+	if name == "" || name == "_" || reservedParamNames[name] {
 		return fmt.Sprintf("p%d", idx)
 	}
 	return name

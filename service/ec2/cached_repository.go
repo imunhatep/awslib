@@ -3,21 +3,11 @@ package ec2
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	awsec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // Ec2RepositoryCached wraps Ec2Repository and caches results of Get*/List* calls.
 type Ec2RepositoryCached struct {
@@ -37,8 +27,7 @@ func (r *Ec2Repository) WithCache(dc *cache.DataCache) *Ec2RepositoryCached {
 
 // GetInstanceTypes returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) GetInstanceTypes() ([]types.InstanceType, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "GetInstanceTypes"
+	cacheKey := cache.Key("GetInstanceTypes")
 	var cached []types.InstanceType
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -52,8 +41,7 @@ func (c *Ec2RepositoryCached) GetInstanceTypes() ([]types.InstanceType, error) {
 
 // ListInstancesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListInstancesAll() ([]Instance, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListInstancesAll"
+	cacheKey := cache.Key("ListInstancesAll")
 	var cached []Instance
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -67,8 +55,7 @@ func (c *Ec2RepositoryCached) ListInstancesAll() ([]Instance, error) {
 
 // ListInstancesByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListInstancesByInput(query *awsec2.DescribeInstancesInput) ([]Instance, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListInstancesByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListInstancesByInput", query)
 	var cached []Instance
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -82,8 +69,7 @@ func (c *Ec2RepositoryCached) ListInstancesByInput(query *awsec2.DescribeInstanc
 
 // ListRegionByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListRegionByInput(query *awsec2.DescribeRegionsInput) ([]types.Region, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListRegionByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListRegionByInput", query)
 	var cached []types.Region
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -97,8 +83,7 @@ func (c *Ec2RepositoryCached) ListRegionByInput(query *awsec2.DescribeRegionsInp
 
 // ListRegionsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListRegionsAll() ([]types.Region, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListRegionsAll"
+	cacheKey := cache.Key("ListRegionsAll")
 	var cached []types.Region
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -112,8 +97,7 @@ func (c *Ec2RepositoryCached) ListRegionsAll() ([]types.Region, error) {
 
 // ListRegionsOptIn returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListRegionsOptIn() ([]types.Region, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListRegionsOptIn"
+	cacheKey := cache.Key("ListRegionsOptIn")
 	var cached []types.Region
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -127,8 +111,7 @@ func (c *Ec2RepositoryCached) ListRegionsOptIn() ([]types.Region, error) {
 
 // ListSnapshotsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListSnapshotsAll() ([]Snapshot, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListSnapshotsAll"
+	cacheKey := cache.Key("ListSnapshotsAll")
 	var cached []Snapshot
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -142,8 +125,7 @@ func (c *Ec2RepositoryCached) ListSnapshotsAll() ([]Snapshot, error) {
 
 // ListSnapshotsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListSnapshotsByInput(query *awsec2.DescribeSnapshotsInput) ([]Snapshot, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListSnapshotsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListSnapshotsByInput", query)
 	var cached []Snapshot
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -157,8 +139,7 @@ func (c *Ec2RepositoryCached) ListSnapshotsByInput(query *awsec2.DescribeSnapsho
 
 // ListVolumesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListVolumesAll() ([]Volume, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListVolumesAll"
+	cacheKey := cache.Key("ListVolumesAll")
 	var cached []Volume
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -172,8 +153,7 @@ func (c *Ec2RepositoryCached) ListVolumesAll() ([]Volume, error) {
 
 // ListVolumesByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListVolumesByInput(describeInput *awsec2.DescribeVolumesInput) ([]Volume, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListVolumesByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", describeInput)}, ":")))
+	cacheKey := cache.Key("ListVolumesByInput", describeInput)
 	var cached []Volume
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -187,8 +167,7 @@ func (c *Ec2RepositoryCached) ListVolumesByInput(describeInput *awsec2.DescribeV
 
 // ListVpcsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListVpcsAll() ([]Vpc, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListVpcsAll"
+	cacheKey := cache.Key("ListVpcsAll")
 	var cached []Vpc
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -202,8 +181,7 @@ func (c *Ec2RepositoryCached) ListVpcsAll() ([]Vpc, error) {
 
 // ListVpcsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListVpcsByInput(describeInput *awsec2.DescribeVpcsInput) ([]Vpc, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListVpcsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", describeInput)}, ":")))
+	cacheKey := cache.Key("ListVpcsByInput", describeInput)
 	var cached []Vpc
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil

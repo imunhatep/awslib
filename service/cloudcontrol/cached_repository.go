@@ -3,20 +3,10 @@ package cloudcontrol
 
 import (
 	"fmt"
-	"hash/fnv"
-	"strings"
 
 	cc "github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/imunhatep/awslib/cache"
 )
-
-// cachedRepoHashKey returns a short, file-safe FNV-32 hex hash of the given string,
-// prefixed by the method name component for readability.
-func cachedRepoHashKey(raw string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(raw))
-	return fmt.Sprintf("%x", h.Sum32())
-}
 
 // CloudControlRepositoryCached wraps CloudControlRepository and caches results of Get*/List* calls.
 type CloudControlRepositoryCached struct {
@@ -36,8 +26,7 @@ func (r *CloudControlRepository) WithCache(dc *cache.DataCache) *CloudControlRep
 
 // ListBucketsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *CloudControlRepositoryCached) ListBucketsAll() ([]Bucket, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListBucketsAll"
+	cacheKey := cache.Key("ListBucketsAll")
 	var cached []Bucket
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -51,8 +40,7 @@ func (c *CloudControlRepositoryCached) ListBucketsAll() ([]Bucket, error) {
 
 // ListBucketsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *CloudControlRepositoryCached) ListBucketsByInput(query *cc.ListResourcesInput) ([]Bucket, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListBucketsByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListBucketsByInput", query)
 	var cached []Bucket
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -66,8 +54,7 @@ func (c *CloudControlRepositoryCached) ListBucketsByInput(query *cc.ListResource
 
 // ListInstancesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *CloudControlRepositoryCached) ListInstancesAll() ([]Instance, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListInstancesAll"
+	cacheKey := cache.Key("ListInstancesAll")
 	var cached []Instance
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -81,8 +68,7 @@ func (c *CloudControlRepositoryCached) ListInstancesAll() ([]Instance, error) {
 
 // ListInstancesByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *CloudControlRepositoryCached) ListInstancesByInput(query *cc.ListResourcesInput) ([]Instance, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := cachedRepoHashKey(fmt.Sprintf("ListInstancesByInput:%s", strings.Join([]string{fmt.Sprintf("%+v", query)}, ":")))
+	cacheKey := cache.Key("ListInstancesByInput", query)
 	var cached []Instance
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
@@ -96,8 +82,7 @@ func (c *CloudControlRepositoryCached) ListInstancesByInput(query *cc.ListResour
 
 // ListVolumesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *CloudControlRepositoryCached) ListVolumesAll() ([]Volume, error) {
-	_ = strings.Join // used by cachedRepoHashKey helper when params are present
-	cacheKey := "ListVolumesAll"
+	cacheKey := cache.Key("ListVolumesAll")
 	var cached []Volume
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
