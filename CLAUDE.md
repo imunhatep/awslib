@@ -79,14 +79,63 @@ Each AWS service has a package under `service/<name>/` (ec2, s3, rds, ...). With
 ### 4. Resource fetching layer (`proxy/` + `resources/`)
 
 - `proxy.RepoProxy` (`proxy/proxy.go`) maps a `configservice.ResourceType` → the right
-  `Find<Resource>(ctx, client, cache)` function via a big switch in `FindAll` (and `FindAllCC` for
-  Cloud Control API variants). This is the central registry tying resource types to repositories —
-  **when adding a new fetchable resource type, wire it here**.
+  `Find<Resource>(ctx, client, cache)` function via a big switch in `FindAll`. This is the central
+  registry tying resource types to repositories — **when adding a new fetchable resource type, wire it
+  here**. `FindAllCC` is the switch-less Cloud Control alternative covering every type at once (see
+  below).
 - `proxy.RepoProxyPool` builds one `RepoProxy` per client and can `WithCache(...)` them all.
 - `resources.Provider` (`resources/provider.go`) runs the proxies **in parallel** for a single
   resource type, streaming results through a buffered channel (`ResourceBusSize = 10000`) to a
   `ResourceReader`. It throttles goroutine launch by 100ms and drops resources (with a metric) if the
   channel is full.
+
+#### The generic Cloud Control path (`proxy/generic.go`)
+
+The whole Cloud Control side of this library is **type-agnostic**: there are no hand-written CC
+entities or per-type CC repositories, and `service/cloudcontrol/` holds exactly one entity
+(`Resource`) plus the repository. Everything funnels through one implementation,
+`proxy.FindGenericResources`, reached by two entry points:
+
+- **`RepoProxy.FindAllCC(rt)`** — the Cloud Control counterpart of `FindAll`, switch-less, serving any
+  resource type. It keeps `FindAll`'s exact signature on purpose, so replacing the big `FindAll`
+  switch with the Cloud Control approach stays a mechanical substitution.
+- **`GenericRepoProxy`** — a decorator over `RepoProxy` (`RepoProxy.Generic(detailed)`, or
+  `NewGenericRepoProxyPool` for a whole pool) that satisfies `RepoProxyInterface`. That is the point:
+  a generic pool drops straight into `resources.NewProvider`, inheriting the parallel fan-out, the
+  cache and `RepoProxyPool.List`'s global-type collapsing without any of them knowing it exists. It
+  differs from `FindAllCC` only in honouring `detailed`, which `FindAllCC` cannot express without
+  changing its signature.
+
+Treat it as a **fallback, not a replacement** for the typed path. Types whose Cloud Control registry
+entry has no LIST handler error out rather than returning an empty list, nested types need a
+`ResourceModel` the proxy does not supply, `detailed` costs one extra `GetResource` per resource (S3
+buckets need it, EC2 instances do not), and a generic resource gives up three things a typed entity
+has: a typed SDK struct, a creation time (Cloud Control reports none), and often an ARN.
+
+**On the missing ARN — this is deliberate, do not "fix" it by synthesizing one.** `ResourceDescription`
+carries only an opaque identifier, and the resource-path segment differs per type (`instance/`,
+`role/`, `function:` with a colon, and S3 omits region and account entirely). The deleted per-type CC
+entities are the cautionary tale: their hand-written ARNs were correct for EC2 but produced
+`arn:aws:s3:<region>:<account>:<bucket>` for S3, which is not a valid bucket ARN. A guessed ARN is
+worse than none, and specifically it breaks consumers that use an empty ARN region segment to detect a
+global resource. `Resource` lifts an ARN only when the type exposes one as a property; otherwise
+`GetIdOrArn()` falls back to the identifier, which is always set.
+
+Three invariants worth keeping:
+
+- **`RepoProxyPool.WithCache` needs a branch per cacheable proxy type.** It type-switches, and the
+  fallthrough passes the proxy along *uncached* rather than failing — a new proxy type missed there
+  silently stops caching.
+- **`cloudcontrol.Resource` must keep `Attributes` and `Tags` exported**, and the hand-written
+  `service/cloudcontrol/gob_register.go` must keep registering `map[string]interface{}` and
+  `[]interface{}`. The cache serializes with gob: unexported fields are dropped *without an error*
+  (a cache hit returns a resource with no properties at all), and a nested JSON object in an
+  interface-typed field fails to encode outright without those two registrations. Both are pinned by
+  `service/cloudcontrol/resource_test.go`.
+- **Deleting an entity type means deleting its `gob_register_gen.go` before regenerating.** Both
+  generators load packages with `go/packages`, so a stale generated file referencing a removed type
+  makes its package uncompilable and the generators then silently *skip* that package rather than
+  fixing it. Remove the stale file first, then run `generate-cached` followed by `generate-gob`.
 
 ### Resource types (`service/cfg/resources.go`)
 

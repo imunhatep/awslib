@@ -153,23 +153,14 @@ func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.Reso
 	return items, err
 }
 
-func (e *RepoProxy) FindAllCC(resourceType cfg.ResourceType) (items []service.ResourceInterface, err error) {
-	switch resourceType {
-	case cfg.ResourceTypeBucket:
-		items, err = FindS3CCBuckets(e.ctx, e.client, e.cache)
-	case cfg.ResourceTypeInstance:
-		items, err = FindEc2CCInstances(e.ctx, e.client, e.cache)
-	case cfg.ResourceTypeVolume:
-		items, err = FindEbsCCVolumes(e.ctx, e.client, e.cache)
-	default:
-		err = fmt.Errorf("resource type %s not supported", cfgEntity.ResourceTypeToString(resourceType))
-	}
-
-	log.Info().
-		Str("accountID", e.client.GetAccountID().String()).
-		Str("region", e.client.GetRegion().String()).
-		Str("type", cfgEntity.ResourceTypeToString(resourceType)).
-		Msgf("[RepoProxy.FindAll] aws resources found: %d", len(items))
-
-	return items, err
+// FindAllCC is the Cloud Control counterpart of FindAll: it resolves *any*
+// resource type through one generic code path, with no per-type case and no
+// hand-written entity.
+//
+// It deliberately keeps FindAll's exact signature so that replacing the switch
+// above with the Cloud Control approach stays a mechanical substitution. Cloud
+// Control is not a free win, though — see FindGenericResources for what it gives
+// up relative to a typed repository.
+func (e *RepoProxy) FindAllCC(resourceType cfg.ResourceType) ([]service.ResourceInterface, error) {
+	return FindGenericResources(e.ctx, e.client, e.cache, resourceType, false)
 }

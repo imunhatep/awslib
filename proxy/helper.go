@@ -9,7 +9,6 @@ import (
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/autoscaling"
 	"github.com/imunhatep/awslib/service/batch"
-	"github.com/imunhatep/awslib/service/cloudcontrol"
 	"github.com/imunhatep/awslib/service/cloudfront"
 	"github.com/imunhatep/awslib/service/cloudwatchlogs"
 	"github.com/imunhatep/awslib/service/dynamodb"
@@ -198,17 +197,6 @@ func FindEc2Addresses(ctx context.Context, client *v3.Client, dc *cache.DataCach
 	return slice.Map(items, cast[ec2.Address]), err
 }
 
-// FindEbsCCVolumes returns a list of EBS volumes via CloudControl
-func FindEbsCCVolumes(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
-	repo := cloudcontrol.NewCloudControlRepository(ctx, client)
-	if dc != nil {
-		items, err := repo.WithCache(dc).ListVolumesAll()
-		return slice.Map(items, cast[cloudcontrol.Volume]), err
-	}
-	items, err := repo.ListVolumesAll()
-	return slice.Map(items, cast[cloudcontrol.Volume]), err
-}
-
 // FindEc2Instances returns a list of EC2 instances
 func FindEc2Instances(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := ec2.NewEc2Repository(ctx, client)
@@ -218,17 +206,6 @@ func FindEc2Instances(ctx context.Context, client *v3.Client, dc *cache.DataCach
 	}
 	items, err := repo.ListInstancesAll()
 	return slice.Map(items, cast[ec2.Instance]), err
-}
-
-// FindEc2CCInstances returns a list of EC2 instances via CloudControl
-func FindEc2CCInstances(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
-	repo := cloudcontrol.NewCloudControlRepository(ctx, client)
-	if dc != nil {
-		items, err := repo.WithCache(dc).ListInstancesAll()
-		return slice.Map(items, cast[cloudcontrol.Instance]), err
-	}
-	items, err := repo.ListInstancesAll()
-	return slice.Map(items, cast[cloudcontrol.Instance]), err
 }
 
 // FindEcsClusters returns a list of ECS clusters
@@ -505,17 +482,6 @@ func FindSnsTopics(ctx context.Context, client *v3.Client, dc *cache.DataCache) 
 	}
 	items, err := repo.ListTopicsAll()
 	return slice.Map(items, cast[sns.Topic]), err
-}
-
-// FindS3CCBuckets returns a list of S3 Buckets via CloudControl
-func FindS3CCBuckets(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
-	repo := cloudcontrol.NewCloudControlRepository(ctx, client)
-	if dc != nil {
-		items, err := repo.WithCache(dc).ListBucketsAll()
-		return slice.Map(items, cast[cloudcontrol.Bucket]), err
-	}
-	items, err := repo.ListBucketsAll()
-	return slice.Map(items, cast[cloudcontrol.Bucket]), err
 }
 
 // FindS3Buckets returns a list of S3 buckets
