@@ -1,5 +1,7 @@
 package service
 
+//go:generate go run ../cmd/generate-gob/main.go
+
 import (
 	"time"
 

@@ -142,6 +142,62 @@ func FindEc2Vpcs(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([
 	return slice.Map(items, cast[ec2.Vpc]), err
 }
 
+// FindEc2Subnets returns a list of VPC subnets
+func FindEc2Subnets(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := ec2.NewEc2Repository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListSubnetsAll()
+		return slice.Map(items, cast[ec2.Subnet]), err
+	}
+	items, err := repo.ListSubnetsAll()
+	return slice.Map(items, cast[ec2.Subnet]), err
+}
+
+// FindEc2SecurityGroups returns a list of security groups
+func FindEc2SecurityGroups(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := ec2.NewEc2Repository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListSecurityGroupsAll()
+		return slice.Map(items, cast[ec2.SecurityGroup]), err
+	}
+	items, err := repo.ListSecurityGroupsAll()
+	return slice.Map(items, cast[ec2.SecurityGroup]), err
+}
+
+// FindEc2VpcEndpoints returns a list of VPC endpoints
+func FindEc2VpcEndpoints(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := ec2.NewEc2Repository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListVpcEndpointsAll()
+		return slice.Map(items, cast[ec2.VpcEndpoint]), err
+	}
+	items, err := repo.ListVpcEndpointsAll()
+	return slice.Map(items, cast[ec2.VpcEndpoint]), err
+}
+
+// FindEc2RouteTables returns a list of VPC route tables
+func FindEc2RouteTables(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := ec2.NewEc2Repository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListRouteTablesAll()
+		return slice.Map(items, cast[ec2.RouteTable]), err
+	}
+	items, err := repo.ListRouteTablesAll()
+	return slice.Map(items, cast[ec2.RouteTable]), err
+}
+
+// FindEc2Addresses returns a list of Elastic IPs, each carrying its public and, when
+// associated, its private address
+func FindEc2Addresses(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := ec2.NewEc2Repository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListAddressesAll()
+		return slice.Map(items, cast[ec2.Address]), err
+	}
+	items, err := repo.ListAddressesAll()
+	return slice.Map(items, cast[ec2.Address]), err
+}
+
 // FindEbsCCVolumes returns a list of EBS volumes via CloudControl
 func FindEbsCCVolumes(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := cloudcontrol.NewCloudControlRepository(ctx, client)

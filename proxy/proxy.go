@@ -130,6 +130,16 @@ func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.Reso
 		items, err = FindIamUsers(e.ctx, e.client, e.cache)
 	case cfg.ResourceTypeVpc:
 		items, err = FindEc2Vpcs(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeSubnet:
+		items, err = FindEc2Subnets(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeSecurityGroup:
+		items, err = FindEc2SecurityGroups(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeVPCEndpoint:
+		items, err = FindEc2VpcEndpoints(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeRouteTable:
+		items, err = FindEc2RouteTables(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeEip:
+		items, err = FindEc2Addresses(e.ctx, e.client, e.cache)
 	default:
 		err = fmt.Errorf("resource type %s not supported", cfgEntity.ResourceTypeToString(resourceType))
 	}

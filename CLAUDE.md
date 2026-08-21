@@ -21,7 +21,7 @@ go test -v -run TestName ./service/ec2/
 # Code generation (run after adding/changing service clients or repositories)
 make generate-options                 # regenerate provider/v3/clients/*/*.go (GetClient wrappers)
 go run cmd/generate-cached/main.go    # regenerate service/*/cached_repository.go
-go run cmd/generate-gob/main.go       # regenerate gob_register_gen.go (also: go generate ./...)
+go run cmd/generate-gob/main.go       # regenerate service/*/gob_register_gen.go (also: go generate ./...)
 
 make update-deps   # bump all direct deps + go mod tidy (+ vendor if vendor/ exists)
 ```
@@ -34,7 +34,7 @@ The library is built in layers, from low-level SDK access up to a parallel cross
 
 ### 1. Provider layer — client creation & multi-account fanout (`provider/`)
 
-- `provider/v3/` is the current client implementation. **`provider/v2/` is legacy** — prefer v3.
+- `provider/v3/` holds the client implementation.
 - `v3.Client` (`provider/v3/client.go`) wraps an `aws.Config` for one account+region. It lazily
   resolves account ID via STS `GetCallerIdentity`, and acts as a per-client cache (`sync.Map`) for
   instantiated SDK service clients.
@@ -96,12 +96,22 @@ constants (EMR Serverless, Glue, Route53 records/domains, etc.) and provides
 `ResourceTypeToString/ToUrl/FromUrl/List/ListGlobal/ListRegional`. Global vs regional distinction
 matters for how resources are enumerated.
 
-### Gob registration (`gob_register.go`, `gob_register_gen.go`)
+### Gob registration (`service/*/gob_register_gen.go`)
 
-Because cache handlers gob-encode concrete types, every entity/SDK type stored in cache must be
-registered. `gob_register_gen.go` is generated from all `service/*` packages; an `init()` in
-`gob_register.go` calls it automatically. Regenerate with `go run cmd/generate-gob/main.go` after
-adding entity types.
+Cache handlers serialize with `encoding/gob`, so each service package **self-registers** its own
+types from an `init()` in its generated `gob_register_gen.go` — the `image/png` / `database/sql`
+driver pattern. Importing `service/ec2` is therefore sufficient to make `ec2.Instance` cacheable,
+and a consumer only pays for the SDK packages it actually imports. There is deliberately **no root
+`awslib` package**: a central registry had to import all ~30 service packages, dragging the whole
+SDK into any build that touched it. Regenerate with `go run cmd/generate-gob/main.go` after adding
+entity types.
+
+`gob.Register` only *needs* an explicit call for values held in **interface-typed fields**;
+concrete types (what the cached repositories actually encode) are handled by reflection. The one
+real case is `types.JobRun.JobDriver`, registered by hand in
+`service/emrserverless/gob_register.go`. Registering the entity types is belt-and-braces — free now
+that it costs no imports, and it covers a caller who caches `[]service.ResourceInterface` through
+the public `DataCache` API.
 
 ## Conventions
 
@@ -121,4 +131,5 @@ adding entity types.
 3. Run `go run cmd/generate-cached/main.go` to emit the cached wrapper.
 4. Add a `Find<Resource>` function and wire the resource type into `proxy.RepoProxy.FindAll`.
 5. If new custom resource types are needed, add them to `service/cfg/resources.go`.
-6. Run `go run cmd/generate-gob/main.go` so cached entities can be serialized.
+6. Run `go run cmd/generate-gob/main.go` so cached entities can be serialized (emits
+   `service/<name>/gob_register_gen.go`).
