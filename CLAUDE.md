@@ -84,6 +84,24 @@ Each AWS service has a package under `service/<name>/` (ec2, s3, rds, ...). With
   here**. `FindAllCC` is the switch-less Cloud Control alternative covering every type at once (see
   below).
 - `proxy.RepoProxyPool` builds one `RepoProxy` per client and can `WithCache(...)` them all.
+
+#### Scoping to one account
+
+Both client pools expose `GetAccountClients(accountID, regions...)` next to
+`GetClients(regions...)`, plus `PoolAccountIDs()` for the accounts they can serve.
+
+This is deliberately *not* something a caller should do by filtering the result of
+`GetClients`: building a client assumes that account's role (`v3.ClientPool`) or
+resolves that account's default credentials (`provider.ClientPool`), so by the time
+you have a slice to filter, every account in the pool has already been contacted.
+Anything downstream — including the Cloud Control generic path, which is built from
+whatever clients it is handed — inherits its account scope from this decision.
+
+`GetAccountClients` returns an **error** for an account the pool cannot reach, not
+an empty slice: a caller that asked about the wrong account must not be told the
+account is empty. `PoolAccountIDs()` exists because `ListAccountIDs()` on
+`provider.ClientPool` reports the accounts of clients *already created*, so it is
+empty until the first `GetClients` call and cannot be used to validate a request.
 - `resources.Provider` (`resources/provider.go`) runs the proxies **in parallel** for a single
   resource type, streaming results through a buffered channel (`ResourceBusSize = 10000`) to a
   `ResourceReader`. It throttles goroutine launch by 100ms and drops resources (with a metric) if the
