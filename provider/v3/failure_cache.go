@@ -19,7 +19,7 @@ import (
 // cache entirely (see credentialFailure). Without that exclusion an expired SSO
 // session would poison every region at once, and the pool would stay broken for
 // the whole TTL after the operator logged back in.
-const DefaultClientFailureTTL = 2 * time.Hour
+const DefaultClientFailureTTL = 3 * time.Hour
 
 // credentialFailure reports whether an error is about the caller's credentials
 // rather than the target region.
