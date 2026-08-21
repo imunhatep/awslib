@@ -39,6 +39,34 @@ func (c *Ec2RepositoryCached) GetInstanceTypes() ([]types.InstanceType, error) {
 	return r0, r1
 }
 
+// ListAddressesAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListAddressesAll() ([]Address, error) {
+	cacheKey := cache.Key("ListAddressesAll")
+	var cached []Address
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListAddressesAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListAddressesByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListAddressesByInput(describeInput *awsec2.DescribeAddressesInput) ([]Address, error) {
+	cacheKey := cache.Key("ListAddressesByInput", describeInput)
+	var cached []Address
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListAddressesByInput(describeInput)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // ListInstancesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListInstancesAll() ([]Instance, error) {
 	cacheKey := cache.Key("ListInstancesAll")
@@ -109,6 +137,62 @@ func (c *Ec2RepositoryCached) ListRegionsOptIn() ([]types.Region, error) {
 	return r0, r1
 }
 
+// ListRouteTablesAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListRouteTablesAll() ([]RouteTable, error) {
+	cacheKey := cache.Key("ListRouteTablesAll")
+	var cached []RouteTable
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListRouteTablesAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListRouteTablesByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListRouteTablesByInput(describeInput *awsec2.DescribeRouteTablesInput) ([]RouteTable, error) {
+	cacheKey := cache.Key("ListRouteTablesByInput", describeInput)
+	var cached []RouteTable
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListRouteTablesByInput(describeInput)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListSecurityGroupsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListSecurityGroupsAll() ([]SecurityGroup, error) {
+	cacheKey := cache.Key("ListSecurityGroupsAll")
+	var cached []SecurityGroup
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListSecurityGroupsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListSecurityGroupsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListSecurityGroupsByInput(describeInput *awsec2.DescribeSecurityGroupsInput) ([]SecurityGroup, error) {
+	cacheKey := cache.Key("ListSecurityGroupsByInput", describeInput)
+	var cached []SecurityGroup
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListSecurityGroupsByInput(describeInput)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // ListSnapshotsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListSnapshotsAll() ([]Snapshot, error) {
 	cacheKey := cache.Key("ListSnapshotsAll")
@@ -137,6 +221,34 @@ func (c *Ec2RepositoryCached) ListSnapshotsByInput(query *awsec2.DescribeSnapsho
 	return r0, r1
 }
 
+// ListSubnetsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListSubnetsAll() ([]Subnet, error) {
+	cacheKey := cache.Key("ListSubnetsAll")
+	var cached []Subnet
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListSubnetsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListSubnetsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListSubnetsByInput(describeInput *awsec2.DescribeSubnetsInput) ([]Subnet, error) {
+	cacheKey := cache.Key("ListSubnetsByInput", describeInput)
+	var cached []Subnet
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListSubnetsByInput(describeInput)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // ListVolumesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListVolumesAll() ([]Volume, error) {
 	cacheKey := cache.Key("ListVolumesAll")
@@ -159,6 +271,34 @@ func (c *Ec2RepositoryCached) ListVolumesByInput(describeInput *awsec2.DescribeV
 		return cached, nil
 	}
 	r0, r1 := c.repo.ListVolumesByInput(describeInput)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListVpcEndpointsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListVpcEndpointsAll() ([]VpcEndpoint, error) {
+	cacheKey := cache.Key("ListVpcEndpointsAll")
+	var cached []VpcEndpoint
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListVpcEndpointsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListVpcEndpointsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListVpcEndpointsByInput(describeInput *awsec2.DescribeVpcEndpointsInput) ([]VpcEndpoint, error) {
+	cacheKey := cache.Key("ListVpcEndpointsByInput", describeInput)
+	var cached []VpcEndpoint
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListVpcEndpointsByInput(describeInput)
 	if r1 == nil {
 		_ = c.cache.Write(cacheKey, r0)
 	}

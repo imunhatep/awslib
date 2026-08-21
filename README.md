@@ -16,7 +16,8 @@ every multi-account AWS tool ends up writing by hand:
 | **Cache keys** | — | `cache.Key` renders arguments *by value*: pointers dereferenced, maps sorted, unexported fields included. Formatting an SDK input with `%v` instead embeds pointer addresses, giving keys that change on every call and collide once the allocator reuses an address |
 | **Pagination** | A paginator wired up at each call site — and some APIs ship none at all (Cost Explorer's `GetCostAndUsage` and `GetDimensionValues` have no SDK paginator) | `List*All()` / `Get*` methods drive pagination internally and return complete, flattened slices |
 | **Heterogeneous resources** | Every service returns its own unrelated struct | 24 service packages implement one `service.ResourceInterface` (`GetAccountID`, `GetRegion`, `GetArn`, `GetId`, `GetType`, `GetTags`, `GetCreatedAt`), so unrelated resource types flow through the same channels and reports |
-| **Cross-account fetching** | Your own goroutine fanout, channels, throttling and error handling | `proxy.RepoProxy` maps 34 resource types to the right repository; `resources.Provider` runs them in parallel and streams results over a buffered channel |
+| **Cross-account fetching** | Your own goroutine fanout, channels, throttling and error handling | `proxy.RepoProxy` maps 39 resource types to the right repository; `resources.Provider` runs them in parallel and streams results over a buffered channel |
+| **Unsupported resource types** | Read the service's API docs and write another lister | `proxy.NewGenericRepoProxyPool` serves *any* `AWS::Service::Resource` type via the Cloud Control API, with no per-type code — same interface, same fanout, same cache |
 | **Observability** | None | 11 Prometheus metrics — request and error counts, resources fetched, call duration, cache read/write/hit/error — labeled by `account_id`, `region`, `resource_type` and `method` |
 | **Errors and retries** | Bare SDK errors, SDK default retries | Errors wrapped with `go-errors` to carry stack traces; 5 retry attempts with a 3s max backoff configured on every client |
 | **Adding a service** | Hand-written boilerplate per service | Generators emit the client wrappers, cached repositories and gob registrations |
@@ -79,7 +80,7 @@ go get github.com/imunhatep/awslib
 
 Services whose entities implement the normalized `service.ResourceInterface`:
 
-athena, autoscaling, batch, cloudcontrol, cloudfront, cloudtrail, cloudwatchlogs, dynamodb, ec2,
+athena, autoscaling, batch, cloudfront, cloudtrail, cloudwatchlogs, dynamodb, ec2,
 ecs, efs, eks, elb, emr, emrserverless, glue, iam, lambda, rds, route53, s3, secretmanager, sns,
 sqs
 
@@ -88,6 +89,11 @@ lists are not resources, so they are fetched through their own repositories rath
 `RepoProxy` fanout:
 
 costexplorer, health, pricing
+
+And **cloudcontrol**, which is not a service in the same sense: it is one generic repository that
+serves *any* resource type through the AWS Cloud Control API, with no per-type code. Use it for types
+the list above does not cover — see
+[Cloud Control: any resource type, without a repository](#cloud-control-any-resource-type-without-a-repository).
 
 ## Code Generation
 
@@ -99,17 +105,28 @@ go run cmd/generate-cached/main.go
 
 # Generate service options and configurations
 go run cmd/generate-options/main.go
+
+# Register entity types with encoding/gob so cached repositories can serialize them
+go run cmd/generate-gob/main.go
 ```
+
+Run `generate-gob` after adding or removing an entity type — the cache handlers serialize with
+`encoding/gob`, and a missing registration surfaces as a cache write failure rather than a compile
+error. When *removing* an entity, delete its `gob_register_gen.go` before regenerating: the generators
+load packages with `go/packages`, so a stale reference to a deleted type makes the package
+uncompilable and the generators then skip it silently.
 
 ## Usage
 
 There are 2 distinct approaches provided by this library:
-1. **AWS Provider v3**: Direct access to AWS services, allowing connection to multiple regions and accounts simultaneously.
+1. **AWS Provider**: Direct access to AWS services, allowing connection to multiple regions and accounts simultaneously.
 2. **Service Repositories**: High-level abstraction for fetching AWS resources with built-in caching.
 
-### Approach 1: AWS Provider v3
+### Approach 1: AWS Provider
 
-The v3 provider focuses on managing clients across multiple accounts and regions efficiently.
+The provider focuses on managing clients across multiple accounts and regions efficiently. It lives at
+`provider/v3` and is conventionally imported as `v3`; that is just the package path, not a choice
+between provider versions — it is the only client provider the library ships.
 
 #### Basic Usage (Single Region/Account)
 ```go
@@ -316,6 +333,60 @@ func ExampleRepoProxy(ctx context.Context, clients []*v3.Client, dataCache *cach
   }
 }
 ```
+
+#### Cloud Control: any resource type, without a repository
+
+`RepoProxy.FindAll` can only serve a resource type that someone has written a repository for. The
+**Cloud Control** path removes that constraint: one generic code path serves any `AWS::Service::Resource`
+type whose CloudFormation registry entry implements the `LIST` handler, with no per-type Go code at all.
+
+Results come back as `cloudcontrol.Resource`, which implements the same `service.ResourceInterface` as
+every typed entity — so it flows through the identical pipeline. The resource's own fields stay in
+`Attributes` as the JSON object Cloud Control returned:
+
+```go
+repo := cloudcontrol.NewCloudControlRepository(ctx, client)
+
+// Any type, same call. Add .WithCache(dataCache) for the usual caching.
+streams, err := repo.ListResourcesByType("AWS::Kinesis::Stream")
+if err != nil {
+    return err
+}
+
+for _, r := range streams {
+    fmt.Println(r.GetId(), r.GetName(), r.GetTags(), r.GetAttributes())
+}
+```
+
+To fan out across accounts and regions, swap the pool constructor — `GenericRepoProxy` satisfies
+`RepoProxyInterface`, so the `Provider`, the cache and the global-type handling all work unchanged:
+
+```go
+// instead of proxy.NewRepoProxyPool(ctx, clients)
+proxyPool := proxy.NewGenericRepoProxyPool(ctx, clients, false).WithCache(dataCache)
+
+resourceType := types.ResourceType("AWS::Kinesis::Stream")
+reader := resources.NewProvider(resourceType, proxyPool.List(resourceType)...).Run()
+```
+
+`RepoProxy.FindAllCC(resourceType)` is the same lookup with `FindAll`'s exact signature, for callers
+that want to switch a single proxy over.
+
+**Use it as a fallback, not a default.** Compared with a typed repository:
+
+| | Typed repository | Cloud Control `Resource` |
+|---|---|---|
+| Coverage | Only wired types | Any type with a `LIST` handler |
+| Fields | Typed SDK struct | `map[string]interface{}` of the raw properties |
+| ARN | Always | Only when the type exposes one as a property |
+| Creation time | Usually | Never — Cloud Control reports none |
+| Extra calls | None | `detailed` costs one `GetResource` per resource |
+
+Two caveats worth knowing before you rely on it. Types that implement only `READ`, and nested types
+needing a parent identifier (`AWS::ApiGateway::Method`), return an error rather than an empty list —
+pass a `ResourceModel` via `ListResourcesByInput` for the latter. And the `detailed` flag exists
+because some types' `LIST` returns identifiers only (S3 buckets) while others return full properties
+(EC2 instances); there is no way to know which without trying.
 
 ### Logging verbosity
 Use this func example to set logging verbosity

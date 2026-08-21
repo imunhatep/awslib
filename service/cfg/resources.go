@@ -109,7 +109,13 @@ func ResourceTypeListRegional() []awscfg.ResourceType {
 		awscfg.ResourceTypeInstance,
 		awscfg.ResourceTypeVolume,
 		ResourceTypeSnapshot,
+		// ec2 — vpc and its networking resources
 		awscfg.ResourceTypeVpc,
+		awscfg.ResourceTypeSubnet,
+		awscfg.ResourceTypeSecurityGroup,
+		awscfg.ResourceTypeVPCEndpoint,
+		awscfg.ResourceTypeRouteTable,
+		awscfg.ResourceTypeEip,
 		// elb
 		awscfg.ResourceTypeLoadBalancerV2,
 		// sqs

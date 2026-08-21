@@ -36,9 +36,15 @@ func (e *RepoProxyPool) WithCache(dc *cache.DataCache) *RepoProxyPool {
 	services := []RepoProxyInterface{}
 
 	for _, gw := range e.gateways {
-		if proxy, ok := gw.(*RepoProxy); ok {
+		// Every proxy type that carries a cache needs its own branch: the
+		// fallthrough drops the cache silently rather than failing, so a proxy
+		// type missed here would quietly stop caching.
+		switch proxy := gw.(type) {
+		case *GenericRepoProxy:
 			services = append(services, proxy.WithCache(dc))
-		} else {
+		case *RepoProxy:
+			services = append(services, proxy.WithCache(dc))
+		default:
 			services = append(services, gw)
 		}
 	}

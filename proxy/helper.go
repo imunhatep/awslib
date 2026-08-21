@@ -9,7 +9,6 @@ import (
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/autoscaling"
 	"github.com/imunhatep/awslib/service/batch"
-	"github.com/imunhatep/awslib/service/cloudcontrol"
 	"github.com/imunhatep/awslib/service/cloudfront"
 	"github.com/imunhatep/awslib/service/cloudwatchlogs"
 	"github.com/imunhatep/awslib/service/dynamodb"
@@ -142,15 +141,60 @@ func FindEc2Vpcs(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([
 	return slice.Map(items, cast[ec2.Vpc]), err
 }
 
-// FindEbsCCVolumes returns a list of EBS volumes via CloudControl
-func FindEbsCCVolumes(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
-	repo := cloudcontrol.NewCloudControlRepository(ctx, client)
+// FindEc2Subnets returns a list of VPC subnets
+func FindEc2Subnets(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := ec2.NewEc2Repository(ctx, client)
 	if dc != nil {
-		items, err := repo.WithCache(dc).ListVolumesAll()
-		return slice.Map(items, cast[cloudcontrol.Volume]), err
+		items, err := repo.WithCache(dc).ListSubnetsAll()
+		return slice.Map(items, cast[ec2.Subnet]), err
 	}
-	items, err := repo.ListVolumesAll()
-	return slice.Map(items, cast[cloudcontrol.Volume]), err
+	items, err := repo.ListSubnetsAll()
+	return slice.Map(items, cast[ec2.Subnet]), err
+}
+
+// FindEc2SecurityGroups returns a list of security groups
+func FindEc2SecurityGroups(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := ec2.NewEc2Repository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListSecurityGroupsAll()
+		return slice.Map(items, cast[ec2.SecurityGroup]), err
+	}
+	items, err := repo.ListSecurityGroupsAll()
+	return slice.Map(items, cast[ec2.SecurityGroup]), err
+}
+
+// FindEc2VpcEndpoints returns a list of VPC endpoints
+func FindEc2VpcEndpoints(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := ec2.NewEc2Repository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListVpcEndpointsAll()
+		return slice.Map(items, cast[ec2.VpcEndpoint]), err
+	}
+	items, err := repo.ListVpcEndpointsAll()
+	return slice.Map(items, cast[ec2.VpcEndpoint]), err
+}
+
+// FindEc2RouteTables returns a list of VPC route tables
+func FindEc2RouteTables(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := ec2.NewEc2Repository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListRouteTablesAll()
+		return slice.Map(items, cast[ec2.RouteTable]), err
+	}
+	items, err := repo.ListRouteTablesAll()
+	return slice.Map(items, cast[ec2.RouteTable]), err
+}
+
+// FindEc2Addresses returns a list of Elastic IPs, each carrying its public and, when
+// associated, its private address
+func FindEc2Addresses(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := ec2.NewEc2Repository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListAddressesAll()
+		return slice.Map(items, cast[ec2.Address]), err
+	}
+	items, err := repo.ListAddressesAll()
+	return slice.Map(items, cast[ec2.Address]), err
 }
 
 // FindEc2Instances returns a list of EC2 instances
@@ -162,17 +206,6 @@ func FindEc2Instances(ctx context.Context, client *v3.Client, dc *cache.DataCach
 	}
 	items, err := repo.ListInstancesAll()
 	return slice.Map(items, cast[ec2.Instance]), err
-}
-
-// FindEc2CCInstances returns a list of EC2 instances via CloudControl
-func FindEc2CCInstances(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
-	repo := cloudcontrol.NewCloudControlRepository(ctx, client)
-	if dc != nil {
-		items, err := repo.WithCache(dc).ListInstancesAll()
-		return slice.Map(items, cast[cloudcontrol.Instance]), err
-	}
-	items, err := repo.ListInstancesAll()
-	return slice.Map(items, cast[cloudcontrol.Instance]), err
 }
 
 // FindEcsClusters returns a list of ECS clusters
@@ -449,17 +482,6 @@ func FindSnsTopics(ctx context.Context, client *v3.Client, dc *cache.DataCache) 
 	}
 	items, err := repo.ListTopicsAll()
 	return slice.Map(items, cast[sns.Topic]), err
-}
-
-// FindS3CCBuckets returns a list of S3 Buckets via CloudControl
-func FindS3CCBuckets(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
-	repo := cloudcontrol.NewCloudControlRepository(ctx, client)
-	if dc != nil {
-		items, err := repo.WithCache(dc).ListBucketsAll()
-		return slice.Map(items, cast[cloudcontrol.Bucket]), err
-	}
-	items, err := repo.ListBucketsAll()
-	return slice.Map(items, cast[cloudcontrol.Bucket]), err
 }
 
 // FindS3Buckets returns a list of S3 buckets

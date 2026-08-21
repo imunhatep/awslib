@@ -4,7 +4,8 @@ package cloudcontrol
 import (
 	"fmt"
 
-	cc "github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	awscloudcontrol "github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/imunhatep/awslib/cache"
 )
 
@@ -24,70 +25,42 @@ func (r *CloudControlRepository) WithCache(dc *cache.DataCache) *CloudControlRep
 	}
 }
 
-// ListBucketsAll returns cached results when available, otherwise delegates to the underlying repository.
-func (c *CloudControlRepositoryCached) ListBucketsAll() ([]Bucket, error) {
-	cacheKey := cache.Key("ListBucketsAll")
-	var cached []Bucket
+// ListResourcesByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudControlRepositoryCached) ListResourcesByInput(query *awscloudcontrol.ListResourcesInput, detailed bool) ([]Resource, error) {
+	cacheKey := cache.Key("ListResourcesByInput", query, detailed)
+	var cached []Resource
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
 	}
-	r0, r1 := c.repo.ListBucketsAll()
+	r0, r1 := c.repo.ListResourcesByInput(query, detailed)
 	if r1 == nil {
 		_ = c.cache.Write(cacheKey, r0)
 	}
 	return r0, r1
 }
 
-// ListBucketsByInput returns cached results when available, otherwise delegates to the underlying repository.
-func (c *CloudControlRepositoryCached) ListBucketsByInput(query *cc.ListResourcesInput) ([]Bucket, error) {
-	cacheKey := cache.Key("ListBucketsByInput", query)
-	var cached []Bucket
+// ListResourcesByType returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudControlRepositoryCached) ListResourcesByType(resourceType cfg.ResourceType) ([]Resource, error) {
+	cacheKey := cache.Key("ListResourcesByType", resourceType)
+	var cached []Resource
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
 	}
-	r0, r1 := c.repo.ListBucketsByInput(query)
+	r0, r1 := c.repo.ListResourcesByType(resourceType)
 	if r1 == nil {
 		_ = c.cache.Write(cacheKey, r0)
 	}
 	return r0, r1
 }
 
-// ListInstancesAll returns cached results when available, otherwise delegates to the underlying repository.
-func (c *CloudControlRepositoryCached) ListInstancesAll() ([]Instance, error) {
-	cacheKey := cache.Key("ListInstancesAll")
-	var cached []Instance
+// ListResourcesByTypeDetailed returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudControlRepositoryCached) ListResourcesByTypeDetailed(resourceType cfg.ResourceType) ([]Resource, error) {
+	cacheKey := cache.Key("ListResourcesByTypeDetailed", resourceType)
+	var cached []Resource
 	if c.cache.Read(cacheKey, &cached) {
 		return cached, nil
 	}
-	r0, r1 := c.repo.ListInstancesAll()
-	if r1 == nil {
-		_ = c.cache.Write(cacheKey, r0)
-	}
-	return r0, r1
-}
-
-// ListInstancesByInput returns cached results when available, otherwise delegates to the underlying repository.
-func (c *CloudControlRepositoryCached) ListInstancesByInput(query *cc.ListResourcesInput) ([]Instance, error) {
-	cacheKey := cache.Key("ListInstancesByInput", query)
-	var cached []Instance
-	if c.cache.Read(cacheKey, &cached) {
-		return cached, nil
-	}
-	r0, r1 := c.repo.ListInstancesByInput(query)
-	if r1 == nil {
-		_ = c.cache.Write(cacheKey, r0)
-	}
-	return r0, r1
-}
-
-// ListVolumesAll returns cached results when available, otherwise delegates to the underlying repository.
-func (c *CloudControlRepositoryCached) ListVolumesAll() ([]Volume, error) {
-	cacheKey := cache.Key("ListVolumesAll")
-	var cached []Volume
-	if c.cache.Read(cacheKey, &cached) {
-		return cached, nil
-	}
-	r0, r1 := c.repo.ListVolumesAll()
+	r0, r1 := c.repo.ListResourcesByTypeDetailed(resourceType)
 	if r1 == nil {
 		_ = c.cache.Write(cacheKey, r0)
 	}

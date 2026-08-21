@@ -2,6 +2,7 @@ package ec2
 
 import (
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/imunhatep/awslib/service"
@@ -90,4 +91,19 @@ func TagMapToTags(tags map[string]string) []types.Tag {
 	}
 
 	return tagsToAdd
+}
+
+// parseArn turns an ARN string handed back by the SDK into an arn.ARN. Resources whose
+// Describe response carries no ARN fall back to helper.BuildArn.
+func parseArn(value *string) *arn.ARN {
+	if value == nil || *value == "" {
+		return nil
+	}
+
+	parsed, err := arn.Parse(*value)
+	if err != nil {
+		return nil
+	}
+
+	return &parsed
 }

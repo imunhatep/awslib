@@ -91,8 +91,14 @@ func (r *CloudControlRepository) FindResources(query *awscloudcontrol.ListResour
 			Add(float64(len(resources)))
 	}
 
+	// Trim to MaxResults only when the paginator overshot it: the break above
+	// stops at the first page that reaches the limit, so the last page can carry
+	// extras. A total below the limit is the common case, and slicing to it
+	// unconditionally panics.
 	if query.MaxResults != nil {
-		return resources[:*query.MaxResults], nil
+		if max := int(*query.MaxResults); len(resources) > max {
+			return resources[:max], nil
+		}
 	}
 
 	return resources, nil

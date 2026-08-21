@@ -49,7 +49,9 @@ func main() {
 			MaxResults: aws.Int32(2),
 		}
 
-		instances, err := ccRepo.ListInstancesByInput(query)
+		// ListResourcesByInput serves any resource type: swap the TypeName above
+		// and nothing else changes.
+		instances, err := ccRepo.ListResourcesByInput(query, false)
 		if err != nil {
 			fin(err)
 		}
