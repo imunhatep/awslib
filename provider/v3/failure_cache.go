@@ -1,23 +1,65 @@
 package v3
 
 import (
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/imunhatep/awslib/provider/types"
+	"github.com/rs/zerolog/log"
 )
 
 // DefaultClientFailureTTL bounds how long a client-creation failure is
-// remembered.
+// remembered. It matches the default resource cache TTL deliberately: both
+// answer the same question — "has anything changed since we last looked?" — and
+// a shorter window here would be wasted, because a region an account has not
+// enabled does not become enabled between two queries minutes apart.
 //
-// The value trades two costs against each other. Too short, and a wide
-// multi-region sweep re-probes every disabled region on every request — the
-// problem this cache exists to solve. Too long, and a recovered credential is
-// not noticed: an expired SSO session fails client creation the same way a
-// disabled region does, so caching that outcome indefinitely would keep the pool
-// broken after the operator logged back in. Five minutes collapses the repeats
-// within a burst of queries while keeping the recovery window short.
-const DefaultClientFailureTTL = 5 * time.Minute
+// A TTL this long is only safe because credential failures are excluded from the
+// cache entirely (see credentialFailure). Without that exclusion an expired SSO
+// session would poison every region at once, and the pool would stay broken for
+// the whole TTL after the operator logged back in.
+const DefaultClientFailureTTL = 6 * time.Hour
+
+// credentialFailure reports whether an error is about the caller's credentials
+// rather than the target region.
+//
+// This distinction is what makes a long TTL safe. A region the account has not
+// enabled, or one whose endpoint does not route, is a stable fact worth
+// remembering for hours. An expired or missing credential is transient, fails
+// identically for every region at once, and is fixed by re-authenticating — so
+// caching it would turn a 30-second `aws sso login` into a TTL-long outage.
+//
+// Deliberately absent from the list: InvalidClientTokenId. That is what STS
+// returns for a region the account has not opted into, which is the single most
+// common thing this cache exists to remember. It can also mean a rotated static
+// key, so a static-credential deployment may cache one round of failures until
+// the TTL lapses — the accepted cost of keeping the common case fast.
+func credentialFailure(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	haystack := strings.ToLower(err.Error())
+
+	markers := []string{
+		"expired",                        // ExpiredToken/ExpiredTokenException/RequestExpired, expired SSO token
+		"failed to refresh",              // cached SSO token could not be refreshed
+		"invalidgrant",                   // SSO refresh rejected
+		"unauthorizedexception",          // SSO GetRoleCredentials 401
+		"nocredentialproviders",          // nothing in the chain resolved
+		"failed to retrieve credentials", // provider chain gave up
+		"no valid credential",
+	}
+
+	for _, marker := range markers {
+		if strings.Contains(haystack, marker) {
+			return true
+		}
+	}
+
+	return false
+}
 
 // FailureCache remembers per (account, region) client-creation failures so a
 // region that cannot produce a client is not re-probed on every request.
@@ -82,9 +124,19 @@ func (c *FailureCache) Err(accountID types.AwsAccountID, region types.AwsRegion)
 }
 
 // Add remembers a client-creation failure. A nil error is ignored so callers can
-// pass a result through unconditionally.
+// pass a result through unconditionally, and a credential failure is ignored
+// because it says nothing about the region and would outlive the fix for it.
 func (c *FailureCache) Add(accountID types.AwsAccountID, region types.AwsRegion, err error) {
 	if c == nil || err == nil {
+		return
+	}
+
+	if credentialFailure(err) {
+		log.Debug().Err(err).
+			Stringer("accountID", accountID).
+			Stringer("region", region).
+			Msg("[FailureCache.Add] credential failure, not cached so re-authenticating takes effect immediately")
+
 		return
 	}
 

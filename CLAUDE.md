@@ -84,6 +84,10 @@ Each AWS service has a package under `service/<name>/` (ec2, s3, rds, ...). With
   here**. `FindAllCC` is the switch-less Cloud Control alternative covering every type at once (see
   below).
 - `proxy.RepoProxyPool` builds one `RepoProxy` per client and can `WithCache(...)` them all.
+- `resources.Provider` (`resources/provider.go`) runs the proxies **in parallel** for a single
+  resource type, streaming results through a buffered channel (`ResourceBusSize = 10000`) to a
+  `ResourceReader`. It throttles goroutine launch by 100ms, bounds each proxy with a timeout, and
+  drops resources (with a metric) if the channel is full.
 
 #### Scoping to one account
 
@@ -102,10 +106,38 @@ an empty slice: a caller that asked about the wrong account must not be told the
 account is empty. `PoolAccountIDs()` exists because `ListAccountIDs()` on
 `provider.ClientPool` reports the accounts of clients *already created*, so it is
 empty until the first `GetClients` call and cannot be used to validate a request.
-- `resources.Provider` (`resources/provider.go`) runs the proxies **in parallel** for a single
-  resource type, streaming results through a buffered channel (`ResourceBusSize = 10000`) to a
-  `ResourceReader`. It throttles goroutine launch by 100ms and drops resources (with a metric) if the
-  channel is full.
+
+#### Partial answers: failure caching and the per-proxy timeout
+
+Two mechanisms keep a wide multi-region sweep from being both slow and quietly wrong. Both exist
+because the expensive and misleading parts of such a sweep are the *failures*, which the resource
+`DataCache` never sees — it only caches successful repository results.
+
+- **`v3.FailureCache`** (`provider/v3/failure_cache.go`) remembers per (account, region)
+  client-creation failures, held by both pools. Successful clients were always cached for the pool's
+  lifetime; failures were not cached at all, so a region the account has not enabled cost a rejected
+  STS call on *every* request, and one whose endpoint does not route cost a full TCP timeout on every
+  request. `DefaultClientFailureTTL` is **6h, matching the default resource cache TTL** — both answer
+  "has anything changed since we last looked?", and a shorter window would be wasted, since a region
+  an account has not enabled does not become enabled between two queries minutes apart. aws-mcp-go
+  wires it from `--cache-ttl`, so one flag moves both.
+- **The long TTL is only safe because `credentialFailure` excludes credential errors** from the cache
+  entirely. An expired or missing credential fails identically for *every* region at once and is fixed
+  by re-authenticating, so caching it would turn a 30-second `aws sso login` into a TTL-long outage.
+  The exclusion list is expiry/refresh/unauthorized markers only — **`InvalidClientTokenId` is
+  deliberately not on it**, because that is exactly what STS returns for a region the account has not
+  opted into, the single most common thing this cache exists to remember. The accepted cost is that a
+  static-credential deployment with a rotated key caches one round of failures until the TTL lapses.
+  Both halves are pinned by `TestFailureCacheSkipsCredentialFailures` and
+  `TestFailureCacheCachesRegionFailures`.
+- **`Provider`'s per-proxy timeout** (`DefaultRegionTimeout`, 60s; override with `WithTimeout`).
+  Without it `Read()` waited on every proxy indefinitely, so one unroutable region meant the caller
+  got *nothing* rather than every other region's resources. `WithTimeout` deliberately ignores
+  non-positive values — waiting forever is the behaviour being removed, so it cannot be re-enabled.
+- **`ResourceReader.Failures()`** reports the proxies that errored or timed out. These used to be
+  logged and dropped, which left "this account holds none of that type" and "this account could not be
+  reached" indistinguishable in the result. An empty slice is what licenses treating a short list as
+  complete.
 
 #### The generic Cloud Control path (`proxy/generic.go`)
 
