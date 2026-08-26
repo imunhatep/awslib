@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -86,4 +87,41 @@ func TestResourcePoolMiddleware_HandleResourceReader(t *testing.T) {
 	resources := middleware.GetResourcesByType(types.ResourceTypeInstance)
 	assert.Len(t, resources, 1)
 	assert.Equal(t, "1", resources[0].GetId())
+}
+
+// HandleResourceReader launches updateMetrics in its own goroutine while other resource
+// types are still being flushed, so the pool map is read and written at the same time.
+// Reading it unlocked is a `concurrent map read and map write` fatal error — not a
+// panic, so no recover() catches it and the process dies. This killed the serve pod in
+// tools-test after its second read cycle. Run under -race.
+func TestResourcePoolMiddlewareFlushRacesUpdateMetrics(t *testing.T) {
+	pool := NewResourcePoolMiddleware()
+
+	resourceTypes := []types.ResourceType{
+		types.ResourceTypeVolume,
+		types.ResourceTypeInstance,
+		types.ResourceTypeBucket,
+		types.ResourceTypeVpc,
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < 200; i++ {
+		resourceType := resourceTypes[i%len(resourceTypes)]
+
+		wg.Add(3)
+		go func() {
+			defer wg.Done()
+			pool.flush(resourceType, []service.ResourceInterface{MockEntity{id: "r"}})
+		}()
+		go func() {
+			defer wg.Done()
+			pool.updateMetrics(resourceType)
+		}()
+		go func() {
+			defer wg.Done()
+			pool.GetResourcesByType(resourceType)
+		}()
+	}
+
+	wg.Wait()
 }

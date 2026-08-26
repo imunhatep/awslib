@@ -87,7 +87,17 @@ func (m *ResourcePoolMiddleware) flush(resourceType types.ResourceType, resource
 }
 
 func (m *ResourcePoolMiddleware) updateMetrics(resourceType types.ResourceType) {
+	// HandleResourceReader runs this in its own goroutine, concurrently with flush()
+	// calls for every other resource type, so the map read has to be guarded like the
+	// other readers are. Reading it unlocked is a `concurrent map read and map write`
+	// fatal error, which no recover() can catch.
+	//
+	// Only the map lookup needs the lock: flush replaces the whole slice rather than
+	// mutating it, so the reference taken here stays valid once the lock is released.
+	m.writeLock.RLock()
 	resourceList, ok := m.resourceList[resourceType]
+	m.writeLock.RUnlock()
+
 	if !ok {
 		promQL := map[string]string{"resource_type": cfg.ResourceTypeToString(resourceType)}
 		if metrics.AwsMetricsEnabled {
