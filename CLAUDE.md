@@ -117,10 +117,13 @@ because the expensive and misleading parts of such a sweep are the *failures*, w
   client-creation failures, held by both pools. Successful clients were always cached for the pool's
   lifetime; failures were not cached at all, so a region the account has not enabled cost a rejected
   STS call on *every* request, and one whose endpoint does not route cost a full TCP timeout on every
-  request. `DefaultClientFailureTTL` is **6h, matching the default resource cache TTL** — both answer
-  "has anything changed since we last looked?", and a shorter window would be wasted, since a region
-  an account has not enabled does not become enabled between two queries minutes apart. aws-mcp-go
-  wires it from `--cache-ttl`, so one flag moves both.
+  request. `DefaultClientFailureTTL` is set on the same order as a typical resource cache TTL, for the
+  same reason — both answer "has anything changed since we last looked?", and a short window would be
+  wasted, since a region an account has not enabled does not become enabled between two queries
+  minutes apart. **Consumers should pass their own TTL via `WithFailureTTL` rather than rely on the
+  library default**, so the two age on one clock; aws-mcp-go wires its `--cache-ttl` through, which
+  means one flag moves both there. Don't assert the constant's literal value in tests — it is a tuning
+  decision, and pinning it turns a tweak into a CI failure.
 - **The long TTL is only safe because `credentialFailure` excludes credential errors** from the cache
   entirely. An expired or missing credential fails identically for *every* region at once and is fixed
   by re-authenticating, so caching it would turn a 30-second `aws sso login` into a TTL-long outage.

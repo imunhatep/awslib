@@ -10,10 +10,14 @@ import (
 )
 
 // DefaultClientFailureTTL bounds how long a client-creation failure is
-// remembered. It matches the default resource cache TTL deliberately: both
-// answer the same question — "has anything changed since we last looked?" — and
-// a shorter window here would be wasted, because a region an account has not
+// remembered. It is set on the same order as a typical resource cache TTL, and
+// for the same reason: both answer "has anything changed since we last looked?",
+// and a short window here would be wasted, because a region an account has not
 // enabled does not become enabled between two queries minutes apart.
+//
+// This is only the library default. A consumer that already has a cache TTL of
+// its own should pass it via WithFailureTTL so the two age on one clock instead
+// of leaving a second, hidden window — aws-mcp-go wires its --cache-ttl through.
 //
 // A TTL this long is only safe because credential failures are excluded from the
 // cache entirely (see credentialFailure). Without that exclusion an expired SSO
