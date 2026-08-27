@@ -88,7 +88,14 @@ Services exposing typed, service-specific APIs instead — cost figures, health 
 lists are not resources, so they are fetched through their own repositories rather than the
 `RepoProxy` fanout:
 
-costexplorer, health, pricing
+costexplorer, health, pricing, resourcegroupstagging
+
+`resourcegroupstagging` is the odd one there: it answers about tags rather than resources, in bulk.
+One `GetResources` page carries up to 100 ARN-and-tag pairs regardless of type, so filling in tags for a
+whole region costs a handful of calls instead of one per resource — which is the difference between a
+usable and an unusable Cloud Control sweep, since most Cloud Control LIST handlers omit tags entirely.
+It reports only resources that are currently tagged or that ever held a tag, so it enriches a resource
+list and must never *be* one.
 
 And **cloudcontrol**, which is not a service in the same sense: it is one generic repository that
 serves *any* resource type through the AWS Cloud Control API, with no per-type code. Use it for types

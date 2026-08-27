@@ -26,6 +26,12 @@ const (
 	ResourceTypeCostForecast             awscfg.ResourceType = "AWS::CostExplorer::CostForecast"
 	ResourceTypeCostDimensionValue       awscfg.ResourceType = "AWS::CostExplorer::DimensionValue"
 
+	// ResourceTypeTagMapping labels Resource Groups Tagging API calls, which
+	// answer about tags across many resource types at once and so have no single
+	// type of their own. Deliberately absent from ResourceTypeList: nothing
+	// fetches it as a resource.
+	ResourceTypeTagMapping awscfg.ResourceType = "AWS::ResourceGroupsTagging::TagMapping"
+
 	// CloudFront SaaS Manager (multi-tenant distributions). ListDistributionTenants
 	// returns summaries; the full tenant only comes back from a Get, so the two are
 	// tracked as distinct resource types.

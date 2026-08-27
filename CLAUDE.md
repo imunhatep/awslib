@@ -190,6 +190,77 @@ Three invariants worth keeping:
   makes its package uncompilable and the generators then silently *skip* that package rather than
   fixing it. Remove the stale file first, then run `generate-cached` followed by `generate-gob`.
 
+#### Bulk tags (`service/resourcegroupstagging`)
+
+`ResourceGroupsTaggingRepository` reads and writes tags for many resources per call, which is the only
+way tags scale across a sweep: the per-service calls cost one request per resource (`GetBucketTagging`
+per bucket), and a Cloud Control resource whose LIST handler omits tags costs a `GetResource` each.
+`GetResources` returns up to 100 ARN-and-tag pairs per page for any type.
+
+Four things about it are load-bearing:
+
+- **It is an enrichment source, never a resource lister.** The API returns only resources that are
+  currently tagged or that ever held a tag, so a never-tagged resource is *absent* — enumerating through
+  it silently drops resources, the failure mode `ListResourcesByInput` is written to avoid.
+- **The `cfg.ResourceType` → filter table (`resource_type.go`) has to be hand-written.** AWS provides no
+  conversion, and none can be derived: the filter is `service[:resourceType]` spelled as it appears in the
+  ARN, which matches the CloudFormation type only by coincidence (`AWS::RDS::DBInstance` → `rds:db`,
+  `AWS::Logs::LogGroup` → `logs:log-group`, `AWS::EFS::FileSystem` → `elasticfilesystem:file-system`).
+  Some entries are the bare service name on purpose — `arn:aws:s3:::bucket` has no resource-type segment,
+  so `s3:bucket` would be invented. `ResourceTypeFilter` returns `ok bool` precisely so an unknown type
+  falls back to an unfiltered region sweep (a superset) rather than a guessed filter, which AWS answers
+  with an empty list or an `InvalidParameterException` — both of which read as "no tags".
+  `TestEveryResourceTypeIsDecided` fails when a type is added to `service/cfg` without a filter or an
+  entry in `unsupportedResourceTypes`, because an unmapped type degrades silently and permanently.
+- **`TagIndex.ById` drops colliding identifiers instead of picking a winner.** The identifier index exists
+  for Cloud Control resources, which carry an opaque identifier and usually no ARN, so deriving the
+  identifier back out of the ARN is a heuristic. Note the asymmetry with the no-synthesized-ARN rule
+  above: this guess is only ever used as a *lookup* key, so its worst case is an unfilled tag map, never
+  a wrong ARN handed to a consumer. Tags attributed to the wrong resource would not be recoverable.
+- **`TagResources`/`UntagResources` return `(failures, nil)` on partial success.** AWS answers a partly
+  failed write with HTTP 200 and a `FailedResourcesMap`, so a nil error is not proof the write landed;
+  an empty map is. The methods chunk at 20 ARNs (AWS's write limit, five times smaller than the
+  100-ARN read limit) and return the failures collected so far alongside a hard error, because earlier
+  batches really were applied.
+
+`TagMapping` keeps its fields exported for the usual gob reason. `TagIndex` is a view rebuilt from the
+cached `[]TagMapping` rather than a repository return type, so there is one representation on the wire.
+
+#### S3 bucket region scoping (`service/s3/bucket_repository.go`)
+
+`ListBuckets` is account-wide — it returns every bucket in every region — so region scoping has to
+happen somewhere. It happens server-side, via the `BucketRegion` request parameter, replacing a
+`GetBucketLocation` per bucket. Three coupled details:
+
+- **Pagination is mandatory once `BucketRegion` is set**: S3 then applies a default page size of 10,000
+  and returns a continuation token, so an account past that many buckets loses the remainder without a
+  paginator.
+- **The per-bucket `BucketRegion` in the response is still checked.** S3 populates it whenever the request
+  carries any parameter, so it is free, and it is what catches an S3-compatible endpoint that ignored the
+  filter and returned the whole account. Only an empty value falls back to `GetBucketLocation`.
+- **An empty `LocationConstraint` means us-east-1, and `"EU"` means eu-west-1.** Comparing the raw
+  constraint against the client region hid every us-east-1 bucket; `bucketLocationRegion` normalizes both.
+
+Tags come from one `resourcegroupstagging` sweep per region rather than a `GetBucketTagging` per bucket,
+which is why `ListBucketsByInput` collects `types.Bucket` values first and builds entities afterwards
+(`newBuckets`). Two rules there:
+
+- **A bucket absent from the sweep has no tags — do not confirm absences per bucket.** The tagging API
+  returns every currently-tagged resource, so a bucket with tags is in the result by definition.
+  Re-checking the absentees would hand back the whole fan-out in any account where most buckets are
+  untagged, which is the common case.
+- **The fallback exists for a failed sweep, not for a missing entry.** `bucketTags` logs a warning and
+  drops to `bucketTagsPerBucket` when `GetResources` errors, because the likely cause is a role without
+  `tag:GetResources` — a permission the old path never needed. Falling back keeps tags flowing for a
+  consumer that has not updated its IAM instead of reporting every bucket as untagged on the strength of
+  an answer that never arrived. `bucketTagsPerBucket` still discards its per-bucket error, as the code
+  always did: S3 answers an untagged bucket with `NoSuchTagSet`, so the common case arrives as a failure.
+
+The join is on the **bucket name**, not the ARN: the tagging API reports `arn:aws:s3:::<name>` while
+`helper.BuildArn` gives `Bucket` an ARN carrying region and account, so the two never match as strings.
+The name also avoids needing to know the partition. `tagsFromMap` sorts by key because `Bucket` is cached
+with its `Tags` slice and map order would otherwise differ between a cached and a fresh fetch.
+
 ### Resource types (`service/cfg/resources.go`)
 
 Resource types reuse `aws-sdk-go-v2/service/configservice/types.ResourceType` (CloudFormation-style
