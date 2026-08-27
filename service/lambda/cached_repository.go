@@ -16,9 +16,15 @@ type LambdaRepositoryCached struct {
 }
 
 // WithCache returns a LambdaRepositoryCached that stores/retrieves results via the given DataCache.
-// The cache namespace is set to "<accountID>:<region>".
+// The cache namespace is set to "<accountID>:<region>:lambda".
+//
+// The service name is part of the namespace because cache.Key renders a parameterless
+// call as the bare method name, and several services expose the same one: ListClustersAll
+// on ecs/eks/emr, ListTablesAll on dynamodb/glue. Sharing a namespace makes those
+// repositories overwrite each other's entries, so every read decodes another service's
+// payload, fails, and refetches from AWS.
 func (r *LambdaRepository) WithCache(dc *cache.DataCache) *LambdaRepositoryCached {
-	ns := fmt.Sprintf("%s:%s", r.client.GetAccountID(), r.client.GetRegion())
+	ns := fmt.Sprintf("%s:%s:lambda", r.client.GetAccountID(), r.client.GetRegion())
 	return &LambdaRepositoryCached{
 		repo:  r,
 		cache: dc.WithNamespace(ns),

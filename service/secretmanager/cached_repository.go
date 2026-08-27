@@ -15,9 +15,15 @@ type SecretManagerRepositoryCached struct {
 }
 
 // WithCache returns a SecretManagerRepositoryCached that stores/retrieves results via the given DataCache.
-// The cache namespace is set to "<accountID>:<region>".
+// The cache namespace is set to "<accountID>:<region>:secretmanager".
+//
+// The service name is part of the namespace because cache.Key renders a parameterless
+// call as the bare method name, and several services expose the same one: ListClustersAll
+// on ecs/eks/emr, ListTablesAll on dynamodb/glue. Sharing a namespace makes those
+// repositories overwrite each other's entries, so every read decodes another service's
+// payload, fails, and refetches from AWS.
 func (r *SecretManagerRepository) WithCache(dc *cache.DataCache) *SecretManagerRepositoryCached {
-	ns := fmt.Sprintf("%s:%s", r.client.GetAccountID(), r.client.GetRegion())
+	ns := fmt.Sprintf("%s:%s:secretmanager", r.client.GetAccountID(), r.client.GetRegion())
 	return &SecretManagerRepositoryCached{
 		repo:  r,
 		cache: dc.WithNamespace(ns),

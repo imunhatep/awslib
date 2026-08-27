@@ -16,9 +16,15 @@ type CloudWatchLogsRepositoryCached struct {
 }
 
 // WithCache returns a CloudWatchLogsRepositoryCached that stores/retrieves results via the given DataCache.
-// The cache namespace is set to "<accountID>:<region>".
+// The cache namespace is set to "<accountID>:<region>:cloudwatchlogs".
+//
+// The service name is part of the namespace because cache.Key renders a parameterless
+// call as the bare method name, and several services expose the same one: ListClustersAll
+// on ecs/eks/emr, ListTablesAll on dynamodb/glue. Sharing a namespace makes those
+// repositories overwrite each other's entries, so every read decodes another service's
+// payload, fails, and refetches from AWS.
 func (r *CloudWatchLogsRepository) WithCache(dc *cache.DataCache) *CloudWatchLogsRepositoryCached {
-	ns := fmt.Sprintf("%s:%s", r.client.GetAccountID(), r.client.GetRegion())
+	ns := fmt.Sprintf("%s:%s:cloudwatchlogs", r.client.GetAccountID(), r.client.GetRegion())
 	return &CloudWatchLogsRepositoryCached{
 		repo:  r,
 		cache: dc.WithNamespace(ns),

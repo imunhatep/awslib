@@ -16,9 +16,15 @@ type CloudTrailRepositoryCached struct {
 }
 
 // WithCache returns a CloudTrailRepositoryCached that stores/retrieves results via the given DataCache.
-// The cache namespace is set to "<accountID>:<region>".
+// The cache namespace is set to "<accountID>:<region>:cloudtrail".
+//
+// The service name is part of the namespace because cache.Key renders a parameterless
+// call as the bare method name, and several services expose the same one: ListClustersAll
+// on ecs/eks/emr, ListTablesAll on dynamodb/glue. Sharing a namespace makes those
+// repositories overwrite each other's entries, so every read decodes another service's
+// payload, fails, and refetches from AWS.
 func (r *CloudTrailRepository) WithCache(dc *cache.DataCache) *CloudTrailRepositoryCached {
-	ns := fmt.Sprintf("%s:%s", r.client.GetAccountID(), r.client.GetRegion())
+	ns := fmt.Sprintf("%s:%s:cloudtrail", r.client.GetAccountID(), r.client.GetRegion())
 	return &CloudTrailRepositoryCached{
 		repo:  r,
 		cache: dc.WithNamespace(ns),
