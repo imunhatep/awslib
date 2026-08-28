@@ -26,6 +26,14 @@ const (
 	ResourceTypeCostForecast             awscfg.ResourceType = "AWS::CostExplorer::CostForecast"
 	ResourceTypeCostDimensionValue       awscfg.ResourceType = "AWS::CostExplorer::DimensionValue"
 
+	// Savings Plans calls answer about commitments and the rates they are offered
+	// at, not about anything fetchable: a purchased plan is closer to a contract
+	// than a resource, and an offering rate is a price. Both are deliberately absent
+	// from ResourceTypeList and from proxy.RepoProxy.FindAll — they exist only to
+	// label metrics, the same way ResourceTypeTagMapping below does.
+	ResourceTypeSavingsPlan             awscfg.ResourceType = "AWS::SavingsPlans::SavingsPlan"
+	ResourceTypeSavingsPlanOfferingRate awscfg.ResourceType = "AWS::SavingsPlans::OfferingRate"
+
 	// ResourceTypeTagMapping labels Resource Groups Tagging API calls, which
 	// answer about tags across many resource types at once and so have no single
 	// type of their own. Deliberately absent from ResourceTypeList: nothing
