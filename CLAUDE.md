@@ -61,6 +61,17 @@ Each AWS service has a package under `service/<name>/` (ec2, s3, rds, ...). With
   `service.AbstractResource` and the raw SDK type, and satisfy `service.ResourceInterface`
   (`service/resource.go`): `GetAccountID/GetRegion/GetType/GetArn/GetId/GetName/GetCreatedAt/GetTags`.
   This normalized interface is what lets unrelated resource types flow through the same channels.
+  **`GetTags` and `GetAttributes` must return copies** — `dict.Copy(e.Tags)` for a stored map,
+  nothing extra for the entities that build their tags per call from an SDK tag slice. Entities
+  are values with value receivers, so nothing else about them is mutable through the interface,
+  but nine entity types stored a ready-made tag map and returned it: `resource.GetTags()["k"] =
+  "v"` was a write into shared state on those and into a throwaway map on the rest. Same
+  interface call, two outcomes, no way for the caller to tell. Cloud Control needs a deep copy
+  (`copyAttributes` in `service/cloudcontrol/resource.go`) because its attributes are parsed
+  JSON whose nested objects and arrays are what a shallow copy leaves shared. Pinned by
+  `service/entity_tags_test.go`, a table over concrete entity types — a new entity that returns
+  its stored map has to be added there to be caught — plus
+  `TestGetAttributesCopiesNestedValues` in the Cloud Control package.
 - `cached_repository.go` — **generated**. `XxxRepositoryCached` wraps the repo; `repo.WithCache(dc)`
   returns it with a `<accountID>:<region>` cache namespace. Cached methods build their key with
   `cache.Key(methodName, params...)` and only cache on success.
@@ -133,10 +144,11 @@ because the expensive and misleading parts of such a sweep are the *failures*, w
   static-credential deployment with a rotated key caches one round of failures until the TTL lapses.
   Both halves are pinned by `TestFailureCacheSkipsCredentialFailures` and
   `TestFailureCacheCachesRegionFailures`.
-- **`Provider`'s per-proxy timeout** (`DefaultRegionTimeout`, 60s; override with `WithTimeout`).
-  Without it `Read()` waited on every proxy indefinitely, so one unroutable region meant the caller
-  got *nothing* rather than every other region's resources. `WithTimeout` deliberately ignores
-  non-positive values — waiting forever is the behaviour being removed, so it cannot be re-enabled.
+- **`Provider` deliberately has no per-proxy wall-clock timeout.** One was tried and removed: a
+  deadline there cannot tell an endpoint that never connects from a legitimately long paginated read
+  (S3 lists every bucket, then queries each one's tags), so it abandoned real results and reported a
+  working region as failed. Bounding a fetch is the HTTP client's job — dial and TLS timeouts on the
+  AWS client cut off a non-routing endpoint in seconds. Do not reintroduce `WithTimeout` here.
 - **`ResourceReader.Failures()`** reports the proxies that errored or timed out. These used to be
   logged and dropped, which left "this account holds none of that type" and "this account could not be
   reached" indistinguishable in the result. An empty slice is what licenses treating a short list as

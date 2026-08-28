@@ -8,6 +8,7 @@ import (
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/imunhatep/awslib/service"
+	"github.com/imunhatep/gocollection/dict"
 )
 
 type Topic struct {
@@ -60,7 +61,7 @@ func (e Topic) GetPolicy() (string, bool) {
 }
 
 func (e Topic) GetAttributes() map[string]string {
-	return e.Attributes
+	return dict.Copy(e.Attributes)
 }
 
 func (e Topic) GetTags() map[string]string {

@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/batch/types"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/imunhatep/awslib/service"
+	"github.com/imunhatep/gocollection/dict"
 )
 
 type ComputeEnvironmentList struct {
@@ -42,7 +43,7 @@ func (e ComputeEnvironment) GetName() string {
 }
 
 func (e ComputeEnvironment) GetTags() map[string]string {
-	return e.Tags
+	return dict.Copy(e.Tags)
 }
 
 func (e ComputeEnvironment) GetTagValue(tag string) string {

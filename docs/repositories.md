@@ -121,3 +121,12 @@ func ExampleRepoProxy(ctx context.Context, clients []*v3.Client, dataCache *cach
 }
 ```
 
+#### Going further
+
+- The list of service packages and their repository constructors, and the 56 ready-made SDK
+  client wrappers, are in [provider.md](provider.md).
+- `RepoProxyPool` + `Provider` fetch one resource type at a time. To sweep many types
+  through a pipeline — logging, collecting, exporting metrics — use the observer and its
+  middleware chain: [observer.md](observer.md).
+- `ResourceReader.Failures()` reports proxies that could not be queried, so a short list can
+  be told apart from a complete one. Check it before reporting "none found".

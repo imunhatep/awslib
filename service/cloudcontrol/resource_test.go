@@ -200,3 +200,28 @@ func TestPropertiesAreValidJSON(t *testing.T) {
 	var v map[string]interface{}
 	require.NoError(t, json.Unmarshal([]byte(properties), &v))
 }
+
+// GetAttributes hands the parsed Properties JSON to callers, and the resource is
+// shared by every middleware stage and by the resource pool — so the copy has to
+// be deep. A shallow one leaves the nested objects and arrays shared, which is
+// where anything interesting in a Cloud Control payload lives.
+func TestGetAttributesCopiesNestedValues(t *testing.T) {
+	resource := Resource{
+		Attributes: map[string]interface{}{
+			"BucketName": "bucket",
+			"Versioning": map[string]interface{}{"Status": "Enabled"},
+			"Rules":      []interface{}{map[string]interface{}{"Id": "expire"}},
+		},
+	}
+
+	attributes := resource.GetAttributes()
+	attributes["BucketName"] = "mutated"
+	attributes["Versioning"].(map[string]interface{})["Status"] = "Suspended"
+	attributes["Rules"].([]interface{})[0].(map[string]interface{})["Id"] = "mutated"
+
+	fresh := resource.GetAttributes()
+
+	assert.Equal(t, "bucket", fresh["BucketName"])
+	assert.Equal(t, "Enabled", fresh["Versioning"].(map[string]interface{})["Status"], "nested object was shared")
+	assert.Equal(t, "expire", fresh["Rules"].([]interface{})[0].(map[string]interface{})["Id"], "nested array element was shared")
+}

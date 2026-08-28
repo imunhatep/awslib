@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/cfg"
+	"github.com/imunhatep/gocollection/dict"
 )
 
 type LogGroupList struct {
@@ -42,7 +43,7 @@ func (e LogGroup) GetName() string {
 }
 
 func (e LogGroup) GetTags() map[string]string {
-	return e.Tags
+	return dict.Copy(e.Tags)
 }
 
 func (e LogGroup) GetTagValue(tag string) string {

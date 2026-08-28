@@ -50,9 +50,11 @@ for _, instance := range instances {
 
 | Document | What's in it |
 |---|---|
-| [docs/provider.md](docs/provider.md) | clients, client pools, cross-account role assumption, log verbosity |
+| [docs/provider.md](docs/provider.md) | clients, client pools, regions, cross-account role assumption, the 56 ready-made service clients, IAM policies, log verbosity |
 | [docs/repositories.md](docs/repositories.md) | `ResourceInterface`, cached repositories, `RepoProxy` fanout |
+| [docs/observer.md](docs/observer.md) | the observer, the middleware chain, `AwsBlame`, CloudTrail lookups |
 | [docs/cloudcontrol.md](docs/cloudcontrol.md) | fetching any resource type without a repository |
+| [docs/costexplorer.md](docs/costexplorer.md) | cost and usage queries, the filter DSL, forecasts |
 | [docs/savingsplans.md](docs/savingsplans.md) | Savings Plans inventory and offering rates |
 | [docs/monitoring.md](docs/monitoring.md) | the Prometheus metrics and how to read them |
 | [docs/code-generation.md](docs/code-generation.md) | the generators, and when to re-run them |
@@ -72,7 +74,8 @@ Services exposing typed, service-specific APIs instead — cost figures, health 
 price lists, savings plans and bulk tags are not resources, so they are fetched through
 their own repositories rather than the `RepoProxy` fanout:
 
-costexplorer, health, pricing, [savingsplans](docs/savingsplans.md), resourcegroupstagging
+[costexplorer](docs/costexplorer.md), health, pricing, [savingsplans](docs/savingsplans.md),
+resourcegroupstagging
 
 `resourcegroupstagging` is the odd one there: it answers about tags rather than
 resources, in bulk. One `GetResources` page carries up to 100 ARN-and-tag pairs

@@ -6,6 +6,7 @@ import (
 	cc "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/imunhatep/awslib/service"
+	"github.com/imunhatep/gocollection/dict"
 )
 
 // Resource is a schema-less AWS resource fetched through the Cloud Control API.
@@ -82,11 +83,11 @@ func (e Resource) GetName() string {
 // curate attributes per resource type (e.g. an MCP server's summary view) can
 // type-assert for this method to get a generic fallback for free.
 func (e Resource) GetAttributes() map[string]interface{} {
-	return e.Attributes
+	return copyAttributes(e.Attributes)
 }
 
 func (e Resource) GetTags() map[string]string {
-	return e.Tags
+	return dict.Copy(e.Tags)
 }
 
 func (e Resource) GetTagValue(tag string) string {
@@ -113,4 +114,35 @@ func arnFromAttributes(attributes map[string]interface{}) *arn.ARN {
 	}
 
 	return nil
+}
+
+// copyAttributes deep-copies the parsed Properties JSON. GetAttributes hands the
+// map to callers, and the resource behind it is shared by every middleware stage
+// and by the resource pool, so a caller writing into the result would rewrite the
+// resource for everyone. The copy is deep because the nested objects and arrays
+// are exactly what a shallow copy would leave shared; JSON leaves (string,
+// float64, bool, nil) are values already.
+func copyAttributes(attributes map[string]interface{}) map[string]interface{} {
+	copied := make(map[string]interface{}, len(attributes))
+	for key, value := range attributes {
+		copied[key] = copyAttributeValue(value)
+	}
+
+	return copied
+}
+
+func copyAttributeValue(value interface{}) interface{} {
+	switch typed := value.(type) {
+	case map[string]interface{}:
+		return copyAttributes(typed)
+	case []interface{}:
+		copied := make([]interface{}, len(typed))
+		for i, item := range typed {
+			copied[i] = copyAttributeValue(item)
+		}
+
+		return copied
+	default:
+		return value
+	}
 }

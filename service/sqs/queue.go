@@ -7,6 +7,7 @@ import (
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/imunhatep/awslib/service"
+	"github.com/imunhatep/gocollection/dict"
 )
 
 type Queue struct {
@@ -40,11 +41,11 @@ func (e Queue) GetName() string {
 }
 
 func (e Queue) GetAttributes() map[string]string {
-	return e.Attributes
+	return dict.Copy(e.Attributes)
 }
 
 func (e Queue) GetTags() map[string]string {
-	return e.Tags
+	return dict.Copy(e.Tags)
 }
 
 func (e Queue) GetTagValue(tag string) string {

@@ -8,6 +8,7 @@ import (
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	types2 "github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/imunhatep/awslib/service"
+	"github.com/imunhatep/gocollection/dict"
 )
 
 type Function struct {
@@ -39,7 +40,7 @@ func (e Function) GetName() string {
 }
 
 func (e Function) GetTags() map[string]string {
-	return e.Tags
+	return dict.Copy(e.Tags)
 }
 
 func (e Function) GetTagValue(tag string) string {

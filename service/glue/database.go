@@ -6,6 +6,7 @@ import (
 	"github.com/imunhatep/awslib/helper"
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/cfg"
+	"github.com/imunhatep/gocollection/dict"
 )
 
 type DatabaseList struct {
@@ -38,7 +39,7 @@ func (e Database) GetName() string {
 }
 
 func (e Database) GetTags() map[string]string {
-	return e.Tags
+	return dict.Copy(e.Tags)
 }
 
 func (e Database) GetTagValue(tag string) string {

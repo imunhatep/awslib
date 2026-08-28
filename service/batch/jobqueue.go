@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/batch/types"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/imunhatep/awslib/service"
+	"github.com/imunhatep/gocollection/dict"
 )
 
 type JobQueueList struct {
@@ -41,7 +42,7 @@ func (e JobQueue) GetName() string {
 }
 
 func (e JobQueue) GetTags() map[string]string {
-	return e.Tags
+	return dict.Copy(e.Tags)
 }
 
 func (e JobQueue) GetTagValue(tag string) string {

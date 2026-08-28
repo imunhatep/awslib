@@ -8,6 +8,7 @@ import (
 	"github.com/imunhatep/awslib/helper"
 	"github.com/imunhatep/awslib/service"
 	"github.com/imunhatep/awslib/service/cfg"
+	"github.com/imunhatep/gocollection/dict"
 )
 
 type TableList struct {
@@ -42,7 +43,7 @@ func (e Table) GetName() string {
 }
 
 func (e Table) GetTags() map[string]string {
-	return e.Tags
+	return dict.Copy(e.Tags)
 }
 
 func (e Table) GetTagValue(tag string) string {

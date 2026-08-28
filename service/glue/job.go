@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/glue/types"
 	"github.com/imunhatep/awslib/helper"
 	"github.com/imunhatep/awslib/service"
+	"github.com/imunhatep/gocollection/dict"
 )
 
 type JobList struct {
@@ -38,7 +39,7 @@ func (e Job) GetName() string {
 }
 
 func (e Job) GetTags() map[string]string {
-	return e.Tags
+	return dict.Copy(e.Tags)
 }
 
 func (e Job) GetTagValue(tag string) string {
