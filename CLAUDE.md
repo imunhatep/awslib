@@ -290,7 +290,7 @@ the public `DataCache` API.
 
 - Errors are wrapped with `github.com/go-errors/errors` (`errors.New(err)`) to capture stack traces.
 - Logging uses `github.com/rs/zerolog` with bracketed `[Type.Method]` message prefixes; verbosity is
-  set globally via `zerolog.SetGlobalLevel` (see the `setLogLevel` example in README.md).
+  set globally via `zerolog.SetGlobalLevel` (see the `setLogLevel` example in `docs/provider.md`).
 - Collection helpers come from `github.com/imunhatep/gocollection` (`slice`, `dict`).
 - Prometheus metrics live in `metrics/` and are always guarded by `if metrics.AwsMetricsEnabled`.
 - Use `podman`, not `docker`, for any container operations.
