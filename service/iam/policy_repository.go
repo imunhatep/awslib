@@ -15,8 +15,15 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// ListPoliciesAll lists the account's own customer-managed policies.
+//
+// Scope is Local, not the API's default of All. All adds every AWS-managed policy —
+// on the order of a thousand per account, none of which the account owns, can tag or
+// can delete — and each one costs a ListPolicyTags call now that tags are populated.
+// A caller that genuinely wants AWS-managed policies can pass Scope: All through
+// ListPoliciesByInput.
 func (r *IamRepository) ListPoliciesAll() ([]Policy, error) {
-	return r.ListPoliciesByInput(&iam.ListPoliciesInput{})
+	return r.ListPoliciesByInput(&iam.ListPoliciesInput{Scope: types.PolicyScopeTypeLocal})
 }
 
 func (r *IamRepository) ListPoliciesByInput(query *iam.ListPoliciesInput) ([]Policy, error) {
@@ -39,6 +46,14 @@ func (r *IamRepository) ListPoliciesByInput(query *iam.ListPoliciesInput) ([]Pol
 		}
 
 		for _, v := range resp.Policies {
+			// ListPolicies does not return tags, so they are fetched per policy — the
+			// same shape ListUsersAll and ListRolesAll already use. Without this,
+			// Policy.GetTags() compiles and always returns an empty map, which is not a
+			// cosmetic gap: a caller filtering on a tag sees every policy as untagged,
+			// so an opt-out or lifecycle tag silently fails to protect anything.
+			tags, _ := r.ListPolicyTags(v)
+			v.Tags = tags
+
 			policies = append(policies, NewPolicy(r.client, v))
 		}
 	}
@@ -97,6 +112,10 @@ func (r *IamRepository) DescribePolicyByInput(query *iam.GetPolicyInput) (*Polic
 			With(r.promLabels("DescribePolicyByInput", cfg.ResourceTypePolicy)).
 			Observe(time.Since(start).Seconds())
 	}
+
+	// GetPolicy does not return tags either — see the note in ListPoliciesByInput.
+	tags, _ := r.ListPolicyTags(*resp.Policy)
+	resp.Policy.Tags = tags
 
 	policy := NewPolicy(r.client, *resp.Policy)
 

@@ -7,6 +7,7 @@ import "encoding/gob"
 // init registers this package's types with encoding/gob so they can be
 // serialized by the cache handlers. Importing this package is sufficient.
 func init() {
+	gob.Register(CredentialReportEntry{})
 	gob.Register(Policy{})
 	gob.Register(PolicyDocument{})
 	gob.Register(PolicyList{})
@@ -14,6 +15,7 @@ func init() {
 	gob.Register(Role{})
 	gob.Register(RoleList{})
 	gob.Register(Statement{})
+	gob.Register(TeardownStepError{})
 	gob.Register(User{})
 	gob.Register(UserList{})
 }

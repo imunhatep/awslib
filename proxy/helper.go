@@ -341,6 +341,37 @@ func FindIamUsers(ctx context.Context, client *v3.Client, dc *cache.DataCache) (
 	return slice.Map(items, cast[iam.User]), err
 }
 
+// FindIamRoles returns a list of IAM roles.
+//
+// RoleLastUsed is **not** populated here: ListRoles does not return it, and filling it
+// in costs one GetRole per role. This is the generic enumeration path, walked for every
+// resource type, so it stays on the cheap call. A caller that needs role dormancy should
+// ask the repository for ListRolesAllWithLastUsed directly.
+func FindIamRoles(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := iam.NewIamRepository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListRolesAll()
+		return slice.Map(items, cast[iam.Role]), err
+	}
+	items, err := repo.ListRolesAll()
+	return slice.Map(items, cast[iam.Role]), err
+}
+
+// FindIamPolicies returns a list of the account's customer-managed IAM policies.
+//
+// AWS-managed policies are excluded — ListPoliciesAll scopes to Local — because the
+// account neither owns them nor can act on them, and there are roughly a thousand of
+// them per account.
+func FindIamPolicies(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := iam.NewIamRepository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListPoliciesAll()
+		return slice.Map(items, cast[iam.Policy]), err
+	}
+	items, err := repo.ListPoliciesAll()
+	return slice.Map(items, cast[iam.Policy]), err
+}
+
 // FindLoadBalancers returns a list of Load Balancers
 func FindLoadBalancers(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := elb.NewLoadBalancerRepository(ctx, client)

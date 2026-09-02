@@ -32,6 +32,20 @@ func (r *IamRepository) WithCache(dc *cache.DataCache) *IamRepositoryCached {
 	}
 }
 
+// GetCredentialReport returns cached results when available, otherwise delegates to the underlying repository.
+func (c *IamRepositoryCached) GetCredentialReport() ([]CredentialReportEntry, error) {
+	cacheKey := cache.Key("GetCredentialReport")
+	var cached []CredentialReportEntry
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.GetCredentialReport()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // ListAssumedRoleArn returns cached results when available, otherwise delegates to the underlying repository.
 func (c *IamRepositoryCached) ListAssumedRoleArn(policyVersion PolicyVersion) []ptypes.RoleArn {
 	cacheKey := cache.Key("ListAssumedRoleArn", policyVersion)
@@ -177,6 +191,20 @@ func (c *IamRepositoryCached) ListRolesAll() ([]Role, error) {
 		return cached, nil
 	}
 	r0, r1 := c.repo.ListRolesAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListRolesAllWithLastUsed returns cached results when available, otherwise delegates to the underlying repository.
+func (c *IamRepositoryCached) ListRolesAllWithLastUsed() ([]Role, error) {
+	cacheKey := cache.Key("ListRolesAllWithLastUsed")
+	var cached []Role
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListRolesAllWithLastUsed()
 	if r1 == nil {
 		_ = c.cache.Write(cacheKey, r0)
 	}

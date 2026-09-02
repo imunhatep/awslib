@@ -73,7 +73,9 @@ var resourceTypeFilters = map[cfg.ResourceType]string{
 	cfg.ResourceTypeGlueJob:       "glue:job",
 	ccfg.ResourceTypeGlueTable:    "glue:table",
 	// iam
-	cfg.ResourceTypeUser: "iam:user",
+	cfg.ResourceTypeUser:   "iam:user",
+	cfg.ResourceTypeRole:   "iam:role",
+	cfg.ResourceTypePolicy: "iam:policy",
 	// lambda
 	cfg.ResourceTypeFunction: "lambda:function",
 	// rds

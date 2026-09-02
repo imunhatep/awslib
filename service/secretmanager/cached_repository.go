@@ -44,6 +44,20 @@ func (c *SecretManagerRepositoryCached) ListSecretsAll() ([]SecretEntry, error) 
 	return r0, r1
 }
 
+// ListSecretsAllIncludingPlannedDeletion returns cached results when available, otherwise delegates to the underlying repository.
+func (c *SecretManagerRepositoryCached) ListSecretsAllIncludingPlannedDeletion() ([]SecretEntry, error) {
+	cacheKey := cache.Key("ListSecretsAllIncludingPlannedDeletion")
+	var cached []SecretEntry
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListSecretsAllIncludingPlannedDeletion()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // ListSecretsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *SecretManagerRepositoryCached) ListSecretsByInput(query *sm.ListSecretsInput) ([]SecretEntry, error) {
 	cacheKey := cache.Key("ListSecretsByInput", query)

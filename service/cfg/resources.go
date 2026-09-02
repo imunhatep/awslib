@@ -71,7 +71,11 @@ func ResourceTypeList() []awscfg.ResourceType {
 
 func ResourceTypeListGlobal() []awscfg.ResourceType {
 	return []awscfg.ResourceType{
+		// iam — one global endpoint, so enumerating these per region returns the same
+		// objects once per region
 		awscfg.ResourceTypeUser,
+		awscfg.ResourceTypeRole,
+		awscfg.ResourceTypePolicy,
 		// route53
 		awscfg.ResourceTypeRoute53HostedZone,
 		ResourceTypeRoute53ResourceRecord,

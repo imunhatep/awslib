@@ -128,6 +128,10 @@ func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.Reso
 		items, err = FindSnsTopics(e.ctx, e.client, e.cache)
 	case cfg.ResourceTypeUser:
 		items, err = FindIamUsers(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeRole:
+		items, err = FindIamRoles(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypePolicy:
+		items, err = FindIamPolicies(e.ctx, e.client, e.cache)
 	case cfg.ResourceTypeVpc:
 		items, err = FindEc2Vpcs(e.ctx, e.client, e.cache)
 	case cfg.ResourceTypeSubnet:
