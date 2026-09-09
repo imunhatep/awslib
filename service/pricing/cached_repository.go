@@ -46,6 +46,20 @@ func (c *PricingRepositoryCached) GetInstancePricing(region ptypes.AwsRegion, in
 	return r0, r1
 }
 
+// GetInstancePricingByRegion returns cached results when available, otherwise delegates to the underlying repository.
+func (c *PricingRepositoryCached) GetInstancePricingByRegion(region ptypes.AwsRegion) (map[string]Ec2Product, error) {
+	cacheKey := cache.Key("GetInstancePricingByRegion", region)
+	var cached map[string]Ec2Product
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.GetInstancePricingByRegion(region)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // GetInstancePricingByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *PricingRepositoryCached) GetInstancePricingByInput(query *awspricing.GetProductsInput) ([]string, error) {
 	cacheKey := cache.Key("GetInstancePricingByInput", query)

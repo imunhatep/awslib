@@ -17,8 +17,25 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const AwsRetryAttempts = 5
-const AwsRetryMaxBackoffDelay = 3 * time.Second
+// Retry settings applied to every client this package builds.
+//
+// Both are passed to retry.NewStandard as options rather than through
+// config.WithRetryMaxAttempts, and that is not a style choice — see the comment in
+// DefaultAwsClientProviders for why the config-level option cannot work here.
+const (
+	// AwsRetryAttempts is the total number of attempts per request, the first
+	// included.
+	AwsRetryAttempts = 5
+	// AwsRetryMaxBackoffDelay caps the delay between attempts.
+	//
+	// This was 3s, which is too short for the case retries exist for. A throttled
+	// request answered with ThrottlingException needs the backoff to grow past the
+	// window the service is rate-limiting over; capped at 3s, all attempts land inside
+	// that window, fail, and the request is abandoned having waited under 10 seconds
+	// in total. 20s is the SDK's own default and leaves room for the exponential
+	// growth to do its job.
+	AwsRetryMaxBackoffDelay = 20 * time.Second
+)
 
 type ClientBuilder struct {
 	sync.Mutex
@@ -116,10 +133,26 @@ func (c *ClientBuilder) LocalClient(region types.AwsRegion) (*Client, error) {
 func DefaultAwsClientProviders(providers ...func(*config.LoadOptions) error) ([]func(options *config.LoadOptions) error, error) {
 	log.Debug().Msg("[client.GetAwsClientProviders] creating aws client with env creds")
 
-	// aws retry
+	// AWS retry.
+	//
+	// Both settings go inside retry.NewStandard, and config.WithRetryMaxAttempts is
+	// deliberately not used alongside it. Supplying a Retryer makes the SDK skip the
+	// retry options entirely — config.resolveRetryer assigns cfg.Retryer and returns
+	// before it reads them, commented there as "Only load the retry options if a
+	// custom retryer has not be specified". So cfg.RetryMaxAttempts stays 0, the
+	// service client's finalizeRetryMaxAttempts sees 0 and does nothing, and the
+	// retryer keeps retry.DefaultMaxAttempts, which is 3.
+	//
+	// That is what the pair of options here used to do: AwsRetryAttempts was passed
+	// in, silently discarded, and every client retried 3 times. Errors read
+	// "exceeded maximum number of attempts, 3" while the constant said 5.
 	commonProviders := []func(*config.LoadOptions) error{
-		config.WithRetryMaxAttempts(AwsRetryAttempts),
-		config.WithRetryer(func() aws.Retryer { return retry.AddWithMaxBackoffDelay(retry.NewStandard(), AwsRetryMaxBackoffDelay) }),
+		config.WithRetryer(func() aws.Retryer {
+			return retry.NewStandard(func(o *retry.StandardOptions) {
+				o.MaxAttempts = AwsRetryAttempts
+				o.MaxBackoff = AwsRetryMaxBackoffDelay
+			})
+		}),
 	}
 
 	// aws config credsProvider
