@@ -74,7 +74,7 @@ Each AWS service has a package under `service/<name>/` (ec2, s3, rds, ...). With
   `TestGetAttributesCopiesNestedValues` in the Cloud Control package.
 - `cached_repository.go` — **generated**. `XxxRepositoryCached` wraps the repo; `repo.WithCache(dc)`
   returns it with a `<accountID>:<region>` cache namespace. Cached methods build their key with
-  `cache.Key(methodName, params...)` and only cache on success.
+  `cache.Key(methodName, params...)` and only cache on success (and never a nil result, see below).
 
 ### 3. Cache layer (`cache/`)
 
@@ -82,6 +82,11 @@ Each AWS service has a package under `service/<name>/` (ec2, s3, rds, ...). With
   handlers; first hit wins on read. Namespacing via `WithNamespace`, handlers via `WithHandlers`.
 - Handlers in `cache/handlers/`: `NewInMemory(bigcache)` and file-based. Values are serialized with
   `encoding/gob` — this is why gob registration exists (see below).
+- Nothing is written for a nil result. `cache.IsNilValue` gates `DataCache.Write` and both handlers,
+  because `gob.Encode` **panics** on a top-level nil pointer instead of erroring: a repository method
+  that answers "no match" with `(nil, nil)` — e.g. `pricing.GetInstancePricing` for an instance type
+  a region does not offer — would otherwise kill the process from inside the generated cached wrapper.
+  The cost is that such lookups are refetched on every call; there is no negative caching.
 - `cache.Key(method, params...)` (`cache/key.go`) builds the keys the generated cached repositories
   use. It renders params **by value** via reflection (pointers dereferenced, map entries sorted,
   unexported fields included), because `%v` on an AWS SDK input embeds the addresses of its nested

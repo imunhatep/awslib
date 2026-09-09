@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-errors/errors"
+	"github.com/imunhatep/awslib/cache"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/unix"
@@ -84,6 +85,11 @@ func (h *InFile) Write(name string, data interface{}) error {
 
 	// logger with struct data
 	logger := h.getLogger(name)
+
+	if cache.IsNilValue(data) {
+		logger.Debug().Msg("[InFile.Write] nil value, nothing to cache")
+		return nil
+	}
 
 	// filepath containing cached data
 	path := h.getFilePath(name)

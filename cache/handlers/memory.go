@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/allegro/bigcache/v3"
+	"github.com/imunhatep/awslib/cache"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -53,6 +54,11 @@ func (h *InMemory) Write(name string, data interface{}) error {
 	defer h.mx.Unlock()
 
 	logger := h.getLogger(name)
+
+	if cache.IsNilValue(data) {
+		logger.Debug().Msg("[InMemory.Write] nil value, nothing to cache")
+		return nil
+	}
 
 	store := bytes.NewBuffer([]byte{})
 	encoder := gob.NewEncoder(store)

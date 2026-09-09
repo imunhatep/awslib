@@ -57,6 +57,13 @@ func (c *DataCache) Read(name string, data interface{}) bool {
 }
 
 func (c *DataCache) Write(name string, data interface{}) error {
+	// A nil result carries nothing to store and gob refuses to encode it, so this
+	// is not a cache write at all — leaving the write/error counters untouched.
+	if IsNilValue(data) {
+		log.Debug().Str("key", c.getKey(name)).Msg("[DataCache.Write] nil value, nothing to cache")
+		return nil
+	}
+
 	var errors []error
 
 	cacheKey := c.getKey(name)
