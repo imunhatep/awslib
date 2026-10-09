@@ -66,7 +66,7 @@ for _, instance := range instances {
 Services whose entities implement the normalized `service.ResourceInterface`, and so are
 reachable through `proxy.RepoProxy` and the parallel fetcher:
 
-athena, autoscaling, batch, cloudfront, cloudtrail, cloudwatchlogs, dynamodb, ec2, ecs,
+acm, athena, autoscaling, batch, cloudfront, cloudtrail, cloudwatchlogs, dynamodb, ec2, ecs,
 efs, eks, elb, emr, emrserverless, glue, iam, lambda, rds, route53, s3, secretmanager,
 sns, sqs
 

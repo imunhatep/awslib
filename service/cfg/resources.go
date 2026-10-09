@@ -46,6 +46,12 @@ const (
 	ResourceTypeCloudFrontDistributionTenant        awscfg.ResourceType = "AWS::CloudFront::DistributionTenant"
 	ResourceTypeCloudFrontDistributionTenantSummary awscfg.ResourceType = "AWS::CloudFront::DistributionTenantSummary"
 	ResourceTypeCloudFrontConnectionGroup           awscfg.ResourceType = "AWS::CloudFront::ConnectionGroup"
+
+	// ACM. ListCertificates returns summaries without validation records; the
+	// full certificate only comes back from DescribeCertificate, so the two are
+	// tracked as distinct resource types. The full one is AWS Config's own type.
+	ResourceTypeAcmCertificate        awscfg.ResourceType = awscfg.ResourceTypeCertificate
+	ResourceTypeAcmCertificateSummary awscfg.ResourceType = "AWS::ACM::CertificateSummary"
 )
 
 func ResourceTypeToString(r awscfg.ResourceType) string {
@@ -89,6 +95,8 @@ func ResourceTypeListGlobal() []awscfg.ResourceType {
 
 func ResourceTypeListRegional() []awscfg.ResourceType {
 	return []awscfg.ResourceType{
+		// acm
+		ResourceTypeAcmCertificateSummary,
 		// athena
 		awscfg.ResourceTypeAthenaDataCatalog,
 		awscfg.ResourceTypeAthenaWorkGroup,

@@ -29,6 +29,10 @@ import (
 //
 // A type that is absent is absent on purpose — see ResourceTypeFilter.
 var resourceTypeFilters = map[cfg.ResourceType]string{
+	// acm — arn:aws:acm:<region>:<account>:certificate/<id>; the summary and the
+	// full certificate are the same ARN
+	ccfg.ResourceTypeAcmCertificate:        "acm:certificate",
+	ccfg.ResourceTypeAcmCertificateSummary: "acm:certificate",
 	// athena
 	cfg.ResourceTypeAthenaDataCatalog: "athena:datacatalog",
 	cfg.ResourceTypeAthenaWorkGroup:   "athena:workgroup",
