@@ -7,6 +7,7 @@ import (
 	"github.com/imunhatep/awslib/cache"
 	v3 "github.com/imunhatep/awslib/provider/v3"
 	"github.com/imunhatep/awslib/service"
+	"github.com/imunhatep/awslib/service/acm"
 	"github.com/imunhatep/awslib/service/autoscaling"
 	"github.com/imunhatep/awslib/service/batch"
 	"github.com/imunhatep/awslib/service/cloudfront"
@@ -381,6 +382,19 @@ func FindLoadBalancers(ctx context.Context, client *v3.Client, dc *cache.DataCac
 	}
 	items, err := repo.ListLoadBalancersAll()
 	return slice.Map(items, cast[elb.LoadBalancer]), err
+}
+
+// FindAcmCertificates returns a list of ACM certificates in the client's
+// region. Tags are not part of the list response and are therefore not
+// included here — use ListCertificatesWithTagsAll when they are needed.
+func FindAcmCertificates(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := acm.NewAcmRepository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListCertificatesAll()
+		return slice.Map(items, cast[acm.CertificateSummary]), err
+	}
+	items, err := repo.ListCertificatesAll()
+	return slice.Map(items, cast[acm.CertificateSummary]), err
 }
 
 // FindCloudFrontDistributionTenants returns a list of CloudFront distribution

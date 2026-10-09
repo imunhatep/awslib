@@ -62,6 +62,8 @@ func (e *RepoProxy) GetContext() context.Context {
 
 func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.ResourceInterface, err error) {
 	switch resourceType {
+	case cfgEntity.ResourceTypeAcmCertificateSummary:
+		items, err = FindAcmCertificates(e.ctx, e.client, e.cache)
 	case cfg.ResourceTypeAutoScalingGroup:
 		items, err = FindAutoScaleGroups(e.ctx, e.client, e.cache)
 	case cfg.ResourceTypeBatchComputeEnvironment:

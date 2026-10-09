@@ -99,9 +99,9 @@ func ec2ProductFilters(region ptypes.AwsRegion) []types.Filter {
 // with a warning rather than failing the region: one malformed row must not cost the
 // caller every other price.
 //
-// Later entries win on a duplicate instance type. The filters above should leave one
-// row per type, and a duplicate means they no longer do — logged, because the price
-// that survives is then arbitrary.
+// A duplicate instance type is resolved by pickEc2Product rather than by arrival
+// order: the filters above should leave one row per type, and where they do not, which
+// row wins must not depend on the order the pages came back in.
 func (r *PricingRepository) GetInstancePricingByRegion(region ptypes.AwsRegion) (map[string]Ec2Product, error) {
 	query := &awspricing.GetProductsInput{
 		ServiceCode: aws.String("AmazonEC2"),
@@ -133,11 +133,10 @@ func (r *PricingRepository) GetInstancePricingByRegion(region ptypes.AwsRegion) 
 			continue
 		}
 
-		if _, ok := products[instanceType]; ok {
-			log.Warn().
-				Str("region", region.String()).
-				Str("instanceType", instanceType).
-				Msg("[PricingRepository.GetInstancePricingByRegion] duplicate pricing item, filters no longer select a single row")
+		if existing, ok := products[instanceType]; ok {
+			products[instanceType] = pickEc2Product(region, instanceType, existing, *product)
+
+			continue
 		}
 
 		products[instanceType] = *product
@@ -149,6 +148,87 @@ func (r *PricingRepository) GetInstancePricingByRegion(region ptypes.AwsRegion) 
 		Msg("[PricingRepository.GetInstancePricingByRegion] region priced")
 
 	return products, nil
+}
+
+// ec2ProductDiscriminators are the product attributes ec2ProductFilters does *not*
+// pin down, which is where the difference between two rows for the same instance type
+// has to live.
+//
+// Filtering on regionCode, operatingSystem, preInstalledSw, tenancy and capacitystatus
+// is meant to select exactly one row per instance type. When it does not, one of these
+// is why, and there is no way to tell which from outside a live response — so the
+// warning prints the ones that actually differ instead of naming a suspect. Adding a
+// filter for whichever attribute the logs finger is then a one-line change backed by
+// evidence rather than a guess about how AWS models an instance family.
+func ec2ProductDiscriminators(product Ec2Product) map[string]string {
+	attributes := product.Product.Attributes
+
+	return map[string]string{
+		"sku":              product.Product.SKU,
+		"productFamily":    product.GetProductFamily(),
+		"marketoption":     attributes.MarketOption,
+		"usagetype":        attributes.UsageType,
+		"operation":        attributes.Operation,
+		"availabilityzone": attributes.AvailabilityZone,
+		"licenseModel":     attributes.LicenseModel,
+		"location":         attributes.Location,
+		"locationType":     attributes.LocationType,
+		"instanceFamily":   attributes.InstanceFamily,
+	}
+}
+
+// pickEc2Product decides which of two rows for the same instance type to keep, and
+// reports what set them apart.
+//
+// A row carrying an on-demand price beats one that does not: the caller wants the
+// ordinary on-demand rate, and a row with no OnDemand term cannot supply it whatever
+// else it describes. Where both (or neither) have a price, the lower SKU wins — an
+// arbitrary rule, but a stable one, so the reported price does not change between runs
+// with the page order. Two identically-priced rows are not worth a warning.
+func pickEc2Product(region ptypes.AwsRegion, instanceType string, existing, candidate Ec2Product) Ec2Product {
+	existingPrice, candidatePrice := existing.GetOnDemandPrice(), candidate.GetOnDemandPrice()
+
+	winner, loser := existing, candidate
+
+	switch {
+	case hasOnDemandPrice(candidate) && !hasOnDemandPrice(existing):
+		winner, loser = candidate, existing
+	case hasOnDemandPrice(existing) == hasOnDemandPrice(candidate) &&
+		candidate.Product.SKU < existing.Product.SKU:
+		winner, loser = candidate, existing
+	}
+
+	if existingPrice == candidatePrice {
+		return winner
+	}
+
+	event := log.Warn().
+		Str("region", region.String()).
+		Str("instanceType", instanceType).
+		Str("keptPrice", winner.GetOnDemandPrice()).
+		Str("droppedPrice", loser.GetOnDemandPrice())
+
+	// Only the attributes that actually differ, so the log line names the cause
+	// instead of restating the whole row twice.
+	keptAttributes, droppedAttributes := ec2ProductDiscriminators(winner), ec2ProductDiscriminators(loser)
+	for attribute, keptValue := range keptAttributes {
+		droppedValue := droppedAttributes[attribute]
+		if keptValue == droppedValue {
+			continue
+		}
+
+		event = event.Str("kept."+attribute, keptValue).Str("dropped."+attribute, droppedValue)
+	}
+
+	event.Msg("[PricingRepository.GetInstancePricingByRegion] duplicate pricing item, filters no longer select a single row")
+
+	return winner
+}
+
+func hasOnDemandPrice(product Ec2Product) bool {
+	price := product.GetOnDemandPrice()
+
+	return price != "" && price != "N/A"
 }
 
 // GetInstancePricing fetches the pricing for one instance type in one region.

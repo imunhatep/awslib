@@ -346,7 +346,7 @@ see [docs/repositories.md](repositories.md):
 | `service/ecs` | `NewEcsRepository` | `service/sqs` | `NewSqsRepository` |
 | `service/efs` | `NewEfsRepository` | `service/elb` | `NewLoadBalancerRepository` |
 | `service/eks` | `NewEksRepository` | `service/emr` | `NewEmrRepository` |
-| `service/emrserverless` | `NewEMRServerlessRepository` | | |
+| `service/emrserverless` | `NewEMRServerlessRepository` | `service/acm` | `NewAcmRepository` |
 
 Packages with typed, service-specific APIs instead — costs, health events, price lists,
 savings plans and bulk tags are not resources, so they are used directly rather than
