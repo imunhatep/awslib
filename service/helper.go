@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	stderrors "errors"
 	"sync"
 	"time"
 
@@ -44,7 +45,7 @@ func ChunkSlice[T any](slice []T, chunkSize int) [][]T {
 	return chunks
 }
 
-// Generic function to read values and errors from returned channels
+// ReadChannels generic function to read values and errors from returned channels
 func ReadChannels[T any](ctx context.Context, resultChan <-chan T, errorChan <-chan *errors.Error) ([]T, error) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -87,15 +88,21 @@ func ReadChannels[T any](ctx context.Context, resultChan <-chan T, errorChan <-c
 	return results, firstError
 }
 
-func WriteToChan[T any](source chan<- T, value T) {
+// ErrChannelFull is returned by WriteToChan when value could not be written without blocking.
+var ErrChannelFull = stderrors.New("channel is full")
+
+// WriteToChan writes value to source without blocking, returning ErrChannelFull if the channel
+// has no room. The value is dropped then, so the caller decides whether that ends the stream.
+func WriteToChan[T any](source chan<- T, value T) error {
 	select {
 	case source <- value:
+		return nil
 	default:
-		log.Warn().Msg("Channel is full, skipping event")
+		return ErrChannelFull
 	}
 }
 
-// Function to read from the error channel and cancel the context on error
+// CancelContextOnError function to read from the error channel and cancel the context on error
 func CancelContextOnError(ctx context.Context, cancel context.CancelFunc, errorChan <-chan *errors.Error) {
 	go func() {
 		log.Debug().Msg("Starting error channel listener")

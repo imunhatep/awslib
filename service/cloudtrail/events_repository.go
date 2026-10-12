@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/cache"
@@ -18,12 +19,29 @@ import (
 func (r *CloudTrailRepository) ListEventsByInput(query *cloudtrail.LookupEventsInput) ([]Event, error) {
 	source, errChan := r.ListEventsByInputAsync(query)
 
-	return service.ReadChannels(r.ctx, source, errChan)
+	// not service.ReadChannels: it returns on whichever channel closes first, and both are closed
+	// together, so it would randomly miss the error already buffered in errChan. The producer
+	// always closes source, and closes errChan before it, so the error is in place by then.
+	events := make([]Event, 0)
+	for event := range source {
+		events = append(events, event)
+	}
+
+	if err, ok := <-errChan; ok && err != nil {
+		return events, err
+	}
+
+	return events, nil
 }
 
+// ListEventsByInputAsync streams events until the lookup is exhausted, fails, or the repository
+// context is done; both channels are closed then. The producer never blocks on the reader: events
+// are buffered up to EventsBufferSize, and a reader that falls further behind ends the stream with
+// an error rather than silently losing events. The first error ends the stream and is the only
+// value errChan ever carries, so a reader that ignores errChan cannot block the producer.
 func (r *CloudTrailRepository) ListEventsByInputAsync(query *cloudtrail.LookupEventsInput) (<-chan Event, <-chan *errors.Error) {
-	source := make(chan Event)
-	errChan := make(chan *errors.Error)
+	source := make(chan Event, EventsBufferSize)
+	errChan := make(chan *errors.Error, 1)
 
 	go r.fetchEventsByInput(query, source, errChan)
 
@@ -42,19 +60,27 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 
 	start := time.Now()
 
-	p := cloudtrail.NewLookupEventsPaginator(r.cloudtrailClient(), query)
+	p := cloudtrail.NewLookupEventsPaginator(r.lookupEventsClient(), query)
 
 	// reach end of pages or max results
 	eventsFetchedCount := 0
+
+	defer func() {
+		if metrics.AwsMetricsEnabled {
+			metrics.AwsApiResourcesFetched.
+				With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).
+				Add(float64(eventsFetchedCount))
+
+			// metrics
+			metrics.AwsRepoCallDuration.
+				With(r.promLabels("ListEventsByInput", ccfg.ResourceTypeTrailEvent)).
+				Observe(time.Since(start).Seconds())
+		}
+	}()
+
 	for p.HasMorePages() && (query.MaxResults == nil || eventsFetchedCount < int(*query.MaxResults)) {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).Inc()
-		}
-
-		select {
-		case <-r.ctx.Done():
-			break
-		default:
 		}
 
 		log.Trace().Int("count", eventsFetchedCount).Msg("[CloudTrailRepository.FindBy] fetching events...")
@@ -65,37 +91,28 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 				metrics.AwsApiRequestErrors.With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).Inc()
 			}
 
-			service.WriteToChan(errChan, errors.New(err))
-			continue
+			// the paginator does not advance past a failed page, so carrying on would request
+			// the same page again forever
+			errChan <- errors.New(err)
+			return
 		}
 
 		eventsFetchedCount += len(resp.Events)
 
 		for _, event := range resp.Events {
 			var cloudTrailEvent CloudTrailEvent
-			if err := json.Unmarshal([]byte(*event.CloudTrailEvent), &cloudTrailEvent); err != nil {
+			if err := json.Unmarshal([]byte(aws.ToString(event.CloudTrailEvent)), &cloudTrailEvent); err != nil {
 				errChan <- errors.New(err)
-				continue
+				return
 			}
 
-			select {
-			case <-r.ctx.Done():
-				break
-			default:
-				service.WriteToChan(source, NewEvent(r.client, event, cloudTrailEvent))
+			if err := service.WriteToChan(source, NewEvent(r.client, event, cloudTrailEvent)); err != nil {
+				// the reader fell a whole buffer behind; this event is lost, so end the stream with
+				// an error rather than hand back a list that only looks complete
+				errChan <- errors.Errorf("reader fell %d events behind: %w", cap(source), err)
+				return
 			}
 		}
-	}
-
-	if metrics.AwsMetricsEnabled {
-		metrics.AwsApiResourcesFetched.
-			With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).
-			Add(float64(eventsFetchedCount))
-
-		// metrics
-		metrics.AwsRepoCallDuration.
-			With(r.promLabels("ListEventsByInput", ccfg.ResourceTypeTrailEvent)).
-			Observe(time.Since(start).Seconds())
 	}
 }
 
@@ -106,7 +123,11 @@ func (r *CloudTrailRepository) ListEventsByLookupAsync(lookup *LookupMiddleware)
 
 		errChan <- errors.New(errs[0])
 
-		return nil, errChan
+		// closed rather than nil: ranging over a nil channel blocks forever
+		source := make(chan Event)
+		close(source)
+
+		return source, errChan
 	}
 
 	return r.ListEventsByInputAsync(lookup.Get())

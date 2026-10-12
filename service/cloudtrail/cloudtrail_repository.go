@@ -20,7 +20,14 @@ type AwsClient interface {
 type CloudTrailRepository struct {
 	ctx    context.Context
 	client *v3.Client
+
+	// lookupClient overrides the SDK client used to page through events; nil means cloudtrailClient().
+	lookupClient awscloudtrail.LookupEventsAPIClient
 }
+
+// EventsBufferSize is how many events ListEventsByInputAsync holds for a reader that is busy, about
+// 20 LookupEvents pages. Falling further behind than that ends the stream with an error.
+const EventsBufferSize = 1000
 
 func NewCloudTrailRepository(ctx context.Context, client *v3.Client) *CloudTrailRepository {
 	repo := &CloudTrailRepository{
@@ -33,6 +40,14 @@ func NewCloudTrailRepository(ctx context.Context, client *v3.Client) *CloudTrail
 
 func (r *CloudTrailRepository) cloudtrailClient() *awscloudtrail.Client {
 	return cloudtrailopts.GetClient(r.client)
+}
+
+func (r *CloudTrailRepository) lookupEventsClient() awscloudtrail.LookupEventsAPIClient {
+	if r.lookupClient != nil {
+		return r.lookupClient
+	}
+
+	return r.cloudtrailClient()
 }
 
 func (r *CloudTrailRepository) promLabels(method string, resourceType cfg.ResourceType) prometheus.Labels {
