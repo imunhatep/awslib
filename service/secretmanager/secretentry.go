@@ -36,11 +36,16 @@ func NewSecretEntry(client AwsClient, secret *sm.DescribeSecretOutput) SecretEnt
 
 // NewSecretEntryFromList builds a SecretEntry from a ListSecrets result.
 //
-// Every field SecretListEntry carries is copied across, which is all of them bar one:
-// **SecretListEntry has no ReplicationStatus**, so an entry built here always reports
-// nil replicas whether or not the secret has any. Read that nil as "unknown", never as
-// "no replicas" — a caller that needs to know (deleting a replicated secret requires
-// detaching the replicas first) has to call DescribeSecret for that secret.
+// Every field SecretListEntry carries is copied across. SecretVersionsToStages lands in
+// VersionIdsToStages, the same version id → staging labels map under its DescribeSecret
+// name, so the AWSCURRENT version id — which changes with every new value — is known
+// without reading the value.
+//
+// One DescribeSecret field cannot be filled: **SecretListEntry has no ReplicationStatus**,
+// so an entry built here always reports nil replicas whether or not the secret has any.
+// Read that nil as "unknown", never as "no replicas" — a caller that needs to know
+// (deleting a replicated secret requires detaching the replicas first) has to call
+// DescribeSecret for that secret.
 //
 // The rest of what the delete and lifecycle decisions need does come from the list call:
 // LastAccessedDate, LastRotatedDate, DeletedDate, OwningService, PrimaryRegion,
@@ -48,22 +53,23 @@ func NewSecretEntry(client AwsClient, secret *sm.DescribeSecretOutput) SecretEnt
 // ListSecrets rather than a DescribeSecret per secret.
 func NewSecretEntryFromList(client AwsClient, secret types2.SecretListEntry) SecretEntry {
 	describeSecretOutput := &sm.DescribeSecretOutput{
-		ARN:               secret.ARN,
-		Name:              secret.Name,
-		CreatedDate:       secret.CreatedDate,
-		Description:       secret.Description,
-		KmsKeyId:          secret.KmsKeyId,
-		DeletedDate:       secret.DeletedDate,
-		RotationEnabled:   secret.RotationEnabled,
-		LastAccessedDate:  secret.LastAccessedDate,
-		LastChangedDate:   secret.LastChangedDate,
-		LastRotatedDate:   secret.LastRotatedDate,
-		NextRotationDate:  secret.NextRotationDate,
-		OwningService:     secret.OwningService,
-		PrimaryRegion:     secret.PrimaryRegion,
-		RotationRules:     secret.RotationRules,
-		RotationLambdaARN: secret.RotationLambdaARN,
-		Tags:              secret.Tags,
+		ARN:                secret.ARN,
+		Name:               secret.Name,
+		CreatedDate:        secret.CreatedDate,
+		Description:        secret.Description,
+		KmsKeyId:           secret.KmsKeyId,
+		DeletedDate:        secret.DeletedDate,
+		RotationEnabled:    secret.RotationEnabled,
+		LastAccessedDate:   secret.LastAccessedDate,
+		LastChangedDate:    secret.LastChangedDate,
+		LastRotatedDate:    secret.LastRotatedDate,
+		NextRotationDate:   secret.NextRotationDate,
+		OwningService:      secret.OwningService,
+		PrimaryRegion:      secret.PrimaryRegion,
+		RotationRules:      secret.RotationRules,
+		RotationLambdaARN:  secret.RotationLambdaARN,
+		Tags:               secret.Tags,
+		VersionIdsToStages: secret.SecretVersionsToStages,
 	}
 
 	return NewSecretEntry(client, describeSecretOutput)
