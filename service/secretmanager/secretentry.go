@@ -1,6 +1,8 @@
 package secretmanager
 
 import (
+	"encoding/json"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	cfg "github.com/aws/aws-sdk-go-v2/service/configservice/types"
@@ -73,6 +75,38 @@ func NewSecretEntryFromList(client AwsClient, secret types2.SecretListEntry) Sec
 	}
 
 	return NewSecretEntry(client, describeSecretOutput)
+}
+
+// secretEntryWire is the cache form of SecretEntry.
+//
+// gob cannot encode SecretEntry by reflection: DescribeSecretOutput carries
+// ResultMetadata, a middleware.Metadata with no exported fields, and gob rejects such
+// a type outright ("has no exported fields") whatever its value. JSON encodes it as {}
+// and keeps every other field, including ones a newer SDK adds, which a hand-written
+// mirror of DescribeSecretOutput would silently drop. The fields are named rather
+// than embedded because AbstractResource and DescribeSecretOutput both have ARN and
+// Type, and JSON drops conflicting promoted fields.
+type secretEntryWire struct {
+	Resource service.AbstractResource
+	Secret   *sm.DescribeSecretOutput
+}
+
+// GobEncode makes SecretEntry cacheable, see secretEntryWire.
+func (e SecretEntry) GobEncode() ([]byte, error) {
+	return json.Marshal(secretEntryWire{Resource: e.AbstractResource, Secret: e.DescribeSecretOutput})
+}
+
+// GobDecode is the inverse of GobEncode.
+func (e *SecretEntry) GobDecode(data []byte) error {
+	var wire secretEntryWire
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+
+	e.AbstractResource = wire.Resource
+	e.DescribeSecretOutput = wire.Secret
+
+	return nil
 }
 
 func (e SecretEntry) GetName() string {
