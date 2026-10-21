@@ -26,6 +26,14 @@ const (
 	ResourceTypeCostForecast             awscfg.ResourceType = "AWS::CostExplorer::CostForecast"
 	ResourceTypeCostDimensionValue       awscfg.ResourceType = "AWS::CostExplorer::DimensionValue"
 
+	// Cost Anomaly Detection. Like the Cost Explorer types above, these only label
+	// metrics: an anomaly is a finding about spend, and monitors and subscriptions
+	// configure how findings are made and reported. All three are deliberately
+	// absent from ResourceTypeList and from proxy.RepoProxy.FindAll.
+	ResourceTypeCostAnomaly             awscfg.ResourceType = "AWS::CostExplorer::Anomaly"
+	ResourceTypeCostAnomalyMonitor      awscfg.ResourceType = "AWS::CostExplorer::AnomalyMonitor"
+	ResourceTypeCostAnomalySubscription awscfg.ResourceType = "AWS::CostExplorer::AnomalySubscription"
+
 	// Savings Plans calls answer about commitments and the rates they are offered
 	// at, not about anything fetchable: a purchased plan is closer to a contract
 	// than a resource, and an offering rate is a price. Both are deliberately absent

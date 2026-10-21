@@ -1,7 +1,7 @@
 # Cost Explorer
 
-`service/costexplorer` wraps the Cost Explorer API: cost and usage figures, forecasts and
-dimension values. It is not a resource repository — costs are not resources, so nothing here
+`service/costexplorer` wraps the Cost Explorer API: cost and usage figures, forecasts,
+dimension values and Cost Anomaly Detection findings. It is not a resource repository — costs are not resources, so nothing here
 flows through `proxy.RepoProxy` or the parallel fetcher. You call it directly.
 
 What it adds over `costexplorer.GetClient(client)`:
@@ -223,16 +223,77 @@ paginated and accumulated like `GetCostAndUsage`. `GetCostForecast` is not pagin
 returns the SDK output unchanged; it fails outright when the history is too short or too
 noisy to forecast, which is an API decision and not something this wrapper softens.
 
+## Cost anomalies
+
+Cost Anomaly Detection findings come back from `GetAnomalies`. The reason to call it rather
+than read the alert email: the email lists the top root causes, while each `types.Anomaly`
+carries **all** of them — service, region, usage type and linked account, each with its
+dollar `Contribution` — plus the total and maximum impact, expected versus actual spend and
+any feedback already given.
+
+```go
+anomalies, err := repo.GetAnomaliesByQuery(costexplorer.AnomalyQuery{
+    Start:          time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC),
+    End:            time.Date(2026, 10, 21, 0, 0, 0, 0, time.UTC), // inclusive, optional
+    MinTotalImpact: 100,                                            // USD
+})
+if err != nil {
+    return err
+}
+
+for _, a := range anomalies {
+    fmt.Println(aws.ToString(a.AnomalyStartDate), aws.ToString(a.AnomalyEndDate), aws.ToString(a.DimensionValue), a.Impact.TotalImpact)
+    for _, rc := range a.RootCauses {
+        fmt.Println("  ", aws.ToString(rc.Service), aws.ToString(rc.Region), aws.ToString(rc.UsageType), rc.Impact.Contribution)
+    }
+}
+```
+
+The window semantics differ from `CostQuery`, and both differences come from the API:
+
+- **The window matches an anomaly's end date.** `GetAnomalies` returns anomalies whose
+  `AnomalyEndDate` falls inside it, so a long-running anomaly that started before `Start`
+  is included, and one that started inside the window but ended after `End` is not.
+- **`End` is the last day, inclusive, and optional.** A zero `End` leaves the window open,
+  which is the natural "everything since `Start`" question.
+- **History is 90 days.** Anomalies older than that are not returned.
+
+`AnomalyQuery` also takes `MonitorArn`, `Feedback` (`YES`, `NO`, `PLANNED_ACTIVITY`) and
+either `MinTotalImpact` — shorthand for a `GREATER_THAN_OR_EQUAL` impact filter — or a raw
+`TotalImpact *types.TotalImpactFilter` for `BETWEEN` and the rest; `Validate()` rejects
+setting both. For anything else, `GetAnomalies` takes the raw `*awsce.GetAnomaliesInput`.
+
+The configuration behind the findings is readable too:
+
+```go
+// what is being watched, and how spend is sliced (by service, linked account, tag, ...)
+monitors, err := repo.GetAnomalyMonitors(&awsce.GetAnomalyMonitorsInput{})
+
+// who is alerted, how often, above which threshold
+subscriptions, err := repo.GetAnomalySubscriptions(&awsce.GetAnomalySubscriptionsInput{
+    MonitorArn: monitors[0].MonitorArn,
+})
+```
+
+All three follow `NextPageToken` to the end. The write side of the API — creating, updating
+and deleting monitors and subscriptions, and `ProvideAnomalyFeedback` — is not wrapped; use
+`costexplorer.GetClient(client)` directly.
+
 ## Caching
 
 ```go
 repo := costexplorer.NewCostExplorerRepository(ctx, client).WithCache(dataCache)
 ```
 
-`WithCache` returns a `CostExplorerRepositoryCached` with the same five methods, namespaced
+`WithCache` returns a `CostExplorerRepositoryCached` with the same nine methods, namespaced
 `<accountID>:<region>:costexplorer`, written only on success. Cost figures for a closed
 period never change, so a long TTL is safe and directly saves billed requests; only the
 current, still-accruing period benefits from a short one.
+
+Anomalies are the exception to "closed periods never change": an anomaly that is still
+running keeps moving its end date and impact, and feedback can be added at any time. A
+cached open-ended `AnomalyQuery` will not show an anomaly detected after it was cached
+until the entry expires, so give anomaly lookups a short TTL or an uncached repository.
 
 The cache key is built from the request by value (`cache.Key`), so two `CostQuery` values
 that differ only in pointer identity hit the same entry. It also means a query whose window
@@ -250,7 +311,10 @@ is `time.Now()`-relative produces a fresh key on every call — round the window
       "Action": [
         "ce:GetCostAndUsage",
         "ce:GetCostForecast",
-        "ce:GetDimensionValues"
+        "ce:GetDimensionValues",
+        "ce:GetAnomalies",
+        "ce:GetAnomalyMonitors",
+        "ce:GetAnomalySubscriptions"
       ],
       "Resource": "*"
     }

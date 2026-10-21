@@ -32,6 +32,62 @@ func (r *CostExplorerRepository) WithCache(dc *cache.DataCache) *CostExplorerRep
 	}
 }
 
+// GetAnomalies returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CostExplorerRepositoryCached) GetAnomalies(query *awsce.GetAnomaliesInput) ([]types.Anomaly, error) {
+	cacheKey := cache.Key("GetAnomalies", query)
+	var cached []types.Anomaly
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.GetAnomalies(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// GetAnomaliesByQuery returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CostExplorerRepositoryCached) GetAnomaliesByQuery(q AnomalyQuery) ([]types.Anomaly, error) {
+	cacheKey := cache.Key("GetAnomaliesByQuery", q)
+	var cached []types.Anomaly
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.GetAnomaliesByQuery(q)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// GetAnomalyMonitors returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CostExplorerRepositoryCached) GetAnomalyMonitors(query *awsce.GetAnomalyMonitorsInput) ([]types.AnomalyMonitor, error) {
+	cacheKey := cache.Key("GetAnomalyMonitors", query)
+	var cached []types.AnomalyMonitor
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.GetAnomalyMonitors(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// GetAnomalySubscriptions returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CostExplorerRepositoryCached) GetAnomalySubscriptions(query *awsce.GetAnomalySubscriptionsInput) ([]types.AnomalySubscription, error) {
+	cacheKey := cache.Key("GetAnomalySubscriptions", query)
+	var cached []types.AnomalySubscription
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.GetAnomalySubscriptions(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // GetCostAndUsage returns cached results when available, otherwise delegates to the underlying repository.
 func (c *CostExplorerRepositoryCached) GetCostAndUsage(query *awsce.GetCostAndUsageInput) (*CostAndUsage, error) {
 	cacheKey := cache.Key("GetCostAndUsage", query)
