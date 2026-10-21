@@ -1,6 +1,7 @@
 package route53
 
 import (
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -22,14 +23,25 @@ type HostedZone struct {
 	Tags          []types.Tag
 }
 
+// NormalizeHostedZoneID returns the bare hosted zone id ("Z123") for either
+// spelling AWS uses: the "/hostedzone/Z123" path form that GetHostedZone,
+// ListHostedZones and CreateHostedZone return, or the bare id.
+func NormalizeHostedZoneID(id string) string {
+	return id[strings.LastIndex(id, "/")+1:]
+}
+
+// NewHostedZone wraps hostedZone. The entity's identity — GetId() and the ARN —
+// is the bare zone id; the embedded types.HostedZone keeps Id exactly as AWS
+// returned it, in the "/hostedzone/Z123" form.
 func NewHostedZone(client AwsClient, hostedZone types.HostedZone, delegationSet *types.DelegationSet, vpcs []types.VPC, tags []types.Tag) HostedZone {
-	hzArn := helper.BuildArn(client.GetAccountID(), client.GetRegion(), "route53", "hostedzone/", hostedZone.Id)
+	id := NormalizeHostedZoneID(aws.ToString(hostedZone.Id))
+	hzArn := helper.BuildArn(client.GetAccountID(), client.GetRegion(), "route53", "hostedzone/", &id)
 
 	return HostedZone{
 		AbstractResource: service.AbstractResource{
 			AccountID: client.GetAccountID(),
 			Region:    client.GetRegion(),
-			ID:        aws.ToString(hostedZone.Id),
+			ID:        id,
 			ARN:       hzArn,
 			CreatedAt: time.Unix(0, 0),
 			Type:      cfg.ResourceTypeRoute53HostedZone,

@@ -94,7 +94,12 @@ func (r *SqsRepository) ListQueuesByInput(query *awssqs.ListQueuesInput) ([]Queu
 			return queues, errors.New(err)
 		}
 
-		tags, _ := r.GetQueueTags(queueUrl)
+		tags, err := r.GetQueueTags(queueUrl)
+		if err != nil {
+			log.Warn().Err(err).
+				Str("queue", queueUrl).
+				Msg("[SqsRepository.ListQueuesByInput] failed to read queue tags; queue returned without tags")
+		}
 		queue := NewQueue(r.client, queueUrl, attrsOutput.Attributes, tags)
 		queues = append(queues, queue)
 	}

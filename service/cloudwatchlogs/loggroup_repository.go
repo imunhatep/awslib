@@ -78,7 +78,12 @@ func (r *CloudWatchLogsRepository) ListLogGroupsByInput(query *awscloudwatchlogs
 	}
 
 	for _, logGroup := range resp.LogGroups {
-		tags, _ := r.GetLogGroupTags(logGroup)
+		tags, err := r.GetLogGroupTags(logGroup)
+		if err != nil {
+			log.Warn().Err(err).
+				Str("logGroup", aws.ToString(logGroup.LogGroupName)).
+				Msg("[CloudWatchLogsRepository.ListLogGroupsByInput] failed to read log group tags; log group returned without tags")
+		}
 		table := NewLogGroup(r.client, logGroup, tags)
 		logGroups = append(logGroups, table)
 	}

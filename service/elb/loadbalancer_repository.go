@@ -77,7 +77,12 @@ func (r *LoadBalancerRepository) ListLoadBalancersByInput(query *awselbv2.Descri
 	}
 
 	for _, v := range resp.LoadBalancers {
-		tags, _ := r.GetLoadBalancerTags(v)
+		tags, err := r.GetLoadBalancerTags(v)
+		if err != nil {
+			log.Warn().Err(err).
+				Str("loadBalancer", aws.ToString(v.LoadBalancerName)).
+				Msg("[LoadBalancerRepository.ListLoadBalancersByInput] failed to read load balancer tags; load balancer returned without tags")
+		}
 
 		bucket := NewLoadBalancer(r.client, v, tags)
 		balancers = append(balancers, bucket)

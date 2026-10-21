@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
+	"github.com/rs/zerolog/log"
 )
 
 func (r *Route53Repository) ListHostedZonesAll() ([]HostedZone, error) {
@@ -37,7 +38,7 @@ func (r *Route53Repository) ListHostedZonesByInput(query *awsr53.ListHostedZones
 
 		// Process the current page of results
 		for _, hostedZone := range output.HostedZones {
-			hostedZones = append(hostedZones, NewHostedZone(r.client, hostedZone, nil, []types.VPC{}, r.GetHostedZoneTags(hostedZone)))
+			hostedZones = append(hostedZones, NewHostedZone(r.client, hostedZone, nil, []types.VPC{}, r.hostedZoneTags(hostedZone)))
 		}
 
 		if metrics.AwsMetricsEnabled {
@@ -68,26 +69,73 @@ func (r *Route53Repository) ListHostedZonesByInput(query *awsr53.ListHostedZones
 	return hostedZones, nil
 }
 
-func (r *Route53Repository) GetHostedZoneTags(hostedZone types.HostedZone) []types.Tag {
+// ListHostedZoneTags returns the tags of the hosted zone hostedZoneID, given
+// bare ("Z123") or in the "/hostedzone/Z123" form AWS returns. A failed read is
+// reported, never answered with "no tags".
+//
+// ListTagsForResource takes the bare id: the SDK strips the "/hostedzone/"
+// prefix for the hosted-zone operations, but not for the tag operations.
+func (r *Route53Repository) ListHostedZoneTags(hostedZoneID string) ([]types.Tag, error) {
 	start := time.Now()
 
-	query := &awsr53.ListTagsForResourceInput{
-		ResourceId:   hostedZone.Id,
-		ResourceType: types.TagResourceTypeHostedzone,
+	id := NormalizeHostedZoneID(hostedZoneID)
+	if id == "" {
+		return nil, errors.New("hostedZoneID cannot be empty")
 	}
 
-	output, err := r.route53Client().ListTagsForResource(r.ctx, query)
+	if metrics.AwsMetricsEnabled {
+		metrics.AwsApiRequests.With(r.promLabels("ListTagsForResource", cfg.ResourceTypeRoute53HostedZone)).Inc()
+	}
+
+	output, err := r.route53Client().ListTagsForResource(r.ctx, &awsr53.ListTagsForResourceInput{
+		ResourceId:   aws.String(id),
+		ResourceType: types.TagResourceTypeHostedzone,
+	})
 	if err != nil {
-		return nil
+		if metrics.AwsMetricsEnabled {
+			metrics.AwsApiRequestErrors.With(r.promLabels("ListTagsForResource", cfg.ResourceTypeRoute53HostedZone)).Inc()
+		}
+
+		return nil, errors.New(err)
 	}
 
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsRepoCallDuration.
-			With(r.promLabels("ListTagsForResourceInput", cfg.ResourceTypeRoute53HostedZone)).
+			With(r.promLabels("ListHostedZoneTags", cfg.ResourceTypeRoute53HostedZone)).
 			Observe(time.Since(start).Seconds())
 	}
 
-	return output.ResourceTagSet.Tags
+	if output.ResourceTagSet == nil {
+		return []types.Tag{}, nil
+	}
+
+	return output.ResourceTagSet.Tags, nil
+}
+
+// GetHostedZoneTags returns the tags of hostedZone, or nil when they cannot be
+// read.
+//
+// Deprecated: a failed read is indistinguishable from an untagged zone. Use
+// ListHostedZoneTags, which reports the error.
+func (r *Route53Repository) GetHostedZoneTags(hostedZone types.HostedZone) []types.Tag {
+	tags, _ := r.ListHostedZoneTags(aws.ToString(hostedZone.Id))
+
+	return tags
+}
+
+// hostedZoneTags reads the tags the zone entity is built with. The zone reads
+// keep answering when only the tag read fails, as they always have, but the
+// failure is logged rather than dropped: the entity's Tags are then empty for a
+// reason other than the zone being untagged.
+func (r *Route53Repository) hostedZoneTags(hostedZone types.HostedZone) []types.Tag {
+	tags, err := r.ListHostedZoneTags(aws.ToString(hostedZone.Id))
+	if err != nil {
+		log.Warn().Err(err).
+			Str("hostedZone", aws.ToString(hostedZone.Id)).
+			Msg("[Route53Repository] failed to read hosted zone tags; zone returned without tags")
+	}
+
+	return tags
 }
 
 func (r *Route53Repository) GetHostedZoneByInput(query *awsr53.GetHostedZoneInput) (*HostedZone, error) {
@@ -106,7 +154,7 @@ func (r *Route53Repository) GetHostedZoneByInput(query *awsr53.GetHostedZoneInpu
 		return nil, nil
 	}
 
-	hostedZone := NewHostedZone(r.client, *output.HostedZone, output.DelegationSet, output.VPCs, r.GetHostedZoneTags(*output.HostedZone))
+	hostedZone := NewHostedZone(r.client, *output.HostedZone, output.DelegationSet, output.VPCs, r.hostedZoneTags(*output.HostedZone))
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsApiResourcesFetched.
 			With(r.promLabels("GetHostedZone", cfg.ResourceTypeRoute53HostedZone)).
@@ -160,7 +208,7 @@ func (r *Route53Repository) CreateHostedZone(input *awsr53.CreateHostedZoneInput
 		metrics.AwsApiResourcesFetched.With(r.promLabels("GetHostedZone", cfg.ResourceTypeRoute53HostedZone)).Add(1)
 	}
 
-	hostedZone := NewHostedZone(r.client, *getOutput.HostedZone, getOutput.DelegationSet, getOutput.VPCs, r.GetHostedZoneTags(*getOutput.HostedZone))
+	hostedZone := NewHostedZone(r.client, *getOutput.HostedZone, getOutput.DelegationSet, getOutput.VPCs, r.hostedZoneTags(*getOutput.HostedZone))
 
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsRepoCallDuration.
@@ -209,7 +257,7 @@ func (r *Route53Repository) UpdateHostedZoneComment(input *awsr53.UpdateHostedZo
 		metrics.AwsApiResourcesFetched.With(r.promLabels("GetHostedZone", cfg.ResourceTypeRoute53HostedZone)).Add(1)
 	}
 
-	hostedZone := NewHostedZone(r.client, *getOutput.HostedZone, getOutput.DelegationSet, getOutput.VPCs, r.GetHostedZoneTags(*getOutput.HostedZone))
+	hostedZone := NewHostedZone(r.client, *getOutput.HostedZone, getOutput.DelegationSet, getOutput.VPCs, r.hostedZoneTags(*getOutput.HostedZone))
 
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsRepoCallDuration.

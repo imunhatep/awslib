@@ -97,6 +97,20 @@ func (c *Route53RepositoryCached) GetOperationDetail(input *awsdomains.GetOperat
 	return r0, r1
 }
 
+// ListDomainTags returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Route53RepositoryCached) ListDomainTags(domainName string) ([]domtypes.Tag, error) {
+	cacheKey := cache.Key("ListDomainTags", domainName)
+	var cached []domtypes.Tag
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListDomainTags(domainName)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // ListDomainsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Route53RepositoryCached) ListDomainsAll() ([]DomainSummary, error) {
 	cacheKey := cache.Key("ListDomainsAll")
@@ -133,6 +147,20 @@ func (c *Route53RepositoryCached) ListDomainsDetailsByInput(query *awsdomains.Li
 		return cached, nil
 	}
 	r0, r1 := c.repo.ListDomainsDetailsByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListHostedZoneTags returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Route53RepositoryCached) ListHostedZoneTags(hostedZoneID string) ([]types.Tag, error) {
+	cacheKey := cache.Key("ListHostedZoneTags", hostedZoneID)
+	var cached []types.Tag
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListHostedZoneTags(hostedZoneID)
 	if r1 == nil {
 		_ = c.cache.Write(cacheKey, r0)
 	}

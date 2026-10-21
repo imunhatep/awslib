@@ -89,7 +89,12 @@ func (r *SnsRepository) ListTopicsByInput(query *awssns.ListTopicsInput) ([]Topi
 			return topics, errors.New(err)
 		}
 
-		tags, _ := r.GetTopicTags(v)
+		tags, err := r.GetTopicTags(v)
+		if err != nil {
+			log.Warn().Err(err).
+				Str("topic", aws.ToString(v.TopicArn)).
+				Msg("[SnsRepository.ListTopicsByInput] failed to read topic tags; topic returned without tags")
+		}
 		topic := NewTopic(r.client, v, attrsOutput.Attributes, tags)
 		topics = append(topics, topic)
 	}

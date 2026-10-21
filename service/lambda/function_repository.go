@@ -75,7 +75,12 @@ func (r *LambdaRepository) ListFunctionsByInput(query *awslambda.ListFunctionsIn
 		}
 
 		for _, v := range resp.Functions {
-			tags, _ := r.ListFunctionTags(v)
+			tags, err := r.ListFunctionTags(v)
+			if err != nil {
+				log.Warn().Err(err).
+					Str("function", aws.ToString(v.FunctionName)).
+					Msg("[LambdaRepository.ListFunctionsByInput] failed to read function tags; function returned without tags")
+			}
 			secret := NewFunction(r.client, v, tags)
 			functions = append(functions, secret)
 		}

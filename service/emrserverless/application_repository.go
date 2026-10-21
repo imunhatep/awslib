@@ -96,8 +96,10 @@ func (r *EMRServerlessRepository) ListApplicationsByInput(query *awsemr.ListAppl
 		for _, appSummary := range resp.Applications {
 			application, err := r.DescribeApplication(appSummary.Id)
 			if err != nil {
-				applications = append(applications, *application)
+				return applications, errors.New(err)
 			}
+
+			applications = append(applications, *application)
 		}
 	}
 

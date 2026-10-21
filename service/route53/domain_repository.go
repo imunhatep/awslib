@@ -10,6 +10,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
+	"github.com/rs/zerolog/log"
 )
 
 func (r *Route53Repository) ListDomainsAll() ([]DomainSummary, error) {
@@ -102,7 +103,14 @@ func (r *Route53Repository) GetDomainByInput(query *route53domains.GetDomainDeta
 		return nil, nil
 	}
 
-	tags := r.GetDomainTags(aws.ToString(output.DomainName))
+	tags, err := r.ListDomainTags(aws.ToString(output.DomainName))
+	if err != nil {
+		// The domain read keeps answering when only the tag read fails, as it
+		// always has, but the failure is logged rather than dropped.
+		log.Warn().Err(err).
+			Str("domain", aws.ToString(output.DomainName)).
+			Msg("[Route53Repository.GetDomainByInput] failed to read domain tags; domain returned without tags")
+	}
 	domain := NewDomain(r.client, *output, tags)
 
 	if metrics.AwsMetricsEnabled {
@@ -118,23 +126,52 @@ func (r *Route53Repository) GetDomainByInput(query *route53domains.GetDomainDeta
 	return &domain, nil
 }
 
-func (r *Route53Repository) GetDomainTags(domainName string) []domtypes.Tag {
+// ListDomainTags returns the tags of the registered domain domainName. A
+// failed read is reported, never answered with "no tags".
+func (r *Route53Repository) ListDomainTags(domainName string) ([]domtypes.Tag, error) {
 	start := time.Now()
+
+	if domainName == "" {
+		return nil, errors.New("domainName cannot be empty")
+	}
+
+	if metrics.AwsMetricsEnabled {
+		metrics.AwsApiRequests.With(r.promLabels("ListTagsForDomain", ccfg.ResourceTypeRoute53Domain)).Inc()
+	}
 
 	output, err := r.domainsClient().ListTagsForDomain(r.ctx, &route53domains.ListTagsForDomainInput{
 		DomainName: aws.String(domainName),
 	})
 	if err != nil {
-		return nil
+		if metrics.AwsMetricsEnabled {
+			metrics.AwsApiRequestErrors.With(r.promLabels("ListTagsForDomain", ccfg.ResourceTypeRoute53Domain)).Inc()
+		}
+
+		return nil, errors.New(err)
 	}
 
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsRepoCallDuration.
-			With(r.promLabels("ListTagsForDomain", ccfg.ResourceTypeRoute53Domain)).
+			With(r.promLabels("ListDomainTags", ccfg.ResourceTypeRoute53Domain)).
 			Observe(time.Since(start).Seconds())
 	}
 
-	return output.TagList
+	if output.TagList == nil {
+		return []domtypes.Tag{}, nil
+	}
+
+	return output.TagList, nil
+}
+
+// GetDomainTags returns the tags of the registered domain domainName, or nil
+// when they cannot be read.
+//
+// Deprecated: a failed read is indistinguishable from an untagged domain. Use
+// ListDomainTags, which reports the error.
+func (r *Route53Repository) GetDomainTags(domainName string) []domtypes.Tag {
+	tags, _ := r.ListDomainTags(domainName)
+
+	return tags
 }
 
 // ListOperations returns all route53domains operations matching the given type

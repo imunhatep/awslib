@@ -35,7 +35,12 @@ func (r *IamRepository) ListUsersByInput(query *iam.ListUsersInput) ([]User, err
 		}
 
 		for _, v := range resp.Users {
-			tags, _ := r.ListUserTags(v)
+			tags, err := r.ListUserTags(v)
+			if err != nil {
+				log.Warn().Err(err).
+					Str("user", aws.ToString(v.UserName)).
+					Msg("[IamRepository.ListUsersByInput] failed to read user tags; user returned without tags")
+			}
 			v.Tags = tags
 
 			users = append(users, NewUser(r.client, v))

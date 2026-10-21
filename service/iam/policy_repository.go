@@ -51,7 +51,12 @@ func (r *IamRepository) ListPoliciesByInput(query *iam.ListPoliciesInput) ([]Pol
 			// Policy.GetTags() compiles and always returns an empty map, which is not a
 			// cosmetic gap: a caller filtering on a tag sees every policy as untagged,
 			// so an opt-out or lifecycle tag silently fails to protect anything.
-			tags, _ := r.ListPolicyTags(v)
+			tags, err := r.ListPolicyTags(v)
+			if err != nil {
+				log.Warn().Err(err).
+					Str("policy", aws.ToString(v.PolicyName)).
+					Msg("[IamRepository.ListPoliciesByInput] failed to read policy tags; policy returned without tags")
+			}
 			v.Tags = tags
 
 			policies = append(policies, NewPolicy(r.client, v))
@@ -114,7 +119,12 @@ func (r *IamRepository) DescribePolicyByInput(query *iam.GetPolicyInput) (*Polic
 	}
 
 	// GetPolicy does not return tags either — see the note in ListPoliciesByInput.
-	tags, _ := r.ListPolicyTags(*resp.Policy)
+	tags, err := r.ListPolicyTags(*resp.Policy)
+	if err != nil {
+		log.Warn().Err(err).
+			Str("policy", aws.ToString(resp.Policy.PolicyName)).
+			Msg("[IamRepository.DescribePolicyByInput] failed to read policy tags; policy returned without tags")
+	}
 	resp.Policy.Tags = tags
 
 	policy := NewPolicy(r.client, *resp.Policy)

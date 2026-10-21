@@ -37,7 +37,12 @@ func (r *IamRepository) ListRolesByInput(query *iam.ListRolesInput) ([]Role, err
 		}
 
 		for _, v := range resp.Roles {
-			tags, _ := r.ListRoleTags(v)
+			tags, err := r.ListRoleTags(v)
+			if err != nil {
+				log.Warn().Err(err).
+					Str("role", aws.ToString(v.RoleName)).
+					Msg("[IamRepository.ListRolesByInput] failed to read role tags; role returned without tags")
+			}
 			v.Tags = tags
 
 			roles = append(roles, NewRole(r.client, v))
@@ -167,7 +172,12 @@ func (r *IamRepository) DescribeRoleByInput(query *iam.GetRoleInput) (*Role, err
 			Observe(time.Since(start).Seconds())
 	}
 
-	tags, _ := r.ListRoleTags(*resp.Role)
+	tags, err := r.ListRoleTags(*resp.Role)
+	if err != nil {
+		log.Warn().Err(err).
+			Str("role", aws.ToString(resp.Role.RoleName)).
+			Msg("[IamRepository.DescribeRoleByInput] failed to read role tags; role returned without tags")
+	}
 	resp.Role.Tags = tags
 
 	role := NewRole(r.client, *resp.Role)

@@ -93,7 +93,12 @@ func (r *DynamoDBRepository) ListTablesByInput(query *awsdynamo.ListTablesInput)
 			return tables, errors.New(err)
 		}
 
-		tags, _ := r.GetTableTags(tableOutput.Table)
+		tags, err := r.GetTableTags(tableOutput.Table)
+		if err != nil {
+			log.Warn().Err(err).
+				Str("table", aws.ToString(tableOutput.Table.TableArn)).
+				Msg("[DynamoDBRepository.ListTablesByInput] failed to read table tags; table returned without tags")
+		}
 		table := NewTable(r.client, tableOutput.Table, tags)
 		tables = append(tables, table)
 	}
