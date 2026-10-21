@@ -138,3 +138,34 @@ func (h *InFile) getLogger(name string) zerolog.Logger {
 		Str("store", CacheTypeFile).
 		Logger()
 }
+
+// DeletePrefix removes every cache file whose key starts with prefix. The
+// directory is listed and matched by name rather than globbed, so a prefix
+// containing glob metacharacters cannot widen the match.
+func (h *InFile) DeletePrefix(prefix string) error {
+	h.mx.Lock()
+	defer h.mx.Unlock()
+
+	entries, err := os.ReadDir(h.cacheDir)
+	if err != nil {
+		return err
+	}
+
+	filePrefix := fmt.Sprintf("aws.%s", prefix)
+	evicted := 0
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasPrefix(name, filePrefix) || !strings.HasSuffix(name, ".gob") {
+			continue
+		}
+
+		if err := os.Remove(fmt.Sprintf("%s/%s", h.cacheDir, name)); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		evicted++
+	}
+
+	log.Debug().Str("prefix", prefix).Int("evicted", evicted).Msg("[InFile.DeletePrefix] cache evicted")
+
+	return nil
+}

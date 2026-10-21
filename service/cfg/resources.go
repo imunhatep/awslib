@@ -48,6 +48,12 @@ const (
 	// fetches it as a resource.
 	ResourceTypeTagMapping awscfg.ResourceType = "AWS::ResourceGroupsTagging::TagMapping"
 
+	// ResourceTypeCloudControlRequest labels the Cloud Control calls that act on a
+	// resource request rather than a resource: status polling, cancellation and
+	// listing of requests, which carry a RequestToken and no type of their own.
+	// Deliberately absent from ResourceTypeList: a request is not fetchable.
+	ResourceTypeCloudControlRequest awscfg.ResourceType = "AWS::CloudControl::ResourceRequest"
+
 	// CloudFront SaaS Manager (multi-tenant distributions). ListDistributionTenants
 	// returns summaries; the full tenant only comes back from a Get, so the two are
 	// tracked as distinct resource types.

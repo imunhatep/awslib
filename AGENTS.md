@@ -87,6 +87,9 @@ Each AWS service has a package under `service/<name>/` (ec2, s3, rds, ...). With
   that answers "no match" with `(nil, nil)` — e.g. `pricing.GetInstancePricing` for an instance type
   a region does not offer — would otherwise kill the process from inside the generated cached wrapper.
   The cost is that such lookups are refetched on every call; there is no negative caching.
+- `DataCache.Invalidate(prefix)` evicts every entry in the namespace whose method name starts with
+  `prefix`, on handlers implementing the optional `cache.InvalidatorInterface`. There is no
+  evict-by-parameter because `cache.Key` hashes the parameters one way. Used by Cloud Control writes.
 - `cache.Key(method, params...)` (`cache/key.go`) builds the keys the generated cached repositories
   use. It renders params **by value** via reflection (pointers dereferenced, map entries sorted,
   unexported fields included), because `%v` on an AWS SDK input embeds the addresses of its nested
@@ -181,6 +184,32 @@ entry has no LIST handler error out rather than returning an empty list, nested 
 `ResourceModel` the proxy does not supply, `detailed` costs one extra `GetResource` per resource (S3
 buckets need it, EC2 instances do not), and a generic resource gives up three things a typed entity
 has: a typed SDK struct, a creation time (Cloud Control reports none), and often an ARN.
+
+**Writes live in `service/cloudcontrol/write_repository.go`** (`CreateResource`/`UpdateResource`/
+`DeleteResource` and their `*AndWait` and `*ByInput` forms, plus `DescribeResourceRequest`,
+`WaitForResourceRequest`, `CancelResourceRequest`, `FindResourceRequests`) and
+`tags_repository.go` (`SetResourceTags`/`UntagResource`, which read the model and patch `/Tags`
+preserving its per-type shape). Their names deliberately avoid the `Get*`/`List*` prefixes so
+`generate-cached` never wraps them: a cached write is never re-sent and a cached request status never
+changes. `WaitForResourceRequest` re-fetches the status after the SDK waiter errors because the
+waiter's error drops the handler's `ErrorCode` and `StatusMessage`; a FAILED or CANCEL_COMPLETE request
+comes back as `*RequestFailedError` (reachable through `errors.As`). Poll timing comes from
+`WithPollInterval`/`WithWaiterOptions`. Request-level calls are labelled with
+`cfg.ResourceTypeCloudControlRequest` in metrics. Pinned by `write_repository_test.go` and
+`write_features_test.go`, which stub the awsjson endpoint with `httptest`.
+
+**`write_cached.go` is the hand-written companion to the generated `cached_repository.go`.** It adds
+the write methods to `CloudControlRepositoryCached`; each evicts every cached list in the
+repository's `<account>:<region>:cloudcontrol` namespace (`DataCache.Invalidate("ListResources")`)
+once AWS accepts the request, and again after an `*AndWait` completes. Eviction is by method-name
+prefix within the namespace, not by type, because the key hashes the type together with the other
+parameters. Two coupled rules: the file name must not match `cached_*_repository.go`, which
+`generate-cached` deletes; and because the companion references the generated type, the generator
+loads each package *before* removing its generated file and tolerates `undefined: *RepositoryCached`
+(`loadPackage`/`classifyErrors` in `cmd/generate-cached/main.go`). Any other type error still skips
+the package. Eviction is the optional `cache.InvalidatorInterface` (`DeletePrefix`) rather than a
+method on `HandlerInterface`, so existing external handlers keep compiling; a handler without it is
+skipped with a warning.
 
 **On the missing ARN — this is deliberate, do not "fix" it by synthesizing one.** `ResourceDescription`
 carries only an opaque identifier, and the resource-path segment differs per type (`instance/`,

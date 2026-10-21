@@ -27,6 +27,11 @@ type AwsClient interface {
 type CloudControlRepository struct {
 	ctx    context.Context
 	client *v3.Client
+
+	// waiterOptions tune WaitForResourceRequest and the *AndWait methods. The
+	// SDK defaults poll every 5s, backing off to 120s, which suits a single
+	// slow resource and makes a batch of quick ones crawl. See WithPollInterval.
+	waiterOptions []func(*awscloudcontrol.ResourceRequestSuccessWaiterOptions)
 }
 
 func NewCloudControlRepository(ctx context.Context, client *v3.Client) *CloudControlRepository {
@@ -36,6 +41,29 @@ func NewCloudControlRepository(ctx context.Context, client *v3.Client) *CloudCon
 	}
 
 	return repo
+}
+
+// WithWaiterOptions sets the SDK waiter options used by every wait in this
+// repository and returns the repository for chaining. Later calls replace
+// earlier ones.
+func (r *CloudControlRepository) WithWaiterOptions(opts ...func(*awscloudcontrol.ResourceRequestSuccessWaiterOptions)) *CloudControlRepository {
+	r.waiterOptions = opts
+	return r
+}
+
+// WithPollInterval bounds the delay between two status polls while waiting on
+// a request. The SDK grows the delay from min towards max with jitter; passing
+// the same value for both polls at a fixed rate. Zero keeps the SDK default
+// for that bound.
+func (r *CloudControlRepository) WithPollInterval(min, max time.Duration) *CloudControlRepository {
+	return r.WithWaiterOptions(func(o *awscloudcontrol.ResourceRequestSuccessWaiterOptions) {
+		if min > 0 {
+			o.MinDelay = min
+		}
+		if max > 0 {
+			o.MaxDelay = max
+		}
+	})
 }
 
 func (r *CloudControlRepository) cloudcontrolClient() *awscloudcontrol.Client {

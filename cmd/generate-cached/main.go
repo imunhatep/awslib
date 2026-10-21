@@ -462,8 +462,6 @@ func main() {
 	}
 
 	// Delete stale generated files before loading so they don't pollute alias maps
-	cleanGeneratedFiles(serviceDir)
-
 	tmpl, err := template.New("cached").Parse(cachedTemplate)
 	if err != nil {
 		fatalf("parse template: %v", err)
@@ -489,23 +487,17 @@ func main() {
 			Fset: token.NewFileSet(),
 		}
 
-		pkgs, err := packages.Load(cfg, pkgPattern)
-		if err != nil {
-			fmt.Printf("⚠  skip %s: load error: %v\n", pkgDir, err)
-			continue
-		}
-		if len(pkgs) == 0 {
+		pkg, ok := loadPackage(cfg, pkgDir, pkgPattern)
+		if !ok {
 			continue
 		}
 
-		pkg := pkgs[0]
-		if len(pkg.Errors) > 0 {
-			fmt.Printf("⚠  skip %s: package errors:\n", pkgDir)
-			for _, e := range pkg.Errors {
-				fmt.Printf("    %v\n", e)
-			}
-			continue
-		}
+		// The package is loaded with the previous generated file still in place,
+		// and only now removed: hand-written companions may add methods to the
+		// generated *RepositoryCached type (service/cloudcontrol/write_cached.go),
+		// so deleting it before loading would make the package uncompilable and
+		// skipped — leaving the package with no cached wrapper at all.
+		cleanGeneratedFiles(pkgDir)
 
 		// Build alias map from non-generated source files only
 		aliasMap := buildAliasMap(pkg)
@@ -635,6 +627,102 @@ func main() {
 	}
 
 	fmt.Printf("\n✓  Total: %d file(s) generated\n", generated)
+}
+
+// loadPackage type-checks one service package.
+//
+// Two kinds of type error are tolerated, because both are the generator's own
+// doing and regenerating fixes them: errors inside a previously generated file
+// (an entity type was deleted and the stale wrapper still names it), and
+// "undefined: *RepositoryCached" anywhere (the generated file is missing while
+// a hand-written companion adds methods to its type, as
+// service/cloudcontrol/write_cached.go does). A stale file is removed and the
+// package loaded once more; a missing type is simply carried, since
+// go/packages still type-checks the *Repository structs the generator reads.
+// Any other error skips the package, as before.
+func loadPackage(cfg *packages.Config, pkgDir, pkgPattern string) (*packages.Package, bool) {
+	for attempt := 0; attempt < 2; attempt++ {
+		pkgs, err := packages.Load(cfg, pkgPattern)
+		if err != nil {
+			fmt.Printf("⚠  skip %s: load error: %v\n", pkgDir, err)
+			return nil, false
+		}
+		if len(pkgs) == 0 {
+			return nil, false
+		}
+
+		pkg := pkgs[0]
+		if len(pkg.Errors) == 0 {
+			return pkg, true
+		}
+
+		tolerable, stale := classifyErrors(pkg.Errors)
+		if !tolerable {
+			fmt.Printf("⚠  skip %s: package errors:\n", pkgDir)
+			for _, e := range pkg.Errors {
+				fmt.Printf("    %v\n", e)
+			}
+			return nil, false
+		}
+
+		if stale && attempt == 0 {
+			fmt.Printf("ℹ  %s: stale generated file, regenerating\n", pkgDir)
+			cleanGeneratedFiles(pkgDir)
+			cfg.Fset = token.NewFileSet()
+			continue
+		}
+
+		fmt.Printf("ℹ  %s: generated file missing, regenerating\n", pkgDir)
+		return pkg, true
+	}
+
+	return nil, false
+}
+
+// classifyErrors reports whether every error line is one the generator can
+// repair, and whether any of them points into a generated file. go list folds
+// the compiler's output into one multi-line error with Pos "-", so the message
+// is scanned line by line rather than trusting Pos alone.
+func classifyErrors(errs []packages.Error) (tolerable bool, stale bool) {
+	for _, e := range errs {
+		lines := strings.Split(e.Msg, "\n")
+		if e.Pos != "" && e.Pos != "-" {
+			// A positioned error carries the bare message; re-attach the file
+			// so it is classified by where it points, not by its wording.
+			lines = []string{e.Pos + ": " + e.Msg}
+		}
+
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			switch {
+			case line == "", strings.HasPrefix(line, "#"), strings.Contains(line, "too many errors"):
+				continue
+			case isGeneratedFileName(errorFile(line)):
+				stale = true
+				continue
+			case strings.Contains(line, "undefined: ") && strings.HasSuffix(line, "RepositoryCached"):
+				continue
+			default:
+				return false, stale
+			}
+		}
+	}
+
+	return true, stale
+}
+
+// errorFile extracts the file name from a "path:line:col: message" line.
+func errorFile(line string) string {
+	if i := strings.Index(line, ":"); i >= 0 {
+		return filepath.Base(line[:i])
+	}
+
+	return ""
+}
+
+func isGeneratedFileName(name string) bool {
+	return name == "cached_repository.go" ||
+		(strings.HasPrefix(name, "cached_") && strings.HasSuffix(name, "_repository.go"))
 }
 
 // cleanGeneratedFiles removes previously generated cached_*_repository.go

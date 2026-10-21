@@ -3,6 +3,8 @@ package handlers
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
+	"strings"
 	"sync"
 
 	"github.com/allegro/bigcache/v3"
@@ -78,4 +80,35 @@ func (h *InMemory) getLogger(name string) zerolog.Logger {
 		Str("key", name).
 		Str("store", CacheTypeMemory).
 		Logger()
+}
+
+// DeletePrefix evicts every entry whose key starts with prefix. bigcache has no
+// prefix index, so this walks every entry; invalidation is rare next to reads.
+func (h *InMemory) DeletePrefix(prefix string) error {
+	h.mx.Lock()
+	defer h.mx.Unlock()
+
+	// Collect first: deleting while the iterator holds a shard's read lock
+	// would deadlock on that shard.
+	keys := []string{}
+	it := h.cache.Iterator()
+	for it.SetNext() {
+		entry, err := it.Value()
+		if err != nil {
+			continue
+		}
+		if strings.HasPrefix(entry.Key(), prefix) {
+			keys = append(keys, entry.Key())
+		}
+	}
+
+	for _, key := range keys {
+		if err := h.cache.Delete(key); err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
+			return err
+		}
+	}
+
+	log.Debug().Str("prefix", prefix).Int("evicted", len(keys)).Msg("[InMemory.DeletePrefix] cache evicted")
+
+	return nil
 }

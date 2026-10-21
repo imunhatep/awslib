@@ -7,5 +7,6 @@ import "encoding/gob"
 // init registers this package's types with encoding/gob so they can be
 // serialized by the cache handlers. Importing this package is sufficient.
 func init() {
+	gob.Register(RequestFailedError{})
 	gob.Register(Resource{})
 }
