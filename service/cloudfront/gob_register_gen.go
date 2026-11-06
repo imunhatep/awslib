@@ -9,6 +9,8 @@ import "encoding/gob"
 func init() {
 	gob.Register(ConnectionGroup{})
 	gob.Register(ConnectionGroupList{})
+	gob.Register(Distribution{})
+	gob.Register(DistributionList{})
 	gob.Register(DistributionTenant{})
 	gob.Register(DistributionTenantList{})
 	gob.Register(DistributionTenantSummary{})

@@ -73,6 +73,20 @@ func (c *CloudFrontRepositoryCached) GetConnectionGroupByRoutingEndpoint(routing
 	return r0, r1
 }
 
+// GetDistributionTags returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) GetDistributionTags(distributionArn string) ([]cftypes.Tag, error) {
+	cacheKey := cache.Key("GetDistributionTags", distributionArn)
+	var cached []cftypes.Tag
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.GetDistributionTags(distributionArn)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // GetDistributionTenant returns cached results when available, otherwise delegates to the underlying repository.
 func (c *CloudFrontRepositoryCached) GetDistributionTenant(identifier string) (*DistributionTenant, error) {
 	cacheKey := cache.Key("GetDistributionTenant", identifier)
@@ -221,6 +235,34 @@ func (c *CloudFrontRepositoryCached) ListDistributionTenantsWithCertificatesByIn
 		return cached, nil
 	}
 	r0, r1 := c.repo.ListDistributionTenantsWithCertificatesByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListDistributionsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListDistributionsAll() ([]Distribution, error) {
+	cacheKey := cache.Key("ListDistributionsAll")
+	var cached []Distribution
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListDistributionsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListDistributionsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListDistributionsByInput(query *awscf.ListDistributionsInput) ([]Distribution, error) {
+	cacheKey := cache.Key("ListDistributionsByInput", query)
+	var cached []Distribution
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListDistributionsByInput(query)
 	if r1 == nil {
 		_ = c.cache.Write(cacheKey, r0)
 	}

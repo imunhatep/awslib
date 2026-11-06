@@ -101,6 +101,34 @@ func (c *Ec2RepositoryCached) ListInstancesByInput(query *awsec2.DescribeInstanc
 	return r0, r1
 }
 
+// ListNetworkInterfacesAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListNetworkInterfacesAll() ([]NetworkInterface, error) {
+	cacheKey := cache.Key("ListNetworkInterfacesAll")
+	var cached []NetworkInterface
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListNetworkInterfacesAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListNetworkInterfacesByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListNetworkInterfacesByInput(describeInput *awsec2.DescribeNetworkInterfacesInput) ([]NetworkInterface, error) {
+	cacheKey := cache.Key("ListNetworkInterfacesByInput", describeInput)
+	var cached []NetworkInterface
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListNetworkInterfacesByInput(describeInput)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // ListRegionByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListRegionByInput(query *awsec2.DescribeRegionsInput) ([]types.Region, error) {
 	cacheKey := cache.Key("ListRegionByInput", query)

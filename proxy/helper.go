@@ -198,6 +198,19 @@ func FindEc2Addresses(ctx context.Context, client *v3.Client, dc *cache.DataCach
 	return slice.Map(items, cast[ec2.Address]), err
 }
 
+// FindEc2NetworkInterfaces returns a list of network interfaces, each carrying its private and,
+// when it has one, its public addresses — the only source for the auto-assigned frontend
+// addresses of an internet-facing Network Load Balancer
+func FindEc2NetworkInterfaces(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := ec2.NewEc2Repository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListNetworkInterfacesAll()
+		return slice.Map(items, cast[ec2.NetworkInterface]), err
+	}
+	items, err := repo.ListNetworkInterfacesAll()
+	return slice.Map(items, cast[ec2.NetworkInterface]), err
+}
+
 // FindEc2Instances returns a list of EC2 instances
 func FindEc2Instances(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
 	repo := ec2.NewEc2Repository(ctx, client)
@@ -419,6 +432,18 @@ func FindCloudFrontConnectionGroups(ctx context.Context, client *v3.Client, dc *
 	}
 	items, err := repo.ListConnectionGroupsAll()
 	return slice.Map(items, cast[cloudfront.ConnectionGroup]), err
+}
+
+// FindCloudFrontDistributions returns a list of classic CloudFront distributions with their
+// aliases, origins and tags
+func FindCloudFrontDistributions(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := cloudfront.NewCloudFrontRepository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListDistributionsAll()
+		return slice.Map(items, cast[cloudfront.Distribution]), err
+	}
+	items, err := repo.ListDistributionsAll()
+	return slice.Map(items, cast[cloudfront.Distribution]), err
 }
 
 // FindRoute53HostedZones returns a list of Route 53 hosted zones

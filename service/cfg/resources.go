@@ -104,6 +104,7 @@ func ResourceTypeListGlobal() []awscfg.ResourceType {
 		// cloudfront — the control plane is global, not regional
 		ResourceTypeCloudFrontDistributionTenantSummary,
 		ResourceTypeCloudFrontConnectionGroup,
+		awscfg.ResourceTypeDistribution,
 	}
 }
 
@@ -156,6 +157,7 @@ func ResourceTypeListRegional() []awscfg.ResourceType {
 		awscfg.ResourceTypeVPCEndpoint,
 		awscfg.ResourceTypeRouteTable,
 		awscfg.ResourceTypeEip,
+		awscfg.ResourceTypeNetworkInterface,
 		// elb
 		awscfg.ResourceTypeLoadBalancerV2,
 		// sqs

@@ -10,6 +10,7 @@ func init() {
 	gob.Register(Address{})
 	gob.Register(Instance{})
 	gob.Register(InstanceList{})
+	gob.Register(NetworkInterface{})
 	gob.Register(RouteTable{})
 	gob.Register(SecurityGroup{})
 	gob.Register(Snapshot{})

@@ -114,6 +114,8 @@ func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.Reso
 		items, err = FindCloudFrontDistributionTenants(e.ctx, e.client, e.cache)
 	case cfgEntity.ResourceTypeCloudFrontConnectionGroup:
 		items, err = FindCloudFrontConnectionGroups(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeDistribution:
+		items, err = FindCloudFrontDistributions(e.ctx, e.client, e.cache)
 	case cfgEntity.ResourceTypeSnapshot:
 		items, err = FindEc2Snapshots(e.ctx, e.client, e.cache)
 	case cfg.ResourceTypeVolume:
@@ -146,6 +148,8 @@ func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.Reso
 		items, err = FindEc2RouteTables(e.ctx, e.client, e.cache)
 	case cfg.ResourceTypeEip:
 		items, err = FindEc2Addresses(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeNetworkInterface:
+		items, err = FindEc2NetworkInterfaces(e.ctx, e.client, e.cache)
 	default:
 		err = fmt.Errorf("resource type %s not supported", cfgEntity.ResourceTypeToString(resourceType))
 	}

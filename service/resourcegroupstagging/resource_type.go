@@ -41,6 +41,8 @@ var resourceTypeFilters = map[cfg.ResourceType]string{
 	// batch
 	cfg.ResourceTypeBatchComputeEnvironment: "batch:compute-environment",
 	cfg.ResourceTypeBatchJobQueue:           "batch:job-queue",
+	// cloudfront — arn:aws:cloudfront::<account>:distribution/<id>
+	cfg.ResourceTypeDistribution: "cloudfront:distribution",
 	// cloudtrail
 	cfg.ResourceTypeTrail: "cloudtrail:trail",
 	// cloudwatch logs
@@ -48,15 +50,16 @@ var resourceTypeFilters = map[cfg.ResourceType]string{
 	// dynamodb
 	cfg.ResourceTypeTable: "dynamodb:table",
 	// ec2
-	cfg.ResourceTypeInstance:      "ec2:instance",
-	cfg.ResourceTypeVolume:        "ec2:volume",
-	ccfg.ResourceTypeSnapshot:     "ec2:snapshot",
-	cfg.ResourceTypeVpc:           "ec2:vpc",
-	cfg.ResourceTypeSubnet:        "ec2:subnet",
-	cfg.ResourceTypeSecurityGroup: "ec2:security-group",
-	cfg.ResourceTypeVPCEndpoint:   "ec2:vpc-endpoint",
-	cfg.ResourceTypeRouteTable:    "ec2:route-table",
-	cfg.ResourceTypeEip:           "ec2:elastic-ip",
+	cfg.ResourceTypeInstance:         "ec2:instance",
+	cfg.ResourceTypeVolume:           "ec2:volume",
+	ccfg.ResourceTypeSnapshot:        "ec2:snapshot",
+	cfg.ResourceTypeVpc:              "ec2:vpc",
+	cfg.ResourceTypeSubnet:           "ec2:subnet",
+	cfg.ResourceTypeSecurityGroup:    "ec2:security-group",
+	cfg.ResourceTypeVPCEndpoint:      "ec2:vpc-endpoint",
+	cfg.ResourceTypeRouteTable:       "ec2:route-table",
+	cfg.ResourceTypeEip:              "ec2:elastic-ip",
+	cfg.ResourceTypeNetworkInterface: "ec2:network-interface",
 	// ecs
 	cfg.ResourceTypeECSCluster: "ecs:cluster",
 	cfg.ResourceTypeECSService: "ecs:service",
