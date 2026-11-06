@@ -112,16 +112,41 @@ const distributionListXML = `<?xml version="1.0" encoding="UTF-8"?>
   </Items>
 </DistributionList>`
 
-// stubCloudFront serves STS GetCallerIdentity, ListDistributions and ListTagsForResource.
-// tagStatus decides the tagging response per distribution ARN.
-func stubCloudFront(t *testing.T, tagStatus func(arn string) int) (*v3.Client, *[]string) {
+// tagSweepJSON is a GetResources page tagging only E1: E2 is untagged, and the sweep reports
+// it by leaving it out.
+const tagSweepJSON = `{"ResourceTagMappingList":[{"ResourceARN":"arn:aws:cloudfront::123456789012:distribution/E1","Tags":[{"Key":"service","Value":"E1"}]}]}`
+
+type cloudFrontStub struct {
+	sweepRegions []string // signing region of every GetResources call
+	tagged       []string // ARNs passed to ListTagsForResource
+}
+
+// stubCloudFront serves STS GetCallerIdentity, ListDistributions, the tagging API's
+// GetResources and ListTagsForResource. sweepStatus and tagStatus decide the status of the
+// last two; tagStatus is asked per distribution ARN.
+func stubCloudFront(t *testing.T, sweepStatus int, tagStatus func(arn string) int) (*v3.Client, *cloudFrontStub) {
 	t.Helper()
 
 	var mu sync.Mutex
-	tagged := []string{}
+	stub := &cloudFrontStub{}
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case strings.HasSuffix(r.Header.Get("X-Amz-Target"), ".GetResources"):
+			// Authorization: ... Credential=<key>/<date>/<region>/tagging/aws4_request
+			auth := r.Header.Get("Authorization")
+			scope := strings.Split(auth[strings.Index(auth, "Credential=")+len("Credential="):], "/")
+			mu.Lock()
+			stub.sweepRegions = append(stub.sweepRegions, scope[2])
+			mu.Unlock()
+
+			w.Header().Set("Content-Type", "application/x-amz-json-1.1")
+			if sweepStatus != http.StatusOK {
+				w.WriteHeader(sweepStatus)
+				_, _ = w.Write([]byte(`{"__type":"AccessDeniedException","message":"denied"}`))
+				return
+			}
+			_, _ = w.Write([]byte(tagSweepJSON))
 		case r.Method == http.MethodPost:
 			w.Header().Set("Content-Type", "text/xml")
 			_, _ = w.Write([]byte(stsIdentity))
@@ -131,7 +156,7 @@ func stubCloudFront(t *testing.T, tagStatus func(arn string) int) (*v3.Client, *
 		case strings.HasSuffix(r.URL.Path, "/tagging"):
 			arn := r.URL.Query().Get("Resource")
 			mu.Lock()
-			tagged = append(tagged, arn)
+			stub.tagged = append(stub.tagged, arn)
 			mu.Unlock()
 
 			w.Header().Set("Content-Type", "text/xml")
@@ -150,39 +175,58 @@ func stubCloudFront(t *testing.T, tagStatus func(arn string) int) (*v3.Client, *
 	}))
 	t.Cleanup(srv.Close)
 
+	// Deliberately not us-east-1: the sweep has to pin its own region.
 	client, err := v3.NewClient(context.Background(),
-		config.WithRegion("us-east-1"),
+		config.WithRegion("eu-central-1"),
 		config.WithBaseEndpoint(srv.URL),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("AKIATEST", "secret", "")),
 		config.WithRetryMaxAttempts(1),
 	)
 	require.NoError(t, err)
 
-	return client, &tagged
+	return client, stub
 }
 
-func TestListDistributionsJoinsTags(t *testing.T) {
-	client, tagged := stubCloudFront(t, func(string) int { return http.StatusOK })
+func allowed(string) int { return http.StatusOK }
+
+// The tagging sweep answers for every distribution at once. Per-distribution
+// ListTagsForResource is what CloudFront throttled into failing a 65-distribution listing.
+func TestListDistributionsTagsFromOneSweep(t *testing.T) {
+	client, stub := stubCloudFront(t, http.StatusOK, allowed)
 
 	items, err := NewCloudFrontRepository(context.Background(), client).ListDistributionsAll()
 	require.NoError(t, err)
 	require.Len(t, items, 2)
 
-	assert.Len(t, *tagged, 2, "one ListTagsForResource per distribution")
+	assert.Empty(t, stub.tagged, "a successful sweep needs no per-distribution calls")
+	assert.Equal(t, []string{"us-east-1"}, stub.sweepRegions,
+		"CloudFront tags are only visible to the tagging API in us-east-1, whatever the client region")
 
 	assert.Equal(t, "E1", items[0].GetId())
 	assert.Equal(t, "www.example.com", items[0].GetName())
 	assert.Equal(t, []string{"origin-1.example.com"}, items[0].GetOriginDomainNames())
-	assert.Equal(t, "E1", items[0].GetTagValue("service"), "tags must land on their own distribution")
+	assert.Equal(t, "E1", items[0].GetTagValue("service"))
 
 	assert.Equal(t, "E2", items[1].GetId())
+	assert.Empty(t, items[1].GetTags(), "a distribution absent from the sweep is untagged")
+}
+
+func TestListDistributionsFallsBackWhenSweepFails(t *testing.T) {
+	client, stub := stubCloudFront(t, http.StatusBadRequest, allowed)
+
+	items, err := NewCloudFrontRepository(context.Background(), client).ListDistributionsAll()
+	require.NoError(t, err)
+	require.Len(t, items, 2)
+
+	assert.Len(t, stub.tagged, 2, "one ListTagsForResource per distribution")
+	assert.Equal(t, "E1", items[0].GetTagValue("service"), "tags must land on their own distribution")
 	assert.Equal(t, "E2", items[1].GetTagValue("service"))
 }
 
 // An unreadable tag set must not turn into an untagged distribution: that answer is
 // indistinguishable from the truth and is what cost attribution reads.
 func TestListDistributionsFailsWhenTagsCannotBeRead(t *testing.T) {
-	client, _ := stubCloudFront(t, func(arn string) int {
+	client, _ := stubCloudFront(t, http.StatusBadRequest, func(arn string) int {
 		if strings.HasSuffix(arn, "/E2") {
 			return http.StatusForbidden
 		}
