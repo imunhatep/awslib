@@ -307,6 +307,30 @@ The join is on the **bucket name**, not the ARN: the tagging API reports `arn:aw
 The name also avoids needing to know the partition. `tagsFromMap` sorts by key because `Bucket` is cached
 with its `Tags` slice and map order would otherwise differ between a cached and a fresh fetch.
 
+#### CloudFront tags (`service/cloudfront/tags_repository.go`)
+
+No CloudFront list response carries tags (distributions, tenants, connection groups), and the Get
+responses leave them out too although the API reference lists them. Listings read them with
+`bulkTags`: one Resource Groups Tagging sweep for the account, joined by ARN, with the same
+absent-means-untagged and fallback-only-on-a-failed-sweep rules as S3. Per-resource
+`ListTagsForResource` is reserved for single Gets and the fallback, at concurrency 2 with 10
+attempts — at 8 with the default 3, CloudFront throttled a ~65-distribution listing into failure.
+
+- **The sweep is pinned to us-east-1** per operation, whatever the client region; from any other region
+  the tagging API reports no CloudFront resources, which would read as "everything untagged".
+- **Tenants sweep with the bare `cloudfront` filter**, which was observed to return `distribution-tenant/`
+  ARNs; a typed filter's spelling is not established, and a wrong one answers with an empty list.
+- **Connection groups carry an `arnMarker`**: they have not been observed in a sweep, so their absence
+  counts as "untagged" only once the sweep has reported at least one `connection-group/` ARN. Until
+  then they are read per group, which is cheap because an account holds a handful.
+- **Writes do not read tags they can know.** A create carries the tags it sent; `SetDistributionTenantEnabled`
+  and `UpdateDistributionTenantDomains` carry over the tags of the read they already do (and that read
+  fails before anything is changed); the delete sequences read no tags at all, so they need no
+  `cloudfront:ListTagsForResource`. Only a caller-built `Update*` reads them back, and a failed read-back
+  returns the updated entity with its new ETag alongside the error.
+- **`ListDistributionTenantsWithCertificates*` fails on any certificate read other than `ErrNotFound`.**
+  A nil `Certificate` means "no managed certificate"; reporting a throttled read that way is a wrong answer.
+
 ### Resource types (`service/cfg/resources.go`)
 
 Resource types reuse `aws-sdk-go-v2/service/configservice/types.ResourceType` (CloudFormation-style

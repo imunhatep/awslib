@@ -28,10 +28,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// certificateFetchConcurrency bounds the fan-out used when reading managed
-// certificate details for a page of tenants. Certificate state is not part of
-// the tenant list response, so a bulk read is unavoidably 1+N calls.
-const certificateFetchConcurrency = 8
+// certificateFetchConcurrency and certificateFetchMaxAttempts shape the reads
+// of managed certificate details for a list of tenants. Certificate state is not
+// part of the tenant list response and has no bulk read, so it is unavoidably
+// 1+N calls. A concurrency of 8 with the SDK's default 3 attempts is what
+// CloudFront throttled into failure for ListTagsForResource (see
+// tagFetchConcurrency); these are set below that, with the same retry budget.
+const (
+	certificateFetchConcurrency = 4
+	certificateFetchMaxAttempts = tagFetchMaxAttempts
+)
 
 type AwsClient interface {
 	GetRegion() ptypes.AwsRegion

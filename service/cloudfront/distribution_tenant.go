@@ -12,9 +12,10 @@ type DistributionTenantList struct {
 	Items []DistributionTenant
 }
 
-// DistributionTenant is a full tenant as returned by a Get. A Get carries the
-// tenant's tags, read separately because CloudFront leaves them out of the Get
-// response. ETag is carried alongside because every mutating call needs it for
+// DistributionTenant is a full tenant as returned by a Get or a write. It carries
+// the tenant's tags: read separately after a Get, because CloudFront leaves them
+// out of the response, and carried over from what the caller already had after a
+// write. ETag is carried alongside because every mutating call needs it for
 // optimistic locking.
 type DistributionTenant struct {
 	service.AbstractResource
@@ -29,10 +30,14 @@ type DistributionTenantSummaryList struct {
 
 // DistributionTenantSummary is the lighter entity returned by
 // ListDistributionTenants. It carries almost everything the full tenant does —
-// including the ETag — but not Parameters or Tags.
+// including the ETag — but not Parameters.
+//
+// Tags are not part of the list response either; the listing reads them for all
+// tenants in one tagging sweep and stores them here.
 type DistributionTenantSummary struct {
 	service.AbstractResource
 	cftypes.DistributionTenantSummary
+	Tags []cftypes.Tag
 }
 
 // TenantCertificate pairs a tenant summary with its CloudFront-managed
@@ -107,14 +112,12 @@ func (e DistributionTenantSummary) GetName() string {
 	return aws.ToString(e.Name)
 }
 
-// GetTags always returns an empty map: ListDistributionTenants does not return
-// tags. Use GetDistributionTenantByInput when tags are needed.
 func (e DistributionTenantSummary) GetTags() map[string]string {
-	return map[string]string{}
+	return tagsToMap(&cftypes.Tags{Items: e.Tags})
 }
 
-func (e DistributionTenantSummary) GetTagValue(_ string) string {
-	return ""
+func (e DistributionTenantSummary) GetTagValue(tag string) string {
+	return e.GetTags()[tag]
 }
 
 func (e DistributionTenantSummary) IsEnabled() bool {

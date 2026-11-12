@@ -18,8 +18,8 @@ type DistributionList struct {
 // summary already carries the parts that are asked about — aliases, origins, viewer
 // certificate, WAF ACL — so no per-distribution GetDistribution is needed.
 //
-// Tags are not part of the list response; ListDistributionsAll reads them per distribution
-// and stores them here.
+// Tags are not part of the list response; ListDistributionsAll reads them for all
+// distributions in one tagging sweep and stores them here.
 type Distribution struct {
 	service.AbstractResource
 	cftypes.DistributionSummary

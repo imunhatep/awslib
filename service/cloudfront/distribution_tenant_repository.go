@@ -32,29 +32,37 @@ func (r *CloudFrontRepository) ListDistributionTenantsByDistribution(distributio
 	})
 }
 
+// ListDistributionTenantsByInput lists tenants together with their tags.
+//
+// The list response carries no tags, so they come from one tagging sweep for the
+// whole account (see bulkTags) rather than a ListTagsForResource per tenant —
+// tenants exist to be provisioned in large numbers, and CloudFront throttles the
+// per-resource call hard. A tenant whose tags cannot be read fails the listing
+// instead of being returned untagged.
 func (r *CloudFrontRepository) ListDistributionTenantsByInput(query *awscf.ListDistributionTenantsInput) ([]DistributionTenantSummary, error) {
 	start := time.Now()
 
-	var tenants []DistributionTenantSummary
+	summaries, err := r.listDistributionTenantSummaries(query)
+	if err != nil {
+		return nil, err
+	}
 
-	p := awscf.NewListDistributionTenantsPaginator(r.cloudFrontClient(), query)
-	for p.HasMorePages() {
-		if metrics.AwsMetricsEnabled {
-			metrics.AwsApiRequests.With(r.promLabels("ListDistributionTenants", ccfg.ResourceTypeCloudFrontDistributionTenantSummary)).Inc()
-		}
+	arns := make([]string, len(summaries))
+	for i, summary := range summaries {
+		arns[i] = aws.ToString(summary.Arn)
+	}
 
-		output, err := p.NextPage(r.ctx)
-		if err != nil {
-			if metrics.AwsMetricsEnabled {
-				metrics.AwsApiRequestErrors.With(r.promLabels("ListDistributionTenants", ccfg.ResourceTypeCloudFrontDistributionTenantSummary)).Inc()
-			}
+	tags, err := r.bulkTags(arns, distributionTenantTagSource)
+	if err != nil {
+		return nil, err
+	}
 
-			return tenants, classifyErr(err)
-		}
+	tenants := make([]DistributionTenantSummary, 0, len(summaries))
+	for i, summary := range summaries {
+		tenant := NewDistributionTenantSummary(r.client, summary)
+		tenant.Tags = tags[i]
 
-		for _, summary := range output.DistributionTenantList {
-			tenants = append(tenants, NewDistributionTenantSummary(r.client, summary))
-		}
+		tenants = append(tenants, tenant)
 	}
 
 	if metrics.AwsMetricsEnabled {
@@ -70,7 +78,39 @@ func (r *CloudFrontRepository) ListDistributionTenantsByInput(query *awscf.ListD
 	return tenants, nil
 }
 
+func (r *CloudFrontRepository) listDistributionTenantSummaries(query *awscf.ListDistributionTenantsInput) ([]cftypes.DistributionTenantSummary, error) {
+	var summaries []cftypes.DistributionTenantSummary
+
+	p := awscf.NewListDistributionTenantsPaginator(r.cloudFrontClient(), query)
+	for p.HasMorePages() {
+		if metrics.AwsMetricsEnabled {
+			metrics.AwsApiRequests.With(r.promLabels("ListDistributionTenants", ccfg.ResourceTypeCloudFrontDistributionTenantSummary)).Inc()
+		}
+
+		output, err := p.NextPage(r.ctx)
+		if err != nil {
+			if metrics.AwsMetricsEnabled {
+				metrics.AwsApiRequestErrors.With(r.promLabels("ListDistributionTenants", ccfg.ResourceTypeCloudFrontDistributionTenantSummary)).Inc()
+			}
+
+			return nil, classifyErr(err)
+		}
+
+		summaries = append(summaries, output.DistributionTenantList...)
+	}
+
+	return summaries, nil
+}
+
+// GetDistributionTenantByInput reads a tenant together with its tags.
 func (r *CloudFrontRepository) GetDistributionTenantByInput(query *awscf.GetDistributionTenantInput) (*DistributionTenant, error) {
+	return r.getDistributionTenant(query, true)
+}
+
+// getDistributionTenant reads a tenant, with its tags when withTags is set. The
+// delete sequence reads without them: it needs only the current ETag, and the tag
+// read would cost a call and require cloudfront:ListTagsForResource for nothing.
+func (r *CloudFrontRepository) getDistributionTenant(query *awscf.GetDistributionTenantInput, withTags bool) (*DistributionTenant, error) {
 	start := time.Now()
 
 	if query.Identifier == nil || aws.ToString(query.Identifier) == "" {
@@ -94,12 +134,14 @@ func (r *CloudFrontRepository) GetDistributionTenantByInput(query *awscf.GetDist
 		return nil, nil
 	}
 
-	tagged, err := r.withTenantTags(*output.DistributionTenant)
-	if err != nil {
-		return nil, err
+	read := *output.DistributionTenant
+	if withTags {
+		if read, err = r.withTenantTags(read); err != nil {
+			return nil, err
+		}
 	}
 
-	tenant := NewDistributionTenant(r.client, tagged, aws.ToString(output.ETag))
+	tenant := NewDistributionTenant(r.client, read, aws.ToString(output.ETag))
 
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsApiResourcesFetched.
@@ -180,34 +222,17 @@ func (r *CloudFrontRepository) GetDistributionTenantByDomain(domain string) (*Di
 // untagged", and ownership checks decide on it. A tenant deleted between the
 // two calls is ErrNotFound, like the read itself.
 func (r *CloudFrontRepository) withTenantTags(tenant cftypes.DistributionTenant) (cftypes.DistributionTenant, error) {
-	if tenant.Tags != nil && len(tenant.Tags.Items) > 0 {
-		return tenant, nil
-	}
-
-	tenantArn := aws.ToString(tenant.Arn)
-	if tenantArn == "" {
-		return tenant, errors.Errorf("distribution tenant %s has no ARN to read its tags by", aws.ToString(tenant.Id))
-	}
-
-	if metrics.AwsMetricsEnabled {
-		metrics.AwsApiRequests.With(r.promLabels("ListTagsForResource", ccfg.ResourceTypeCloudFrontDistributionTenant)).Inc()
-	}
-
-	output, err := r.cloudFrontClient().ListTagsForResource(r.ctx, &awscf.ListTagsForResourceInput{
-		Resource: aws.String(tenantArn),
-	}, func(o *awscf.Options) { o.RetryMaxAttempts = tagFetchMaxAttempts })
+	tags, err := r.completeTags(
+		"distribution tenant "+aws.ToString(tenant.Id),
+		aws.ToString(tenant.Arn),
+		tenant.Tags,
+		ccfg.ResourceTypeCloudFrontDistributionTenant,
+	)
 	if err != nil {
-		if metrics.AwsMetricsEnabled {
-			metrics.AwsApiRequestErrors.With(r.promLabels("ListTagsForResource", ccfg.ResourceTypeCloudFrontDistributionTenant)).Inc()
-		}
-
-		return tenant, classifyErr(err)
+		return tenant, err
 	}
 
-	tenant.Tags = &cftypes.Tags{}
-	if output.Tags != nil {
-		tenant.Tags.Items = output.Tags.Items
-	}
+	tenant.Tags = tags
 
 	return tenant, nil
 }
@@ -230,7 +255,7 @@ func (r *CloudFrontRepository) GetManagedCertificateDetails(identifier string) (
 
 	output, err := r.cloudFrontClient().GetManagedCertificateDetails(r.ctx, &awscf.GetManagedCertificateDetailsInput{
 		Identifier: aws.String(identifier),
-	})
+	}, func(o *awscf.Options) { o.RetryMaxAttempts = certificateFetchMaxAttempts })
 	if err != nil {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequestErrors.With(r.promLabels("GetManagedCertificateDetails", ccfg.ResourceTypeCloudFrontDistributionTenant)).Inc()
@@ -258,10 +283,17 @@ func (r *CloudFrontRepository) ListDistributionTenantsWithCertificatesAll() ([]T
 // certificate details each one is missing.
 //
 // This is 1+N API calls by necessity — ListDistributionTenants does not return
-// certificate state. The per-tenant reads run concurrently, bounded by
-// certificateFetchConcurrency. A tenant whose certificate cannot be read (most
-// commonly because it has no managed certificate) is returned with a nil
-// Certificate rather than failing the whole listing.
+// certificate state, and there is no bulk read for it. The per-tenant reads run
+// concurrently, bounded by certificateFetchConcurrency, each retried up to
+// certificateFetchMaxAttempts times because CloudFront throttles per-resource
+// reads hard. Tags are read in bulk by the listing, not per tenant.
+//
+// A tenant without a managed certificate (CloudFront answers EntityNotFound: it
+// inherits the distribution's certificate or brings its own) is returned with a
+// nil Certificate. Any other failure — throttling past the retries, a denied
+// read — fails the listing: a nil Certificate is what "no managed certificate"
+// looks like, and reporting a throttled read that way would be a wrong answer
+// rather than a missing one.
 func (r *CloudFrontRepository) ListDistributionTenantsWithCertificatesByInput(query *awscf.ListDistributionTenantsInput) ([]TenantCertificate, error) {
 	tenants, err := r.ListDistributionTenantsByInput(query)
 	if err != nil {
@@ -269,6 +301,7 @@ func (r *CloudFrontRepository) ListDistributionTenantsWithCertificatesByInput(qu
 	}
 
 	results := make([]TenantCertificate, len(tenants))
+	errs := make([]error, len(tenants))
 	sem := make(chan struct{}, certificateFetchConcurrency)
 
 	var wg sync.WaitGroup
@@ -284,20 +317,25 @@ func (r *CloudFrontRepository) ListDistributionTenantsWithCertificatesByInput(qu
 			results[idx] = TenantCertificate{Tenant: t}
 
 			details, err := r.GetManagedCertificateDetails(t.GetId())
-			if err != nil {
+			if errors.Is(err, ErrNotFound) {
 				log.Debug().
-					Err(err).
 					Str("tenant", t.GetId()).
-					Msg("[CloudFrontRepository.ListDistributionTenantsWithCertificates] no managed certificate details")
+					Msg("[CloudFrontRepository.ListDistributionTenantsWithCertificates] no managed certificate")
 
 				return
 			}
 
-			results[idx].Certificate = details
+			results[idx].Certificate, errs[idx] = details, err
 		}(i, tenant)
 	}
 
 	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			return nil, errors.Errorf("reading managed certificate of distribution tenant %s: %w", tenants[i].GetId(), err)
+		}
+	}
 
 	return results, nil
 }
@@ -335,7 +373,12 @@ func (r *CloudFrontRepository) CreateDistributionTenant(input *awscf.CreateDistr
 		return nil, nil
 	}
 
-	tenant := NewDistributionTenant(r.client, *output.DistributionTenant, aws.ToString(output.ETag))
+	// A create applies exactly the tags it was sent, so those stand in for a
+	// response that leaves them out, without reading them back.
+	created := *output.DistributionTenant
+	created.Tags = carryTags(created.Tags, input.Tags)
+
+	tenant := NewDistributionTenant(r.client, created, aws.ToString(output.ETag))
 
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsRepoCallDuration.
@@ -349,7 +392,34 @@ func (r *CloudFrontRepository) CreateDistributionTenant(input *awscf.CreateDistr
 // UpdateDistributionTenant applies a caller-built update. IfMatch must carry
 // the ETag of the version being replaced; a stale one yields
 // ErrPreconditionFailed.
+//
+// The caller holds no tags to carry over, so when the response leaves them out
+// they are read back with one ListTagsForResource. If that read fails the update
+// has still been applied: the tenant is returned with its new ETag but without
+// tags, alongside the error. SetDistributionTenantEnabled and
+// UpdateDistributionTenantDomains avoid the read-back by carrying over the tags
+// of the tenant they read first.
 func (r *CloudFrontRepository) UpdateDistributionTenant(input *awscf.UpdateDistributionTenantInput) (*DistributionTenant, error) {
+	tenant, err := r.updateDistributionTenant(input, nil)
+	if err != nil || tenant == nil {
+		return tenant, err
+	}
+
+	tagged, err := r.withTenantTags(tenant.DistributionTenant)
+	if err != nil {
+		return tenant, errors.Errorf("distribution tenant %s was updated (ETag %s), but its tags could not be read: %w", tenant.GetId(), tenant.ETag, err)
+	}
+
+	tenant.DistributionTenant = tagged
+
+	return tenant, nil
+}
+
+// updateDistributionTenant sends an update. An update cannot change tags, so
+// known — the tags of the tenant as read before the update — stand in for a
+// response that leaves them out. nil known leaves them out, for the delete
+// sequence, which needs only the new ETag.
+func (r *CloudFrontRepository) updateDistributionTenant(input *awscf.UpdateDistributionTenantInput, known *cftypes.Tags) (*DistributionTenant, error) {
 	start := time.Now()
 
 	if aws.ToString(input.Id) == "" {
@@ -377,7 +447,10 @@ func (r *CloudFrontRepository) UpdateDistributionTenant(input *awscf.UpdateDistr
 		return nil, nil
 	}
 
-	tenant := NewDistributionTenant(r.client, *output.DistributionTenant, aws.ToString(output.ETag))
+	updated := *output.DistributionTenant
+	updated.Tags = carryTags(updated.Tags, known)
+
+	tenant := NewDistributionTenant(r.client, updated, aws.ToString(output.ETag))
 
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsRepoCallDuration.
@@ -391,6 +464,10 @@ func (r *CloudFrontRepository) UpdateDistributionTenant(input *awscf.UpdateDistr
 // SetDistributionTenantEnabled flips a tenant between serving and disabled,
 // reading the current ETag first so callers do not have to thread it through.
 // A no-op when the tenant is already in the requested state.
+//
+// The first read includes the tags, and the returned tenant carries them over
+// rather than reading them again after the update. Reading them up front means a
+// tag read that fails stops the call before anything is changed.
 func (r *CloudFrontRepository) SetDistributionTenantEnabled(identifier string, enabled bool) (*DistributionTenant, error) {
 	tenant, err := r.GetDistributionTenant(identifier)
 	if err != nil {
@@ -405,15 +482,16 @@ func (r *CloudFrontRepository) SetDistributionTenantEnabled(identifier string, e
 		return tenant, nil
 	}
 
-	return r.UpdateDistributionTenant(&awscf.UpdateDistributionTenantInput{
+	return r.updateDistributionTenant(&awscf.UpdateDistributionTenantInput{
 		Id:      tenant.Id,
 		IfMatch: aws.String(tenant.ETag),
 		Enabled: aws.Bool(enabled),
-	})
+	}, tenant.DistributionTenant.Tags)
 }
 
 // UpdateDistributionTenantDomains replaces the set of hostnames a tenant
-// serves, reading the current ETag first.
+// serves, reading the current ETag first. Tags are handled as in
+// SetDistributionTenantEnabled.
 func (r *CloudFrontRepository) UpdateDistributionTenantDomains(identifier string, domains []string) (*DistributionTenant, error) {
 	if len(domains) == 0 {
 		return nil, errors.New("Domains cannot be empty: a tenant must serve at least one domain")
@@ -433,11 +511,11 @@ func (r *CloudFrontRepository) UpdateDistributionTenantDomains(identifier string
 		items = append(items, cftypes.DomainItem{Domain: aws.String(domain)})
 	}
 
-	return r.UpdateDistributionTenant(&awscf.UpdateDistributionTenantInput{
+	return r.updateDistributionTenant(&awscf.UpdateDistributionTenantInput{
 		Id:      tenant.Id,
 		IfMatch: aws.String(tenant.ETag),
 		Domains: items,
-	})
+	}, tenant.DistributionTenant.Tags)
 }
 
 // DeleteDistributionTenantByInput deletes a tenant with a caller-supplied
@@ -483,8 +561,14 @@ func (r *CloudFrontRepository) DeleteDistributionTenantByInput(input *awscf.Dele
 // finished applying the disable, the delete comes back as ErrNotDisabled and
 // the caller should retry — this mirrors how every other CloudFront config
 // change settles asynchronously.
+//
+// Tags play no part in a delete, so none are read: the sequence is one read,
+// at most one update and the delete, and it needs no
+// cloudfront:ListTagsForResource permission.
 func (r *CloudFrontRepository) DeleteDistributionTenant(identifier string) error {
-	tenant, err := r.GetDistributionTenant(identifier)
+	tenant, err := r.getDistributionTenant(&awscf.GetDistributionTenantInput{
+		Identifier: aws.String(identifier),
+	}, false)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return nil
@@ -504,7 +588,11 @@ func (r *CloudFrontRepository) DeleteDistributionTenant(identifier string) error
 
 		// The update response carries the new version, so no re-read is needed
 		// to get a usable ETag for the delete.
-		if tenant, err = r.SetDistributionTenantEnabled(tenant.GetId(), false); err != nil {
+		if tenant, err = r.updateDistributionTenant(&awscf.UpdateDistributionTenantInput{
+			Id:      tenant.Id,
+			IfMatch: aws.String(tenant.ETag),
+			Enabled: aws.Bool(false),
+		}, nil); err != nil {
 			return err
 		}
 
