@@ -12,8 +12,10 @@ type DistributionTenantList struct {
 	Items []DistributionTenant
 }
 
-// DistributionTenant is a full tenant as returned by a Get. ETag is carried
-// alongside because every mutating call needs it for optimistic locking.
+// DistributionTenant is a full tenant as returned by a Get. A Get carries the
+// tenant's tags, read separately because CloudFront leaves them out of the Get
+// response. ETag is carried alongside because every mutating call needs it for
+// optimistic locking.
 type DistributionTenant struct {
 	service.AbstractResource
 	cftypes.DistributionTenant

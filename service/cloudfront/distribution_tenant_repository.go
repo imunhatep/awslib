@@ -94,7 +94,12 @@ func (r *CloudFrontRepository) GetDistributionTenantByInput(query *awscf.GetDist
 		return nil, nil
 	}
 
-	tenant := NewDistributionTenant(r.client, *output.DistributionTenant, aws.ToString(output.ETag))
+	tagged, err := r.withTenantTags(*output.DistributionTenant)
+	if err != nil {
+		return nil, err
+	}
+
+	tenant := NewDistributionTenant(r.client, tagged, aws.ToString(output.ETag))
 
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsApiResourcesFetched.
@@ -145,7 +150,12 @@ func (r *CloudFrontRepository) GetDistributionTenantByDomain(domain string) (*Di
 		return nil, nil
 	}
 
-	tenant := NewDistributionTenant(r.client, *output.DistributionTenant, aws.ToString(output.ETag))
+	tagged, err := r.withTenantTags(*output.DistributionTenant)
+	if err != nil {
+		return nil, err
+	}
+
+	tenant := NewDistributionTenant(r.client, tagged, aws.ToString(output.ETag))
 
 	if metrics.AwsMetricsEnabled {
 		metrics.AwsApiResourcesFetched.
@@ -158,6 +168,48 @@ func (r *CloudFrontRepository) GetDistributionTenantByDomain(domain string) (*Di
 	}
 
 	return &tenant, nil
+}
+
+// withTenantTags fills in the tags of a tenant read with GetDistributionTenant
+// or GetDistributionTenantByDomain. The API reference lists Tags in both
+// responses, but CloudFront leaves them out, so they are read with
+// ListTagsForResource whenever the response carries none.
+//
+// A tenant whose tags cannot be read fails the read instead of coming back
+// untagged: an empty tag set is indistinguishable from "this tenant is
+// untagged", and ownership checks decide on it. A tenant deleted between the
+// two calls is ErrNotFound, like the read itself.
+func (r *CloudFrontRepository) withTenantTags(tenant cftypes.DistributionTenant) (cftypes.DistributionTenant, error) {
+	if tenant.Tags != nil && len(tenant.Tags.Items) > 0 {
+		return tenant, nil
+	}
+
+	tenantArn := aws.ToString(tenant.Arn)
+	if tenantArn == "" {
+		return tenant, errors.Errorf("distribution tenant %s has no ARN to read its tags by", aws.ToString(tenant.Id))
+	}
+
+	if metrics.AwsMetricsEnabled {
+		metrics.AwsApiRequests.With(r.promLabels("ListTagsForResource", ccfg.ResourceTypeCloudFrontDistributionTenant)).Inc()
+	}
+
+	output, err := r.cloudFrontClient().ListTagsForResource(r.ctx, &awscf.ListTagsForResourceInput{
+		Resource: aws.String(tenantArn),
+	}, func(o *awscf.Options) { o.RetryMaxAttempts = tagFetchMaxAttempts })
+	if err != nil {
+		if metrics.AwsMetricsEnabled {
+			metrics.AwsApiRequestErrors.With(r.promLabels("ListTagsForResource", ccfg.ResourceTypeCloudFrontDistributionTenant)).Inc()
+		}
+
+		return tenant, classifyErr(err)
+	}
+
+	tenant.Tags = &cftypes.Tags{}
+	if output.Tags != nil {
+		tenant.Tags.Items = output.Tags.Items
+	}
+
+	return tenant, nil
 }
 
 // GetManagedCertificateDetails reads the CloudFront-managed ACM certificate for
