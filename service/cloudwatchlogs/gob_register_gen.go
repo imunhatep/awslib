@@ -9,4 +9,9 @@ import "encoding/gob"
 func init() {
 	gob.Register(LogGroup{})
 	gob.Register(LogGroupList{})
+	gob.Register(QueryFailedError{})
+	gob.Register(QueryField{})
+	gob.Register(QueryMiddleware{})
+	gob.Register(QueryResults{})
+	gob.Register(QueryRow{})
 }

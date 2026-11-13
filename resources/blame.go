@@ -100,9 +100,14 @@ func (b *AwsBlame) Lookup(resource service.ResourceInterface) (*ResourceEvents, 
 		WithEndTime(resource.GetCreatedAt().Add(2 * time.Minute)).
 		WithResource(resource)
 
+	// errors.New(nil) is a non-nil "<nil>" error, which made every lookup fail and LookupAll stop
+	// after the first resource
 	events, err := eventsRepo.ListEventsByLookup(lookup)
+	if err != nil {
+		return NewResourceEvents(resource, events...), errors.New(err)
+	}
 
-	return NewResourceEvents(resource, events...), errors.New(err)
+	return NewResourceEvents(resource, events...), nil
 }
 
 type ResourceEvents struct {
@@ -122,9 +127,29 @@ func (r *ResourceEvents) GetEntity() service.ResourceInterface {
 	return r.resource
 }
 
+// GetCreationEvent is the earliest successful write event in the lookup window, the call that
+// created the resource. LookupEvents lists the newest event first, so taking the head would name
+// whoever touched the resource last, e.g. a tagging automation seconds after creation. Failed
+// calls are skipped: an AccessDenied create attempt before the real one created nothing.
+func (r *ResourceEvents) GetCreationEvent() (cloudtrail.Event, bool) {
+	var creation cloudtrail.Event
+	found := false
+
+	for _, e := range r.events {
+		if e.IsReadOnly() || e.IsFailed() {
+			continue
+		}
+
+		if !found || e.GetTime().Before(creation.GetTime()) {
+			creation, found = e, true
+		}
+	}
+
+	return creation, found
+}
+
 func (r *ResourceEvents) GetUsername() string {
-	events := slice.FilterNot(r.events, func(e cloudtrail.Event) bool { return e.IsReadOnly() })
-	if creator, ok := slice.Head(events).Get(); ok {
+	if creator, ok := r.GetCreationEvent(); ok {
 		return creator.GetUsername()
 	}
 

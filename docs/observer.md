@@ -194,7 +194,8 @@ only after a deliberate type assertion — don't write through those.
 ## Related: who created this resource?
 
 `resources.AwsBlame` reads CloudTrail around each resource's creation time and reports the
-non-read-only event's username:
+username on the earliest successful write event in that window, the call that created it
+(`GetCreationEvent()` returns the event itself):
 
 ```go
 blame := resources.NewAwsBlame(ctx, clientPool).
@@ -233,7 +234,7 @@ lookup := cloudtrail.NewLookupMiddleware().
     WithStartTime(time.Now().Add(-24 * time.Hour)).
     WithEndTime(time.Now()).
     WithEventName("RunInstances"). // one attribute only — see below
-    WithLimit(50)
+    WithLimit(200) // a total: fetched as pages of 50, the most LookupEvents takes
 
 if errs, ok := lookup.Errors(); !ok {
     return errs[0]
@@ -252,3 +253,10 @@ events, err := cloudtrail.NewCloudTrailRepository(ctx, client).ListEventsByLooku
 - **`Hash()`** renders the query as a stable key (attributes sorted) — what the cached
   repository uses, so a builder is safe to reuse as a cache identity.
 - `WithResource(resource)` derives the right attribute from a `service.ResourceInterface`.
+  It is the exception to the rule above: on a lookup that already has an attribute the
+  resource filter is dropped with a warning log but **no error**, so the lookup runs
+  broader than asked rather than failing.
+- **`WithLimit` is a total**, not the page size `LookupEvents` reads `MaxResults` as: the
+  repository asks for pages of at most 50 (`LookupEventsMaxPageSize`) and stops at the limit.
+- `Event.GetPrincipalArn()` names the role session behind an assumed-role call, which
+  `GetUsername()` reduces to the session name; `GetErrorCode()` is set on calls that failed.

@@ -143,6 +143,34 @@ func (c *CloudFrontRepositoryCached) GetManagedCertificateDetails(identifier str
 	return r0, r1
 }
 
+// ListCachePoliciesAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListCachePoliciesAll() ([]CachePolicy, error) {
+	cacheKey := cache.Key("ListCachePoliciesAll")
+	var cached []CachePolicy
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListCachePoliciesAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListCachePoliciesByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListCachePoliciesByInput(query *awscf.ListCachePoliciesInput) ([]CachePolicy, error) {
+	cacheKey := cache.Key("ListCachePoliciesByInput", query)
+	var cached []CachePolicy
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListCachePoliciesByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // ListConnectionGroupsAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *CloudFrontRepositoryCached) ListConnectionGroupsAll() ([]ConnectionGroup, error) {
 	cacheKey := cache.Key("ListConnectionGroupsAll")
@@ -165,6 +193,34 @@ func (c *CloudFrontRepositoryCached) ListConnectionGroupsByInput(query *awscf.Li
 		return cached, nil
 	}
 	r0, r1 := c.repo.ListConnectionGroupsByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListContinuousDeploymentPoliciesAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListContinuousDeploymentPoliciesAll() ([]ContinuousDeploymentPolicy, error) {
+	cacheKey := cache.Key("ListContinuousDeploymentPoliciesAll")
+	var cached []ContinuousDeploymentPolicy
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListContinuousDeploymentPoliciesAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListContinuousDeploymentPoliciesByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListContinuousDeploymentPoliciesByInput(query *awscf.ListContinuousDeploymentPoliciesInput) ([]ContinuousDeploymentPolicy, error) {
+	cacheKey := cache.Key("ListContinuousDeploymentPoliciesByInput", query)
+	var cached []ContinuousDeploymentPolicy
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListContinuousDeploymentPoliciesByInput(query)
 	if r1 == nil {
 		_ = c.cache.Write(cacheKey, r0)
 	}
@@ -263,6 +319,286 @@ func (c *CloudFrontRepositoryCached) ListDistributionsByInput(query *awscf.ListD
 		return cached, nil
 	}
 	r0, r1 := c.repo.ListDistributionsByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListFunctionsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListFunctionsAll() ([]Function, error) {
+	cacheKey := cache.Key("ListFunctionsAll")
+	var cached []Function
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListFunctionsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListFunctionsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListFunctionsByInput(query *awscf.ListFunctionsInput) ([]Function, error) {
+	cacheKey := cache.Key("ListFunctionsByInput", query)
+	var cached []Function
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListFunctionsByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListKeyGroupsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListKeyGroupsAll() ([]KeyGroup, error) {
+	cacheKey := cache.Key("ListKeyGroupsAll")
+	var cached []KeyGroup
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListKeyGroupsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListKeyGroupsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListKeyGroupsByInput(query *awscf.ListKeyGroupsInput) ([]KeyGroup, error) {
+	cacheKey := cache.Key("ListKeyGroupsByInput", query)
+	var cached []KeyGroup
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListKeyGroupsByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListKeyValueStoresAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListKeyValueStoresAll() ([]KeyValueStore, error) {
+	cacheKey := cache.Key("ListKeyValueStoresAll")
+	var cached []KeyValueStore
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListKeyValueStoresAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListKeyValueStoresByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListKeyValueStoresByInput(query *awscf.ListKeyValueStoresInput) ([]KeyValueStore, error) {
+	cacheKey := cache.Key("ListKeyValueStoresByInput", query)
+	var cached []KeyValueStore
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListKeyValueStoresByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListOriginAccessControlsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListOriginAccessControlsAll() ([]OriginAccessControl, error) {
+	cacheKey := cache.Key("ListOriginAccessControlsAll")
+	var cached []OriginAccessControl
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListOriginAccessControlsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListOriginAccessControlsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListOriginAccessControlsByInput(query *awscf.ListOriginAccessControlsInput) ([]OriginAccessControl, error) {
+	cacheKey := cache.Key("ListOriginAccessControlsByInput", query)
+	var cached []OriginAccessControl
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListOriginAccessControlsByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListOriginAccessIdentitiesAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListOriginAccessIdentitiesAll() ([]OriginAccessIdentity, error) {
+	cacheKey := cache.Key("ListOriginAccessIdentitiesAll")
+	var cached []OriginAccessIdentity
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListOriginAccessIdentitiesAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListOriginAccessIdentitiesByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListOriginAccessIdentitiesByInput(query *awscf.ListCloudFrontOriginAccessIdentitiesInput) ([]OriginAccessIdentity, error) {
+	cacheKey := cache.Key("ListOriginAccessIdentitiesByInput", query)
+	var cached []OriginAccessIdentity
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListOriginAccessIdentitiesByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListOriginRequestPoliciesAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListOriginRequestPoliciesAll() ([]OriginRequestPolicy, error) {
+	cacheKey := cache.Key("ListOriginRequestPoliciesAll")
+	var cached []OriginRequestPolicy
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListOriginRequestPoliciesAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListOriginRequestPoliciesByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListOriginRequestPoliciesByInput(query *awscf.ListOriginRequestPoliciesInput) ([]OriginRequestPolicy, error) {
+	cacheKey := cache.Key("ListOriginRequestPoliciesByInput", query)
+	var cached []OriginRequestPolicy
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListOriginRequestPoliciesByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListPublicKeysAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListPublicKeysAll() ([]PublicKey, error) {
+	cacheKey := cache.Key("ListPublicKeysAll")
+	var cached []PublicKey
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListPublicKeysAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListPublicKeysByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListPublicKeysByInput(query *awscf.ListPublicKeysInput) ([]PublicKey, error) {
+	cacheKey := cache.Key("ListPublicKeysByInput", query)
+	var cached []PublicKey
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListPublicKeysByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListRealtimeLogConfigsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListRealtimeLogConfigsAll() ([]RealtimeLogConfig, error) {
+	cacheKey := cache.Key("ListRealtimeLogConfigsAll")
+	var cached []RealtimeLogConfig
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListRealtimeLogConfigsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListRealtimeLogConfigsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListRealtimeLogConfigsByInput(query *awscf.ListRealtimeLogConfigsInput) ([]RealtimeLogConfig, error) {
+	cacheKey := cache.Key("ListRealtimeLogConfigsByInput", query)
+	var cached []RealtimeLogConfig
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListRealtimeLogConfigsByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListResponseHeadersPoliciesAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListResponseHeadersPoliciesAll() ([]ResponseHeadersPolicy, error) {
+	cacheKey := cache.Key("ListResponseHeadersPoliciesAll")
+	var cached []ResponseHeadersPolicy
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListResponseHeadersPoliciesAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListResponseHeadersPoliciesByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListResponseHeadersPoliciesByInput(query *awscf.ListResponseHeadersPoliciesInput) ([]ResponseHeadersPolicy, error) {
+	cacheKey := cache.Key("ListResponseHeadersPoliciesByInput", query)
+	var cached []ResponseHeadersPolicy
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListResponseHeadersPoliciesByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListVpcOriginsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListVpcOriginsAll() ([]VpcOrigin, error) {
+	cacheKey := cache.Key("ListVpcOriginsAll")
+	var cached []VpcOrigin
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListVpcOriginsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListVpcOriginsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudFrontRepositoryCached) ListVpcOriginsByInput(query *awscf.ListVpcOriginsInput) ([]VpcOrigin, error) {
+	cacheKey := cache.Key("ListVpcOriginsByInput", query)
+	var cached []VpcOrigin
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListVpcOriginsByInput(query)
 	if r1 == nil {
 		_ = c.cache.Write(cacheKey, r0)
 	}

@@ -26,6 +26,15 @@ type AwsClient interface {
 type CloudWatchLogsRepository struct {
 	ctx    context.Context
 	client *v3.Client
+
+	// insightsClient overrides the SDK client used for Logs Insights queries; nil means
+	// cloudwatchlogsClient().
+	insightsClient insightsAPI
+
+	// pollMin and pollMax bound the delay between two GetQueryResults polls while a query runs;
+	// zero means DefaultQueryPollMin / DefaultQueryPollMax. See WithPollInterval.
+	pollMin time.Duration
+	pollMax time.Duration
 }
 
 func NewCloudWatchLogsRepository(ctx context.Context, client *v3.Client) *CloudWatchLogsRepository {

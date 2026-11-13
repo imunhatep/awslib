@@ -98,6 +98,13 @@ var resourceTypeFilters = map[cfg.ResourceType]string{
 	cfg.ResourceTypeTopic: "sns",
 	// sqs — arn:aws:sqs:<region>:<account>:<queue>
 	cfg.ResourceTypeQueue: "sqs",
+	// wafv2 — arn:aws:wafv2:<region>:<account>:<regional|global>/<kind>/<name>/<id>.
+	// The type segment is scope-prefixed and its filter spelling is not
+	// established, so the service filter (a superset) is used.
+	ccfg.ResourceTypeWafv2WebACL:          "wafv2",
+	ccfg.ResourceTypeWafv2RuleGroup:       "wafv2",
+	ccfg.ResourceTypeWafv2IPSet:           "wafv2",
+	ccfg.ResourceTypeWafv2RegexPatternSet: "wafv2",
 }
 
 // ResourceTypeFilter returns the GetResources filter for a resource type, and

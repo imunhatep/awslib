@@ -72,6 +72,15 @@ var (
 		resourceType: ccfg.ResourceTypeCloudFrontConnectionGroup,
 		arnMarker:    ":connection-group/",
 	}
+
+	// VPC origins: same situation as connection groups — taggable, but not yet observed in a
+	// sweep, so an absence counts as "untagged" only once the sweep has reported a vpcorigin/
+	// ARN. If the marker spelling were ever wrong the cost is per-origin reads, never lost tags.
+	vpcOriginTagSource = tagSource{
+		filter:       "cloudfront",
+		resourceType: ccfg.ResourceTypeCloudFrontVpcOrigin,
+		arnMarker:    ":vpcorigin/",
+	}
 )
 
 // bulkTags reads the tags of the resources with the given ARNs, index-aligned with arns.

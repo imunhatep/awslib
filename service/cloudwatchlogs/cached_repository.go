@@ -6,6 +6,7 @@ import (
 
 	awscloudwatchlogs "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
+	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/cache"
 )
 
@@ -71,4 +72,42 @@ func (c *CloudWatchLogsRepositoryCached) ListLogGroupsByInput(query *awscloudwat
 		_ = c.cache.Write(cacheKey, r0)
 	}
 	return r0, r1
+}
+
+// ListQueryResultsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudWatchLogsRepositoryCached) ListQueryResultsByInput(input *awscloudwatchlogs.StartQueryInput) (QueryResults, error) {
+	cacheKey := cache.Key("ListQueryResultsByInput", input)
+	var cached QueryResults
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListQueryResultsByInput(input)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListQueryResultsByInputAsync delegates directly to the underlying repository (channel return – not cached).
+func (c *CloudWatchLogsRepositoryCached) ListQueryResultsByInputAsync(input *awscloudwatchlogs.StartQueryInput) (<-chan QueryRow, <-chan *errors.Error) {
+	return c.repo.ListQueryResultsByInputAsync(input)
+}
+
+// ListQueryResultsByQuery returns cached results when available, otherwise delegates to the underlying repository.
+func (c *CloudWatchLogsRepositoryCached) ListQueryResultsByQuery(query *QueryMiddleware) (QueryResults, error) {
+	cacheKey := cache.Key("ListQueryResultsByQuery", query)
+	var cached QueryResults
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListQueryResultsByQuery(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListQueryResultsByQueryAsync delegates directly to the underlying repository (channel return – not cached).
+func (c *CloudWatchLogsRepositoryCached) ListQueryResultsByQueryAsync(query *QueryMiddleware) (<-chan QueryRow, <-chan *errors.Error) {
+	return c.repo.ListQueryResultsByQueryAsync(query)
 }

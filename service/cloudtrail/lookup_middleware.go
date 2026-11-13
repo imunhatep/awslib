@@ -47,7 +47,7 @@ func (l *LookupMiddleware) Hash() string {
 	optStr = append(optStr, fmt.Sprintf("EndTime:%s", l.lookup.EndTime))
 	optStr = append(optStr, fmt.Sprintf("MaxResults:%d", aws.ToInt32(l.lookup.MaxResults)))
 
-	log.Debug().Strs("hash", optStr).Msg("[LookupMiddleware.Hash] lookup string")
+	log.Trace().Strs("hash", optStr).Msg("[LookupMiddleware.Hash] lookup string")
 
 	hasher := sha1.New()
 	hasher.Write([]byte(strings.Join(slice.Sort(optStr, helper.StrSort), ".")))
@@ -165,6 +165,9 @@ func LookupResourceHandler(e service.ResourceInterface) LookupHandler {
 	return func(q *cloudtrail.LookupEventsInput) (*cloudtrail.LookupEventsInput, error) {
 		log.Trace().Str("key", "ResourceName").Str("name", e.GetIdOrArn()).Msg("lookup: query")
 
+		// deliberately not an error: CloudTrail takes a single lookup attribute, and when one is
+		// already set the resource filter is dropped (LookupEventByAttribute logs a warning)
+		// rather than failing the lookup
 		q, _ = LookupEventByAttribute(types.LookupAttributeKeyResourceName, e.GetIdOrArn())(q)
 
 		return q, nil
@@ -186,13 +189,8 @@ func DebugQuery(msg string, query *cloudtrail.LookupEventsInput) {
 		info.Int32("limit", *query.MaxResults)
 	}
 
-	if !slice.IsEmpty(query.LookupAttributes) {
-		attr, _ := slice.Head(query.LookupAttributes).Get()
-		info.Str("attribute", fmt.Sprintf("%v", attr))
-	}
-
 	for _, attr := range query.LookupAttributes {
-		info.Str(string(attr.AttributeKey), *attr.AttributeValue)
+		info.Str(string(attr.AttributeKey), aws.ToString(attr.AttributeValue))
 	}
 
 	info.Msg(msg)

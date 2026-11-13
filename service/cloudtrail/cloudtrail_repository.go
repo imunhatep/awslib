@@ -29,6 +29,10 @@ type CloudTrailRepository struct {
 // 20 LookupEvents pages. Falling further behind than that ends the stream with an error.
 const EventsBufferSize = 1000
 
+// LookupEventsMaxPageSize is the largest MaxResults LookupEvents accepts for one page. A larger
+// LookupEventsInput.MaxResults is read as a total and fetched over several pages.
+const LookupEventsMaxPageSize = 50
+
 func NewCloudTrailRepository(ctx context.Context, client *v3.Client) *CloudTrailRepository {
 	repo := &CloudTrailRepository{
 		ctx:    ctx,

@@ -116,6 +116,38 @@ func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.Reso
 		items, err = FindCloudFrontConnectionGroups(e.ctx, e.client, e.cache)
 	case cfg.ResourceTypeDistribution:
 		items, err = FindCloudFrontDistributions(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeCloudFrontCachePolicy:
+		items, err = FindCloudFrontCachePolicies(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeCloudFrontOriginRequestPolicy:
+		items, err = FindCloudFrontOriginRequestPolicies(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeCloudFrontResponseHeadersPolicy:
+		items, err = FindCloudFrontResponseHeadersPolicies(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeCloudFrontFunction:
+		items, err = FindCloudFrontFunctions(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeCloudFrontOriginAccessControl:
+		items, err = FindCloudFrontOriginAccessControls(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeCloudFrontOriginAccessIdentity:
+		items, err = FindCloudFrontOriginAccessIdentities(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeCloudFrontKeyGroup:
+		items, err = FindCloudFrontKeyGroups(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeCloudFrontPublicKey:
+		items, err = FindCloudFrontPublicKeys(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeCloudFrontRealtimeLogConfig:
+		items, err = FindCloudFrontRealtimeLogConfigs(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeCloudFrontKeyValueStore:
+		items, err = FindCloudFrontKeyValueStores(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeCloudFrontVpcOrigin:
+		items, err = FindCloudFrontVpcOrigins(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeCloudFrontContinuousDeploymentPolicy:
+		items, err = FindCloudFrontContinuousDeploymentPolicies(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeWafv2WebACL:
+		items, err = FindWafv2WebACLs(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeWafv2RuleGroup:
+		items, err = FindWafv2RuleGroups(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeWafv2IPSet:
+		items, err = FindWafv2IPSets(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeWafv2RegexPatternSet:
+		items, err = FindWafv2RegexPatternSets(e.ctx, e.client, e.cache)
 	case cfgEntity.ResourceTypeSnapshot:
 		items, err = FindEc2Snapshots(e.ctx, e.client, e.cache)
 	case cfg.ResourceTypeVolume:

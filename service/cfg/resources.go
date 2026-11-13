@@ -54,12 +54,56 @@ const (
 	// Deliberately absent from ResourceTypeList: a request is not fetchable.
 	ResourceTypeCloudControlRequest awscfg.ResourceType = "AWS::CloudControl::ResourceRequest"
 
+	// ResourceTypeCloudWatchLogsQuery labels CloudWatch Logs Insights calls
+	// (StartQuery, GetQueryResults, StopQuery). A query result is an answer about
+	// log events, not a resource: deliberately absent from ResourceTypeList.
+	ResourceTypeCloudWatchLogsQuery awscfg.ResourceType = "AWS::Logs::Query"
+
 	// CloudFront SaaS Manager (multi-tenant distributions). ListDistributionTenants
 	// returns summaries; the full tenant only comes back from a Get, so the two are
 	// tracked as distinct resource types.
 	ResourceTypeCloudFrontDistributionTenant        awscfg.ResourceType = "AWS::CloudFront::DistributionTenant"
 	ResourceTypeCloudFrontDistributionTenantSummary awscfg.ResourceType = "AWS::CloudFront::DistributionTenantSummary"
 	ResourceTypeCloudFrontConnectionGroup           awscfg.ResourceType = "AWS::CloudFront::ConnectionGroup"
+
+	// CloudFront configuration objects a distribution references by ID. AWS Config
+	// models only PublicKey, RealtimeLogConfig and KeyValueStore among these (use
+	// the SDK constants for those); the rest carry their CloudFormation names.
+	ResourceTypeCloudFrontCachePolicy                awscfg.ResourceType = "AWS::CloudFront::CachePolicy"
+	ResourceTypeCloudFrontOriginRequestPolicy        awscfg.ResourceType = "AWS::CloudFront::OriginRequestPolicy"
+	ResourceTypeCloudFrontResponseHeadersPolicy      awscfg.ResourceType = "AWS::CloudFront::ResponseHeadersPolicy"
+	ResourceTypeCloudFrontFunction                   awscfg.ResourceType = "AWS::CloudFront::Function"
+	ResourceTypeCloudFrontOriginAccessControl        awscfg.ResourceType = "AWS::CloudFront::OriginAccessControl"
+	ResourceTypeCloudFrontOriginAccessIdentity       awscfg.ResourceType = "AWS::CloudFront::CloudFrontOriginAccessIdentity"
+	ResourceTypeCloudFrontKeyGroup                   awscfg.ResourceType = "AWS::CloudFront::KeyGroup"
+	ResourceTypeCloudFrontVpcOrigin                  awscfg.ResourceType = "AWS::CloudFront::VpcOrigin"
+	ResourceTypeCloudFrontContinuousDeploymentPolicy awscfg.ResourceType = "AWS::CloudFront::ContinuousDeploymentPolicy"
+	ResourceTypeCloudFrontPublicKey                  awscfg.ResourceType = awscfg.ResourceTypeCloudFrontPublicKey
+	ResourceTypeCloudFrontRealtimeLogConfig          awscfg.ResourceType = awscfg.ResourceTypeCloudFrontRealtimeLogConfig
+	ResourceTypeCloudFrontKeyValueStore              awscfg.ResourceType = awscfg.ResourceTypeCloudFrontKeyValueStore
+
+	// WAFv2. AWS Config's own types, aliased so callers find them next to the
+	// rest. Every WAFv2 object has a scope: REGIONAL ones live in the region that
+	// protects an ALB, API Gateway stage, AppSync API, Cognito pool, App Runner
+	// service or Verified Access instance; CLOUDFRONT ones are global and served
+	// only from us-east-1. The repository lists both scopes from a us-east-1
+	// client and REGIONAL only elsewhere, which is why these are regional types:
+	// a sweep sees every CloudFront-scoped object exactly once.
+	ResourceTypeWafv2WebACL          awscfg.ResourceType = awscfg.ResourceTypeWebACLV2
+	ResourceTypeWafv2RuleGroup       awscfg.ResourceType = awscfg.ResourceTypeRuleGroupV2
+	ResourceTypeWafv2IPSet           awscfg.ResourceType = awscfg.ResourceTypeIPSetV2
+	ResourceTypeWafv2RegexPatternSet awscfg.ResourceType = awscfg.ResourceTypeRegexPatternSetV2
+
+	// Labels for WAFv2 calls that answer about traffic rather than a resource:
+	// sampled requests and the resources a web ACL protects. Deliberately absent
+	// from ResourceTypeList — nothing fetches them as resources.
+	ResourceTypeWafv2SampledRequest    awscfg.ResourceType = "AWS::WAFv2::SampledRequest"
+	ResourceTypeWafv2WebACLAssociation awscfg.ResourceType = "AWS::WAFv2::WebACLAssociation"
+
+	// ResourceTypeCloudWatchMetric labels CloudWatch metric reads (ListMetrics,
+	// GetMetricData). A metric is a time series, not a resource, so it is absent
+	// from ResourceTypeList like the other label-only types.
+	ResourceTypeCloudWatchMetric awscfg.ResourceType = "AWS::CloudWatch::Metric"
 
 	// ACM. ListCertificates returns summaries without validation records; the
 	// full certificate only comes back from DescribeCertificate, so the two are
@@ -105,6 +149,18 @@ func ResourceTypeListGlobal() []awscfg.ResourceType {
 		ResourceTypeCloudFrontDistributionTenantSummary,
 		ResourceTypeCloudFrontConnectionGroup,
 		awscfg.ResourceTypeDistribution,
+		ResourceTypeCloudFrontCachePolicy,
+		ResourceTypeCloudFrontOriginRequestPolicy,
+		ResourceTypeCloudFrontResponseHeadersPolicy,
+		ResourceTypeCloudFrontFunction,
+		ResourceTypeCloudFrontOriginAccessControl,
+		ResourceTypeCloudFrontOriginAccessIdentity,
+		ResourceTypeCloudFrontKeyGroup,
+		ResourceTypeCloudFrontPublicKey,
+		ResourceTypeCloudFrontRealtimeLogConfig,
+		ResourceTypeCloudFrontKeyValueStore,
+		ResourceTypeCloudFrontVpcOrigin,
+		ResourceTypeCloudFrontContinuousDeploymentPolicy,
 	}
 }
 
@@ -167,5 +223,10 @@ func ResourceTypeListRegional() []awscfg.ResourceType {
 		// sns
 		awscfg.ResourceTypeTable,
 		awscfg.ResourceTypeTopic,
+		// wafv2 — REGIONAL scope per region, plus CLOUDFRONT scope from us-east-1
+		ResourceTypeWafv2WebACL,
+		ResourceTypeWafv2RuleGroup,
+		ResourceTypeWafv2IPSet,
+		ResourceTypeWafv2RegexPatternSet,
 	}
 }

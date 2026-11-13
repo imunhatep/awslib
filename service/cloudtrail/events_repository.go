@@ -60,7 +60,16 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 
 	start := time.Now()
 
-	p := cloudtrail.NewLookupEventsPaginator(r.lookupEventsClient(), query)
+	// MaxResults is the total the caller wants, but LookupEvents reads it as the page size and
+	// rejects anything above LookupEventsMaxPageSize, so the request carries a clamped copy and
+	// the total is enforced here
+	limit := int(aws.ToInt32(query.MaxResults))
+	pageQuery := *query
+	if limit > LookupEventsMaxPageSize {
+		pageQuery.MaxResults = aws.Int32(LookupEventsMaxPageSize)
+	}
+
+	p := cloudtrail.NewLookupEventsPaginator(r.lookupEventsClient(), &pageQuery)
 
 	// reach end of pages or max results
 	eventsFetchedCount := 0
@@ -78,7 +87,7 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 		}
 	}()
 
-	for p.HasMorePages() && (query.MaxResults == nil || eventsFetchedCount < int(*query.MaxResults)) {
+	for p.HasMorePages() && (limit <= 0 || eventsFetchedCount < limit) {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).Inc()
 		}
@@ -97,13 +106,20 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 			return
 		}
 
-		eventsFetchedCount += len(resp.Events)
+		events := resp.Events
+		if limit > 0 && eventsFetchedCount+len(events) > limit {
+			events = events[:limit-eventsFetchedCount]
+		}
 
-		for _, event := range resp.Events {
+		eventsFetchedCount += len(events)
+
+		for _, event := range events {
 			var cloudTrailEvent CloudTrailEvent
-			if err := json.Unmarshal([]byte(aws.ToString(event.CloudTrailEvent)), &cloudTrailEvent); err != nil {
-				errChan <- errors.New(err)
-				return
+			if raw := aws.ToString(event.CloudTrailEvent); raw != "" {
+				if err := json.Unmarshal([]byte(raw), &cloudTrailEvent); err != nil {
+					errChan <- errors.New(err)
+					return
+				}
 			}
 
 			if err := service.WriteToChan(source, NewEvent(r.client, event, cloudTrailEvent)); err != nil {
@@ -148,6 +164,9 @@ func (r *CloudTrailRepository) ListEventsByLookup(lookup *LookupMiddleware) ([]E
 }
 
 // ListEventsByLookupCached a wrapper of EventsByResource method with reading and writing results into a cache
+//
+// Deprecated: use r.WithCache(cache).ListEventsByLookup(lookup), which caches through the same
+// generated wrapper as every other repository method.
 func (r *CloudTrailRepository) ListEventsByLookupCached(cache *cache.DataCache, lookup *LookupMiddleware) (items []Event, err error) {
 	namespace := fmt.Sprintf("%s:%s:%s", r.client.GetAccountID().String(), r.client.GetRegion().String(), lookup.Hash())
 	cacheNs := cache.WithNamespace(namespace)
@@ -157,7 +176,10 @@ func (r *CloudTrailRepository) ListEventsByLookupCached(cache *cache.DataCache, 
 		items, err = r.ListEventsByLookup(lookup)
 
 		if err == nil {
-			err = cacheNs.Write(resourceTypeKey, items)
+			// the events were fetched; failing to remember them is no reason to report a failure
+			if werr := cacheNs.Write(resourceTypeKey, items); werr != nil {
+				log.Warn().Err(werr).Msg("[CloudTrailRepository.ListEventsByLookupCached] failed to cache events")
+			}
 		}
 	}
 

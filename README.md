@@ -53,6 +53,7 @@ for _, instance := range instances {
 | [docs/provider.md](docs/provider.md) | clients, client pools, regions, cross-account role assumption, the 56 ready-made service clients, IAM policies, log verbosity |
 | [docs/repositories.md](docs/repositories.md) | `ResourceInterface`, cached repositories, `RepoProxy` fanout |
 | [docs/observer.md](docs/observer.md) | the observer, the middleware chain, `AwsBlame`, CloudTrail lookups |
+| [docs/insights.md](docs/insights.md) | CloudWatch Logs Insights queries: the builder, sync and async runs, cost controls |
 | [docs/cloudcontrol.md](docs/cloudcontrol.md) | fetching any resource type without a repository |
 | [docs/costexplorer.md](docs/costexplorer.md) | cost and usage queries, the filter DSL, forecasts |
 | [docs/savingsplans.md](docs/savingsplans.md) | Savings Plans inventory and offering rates |

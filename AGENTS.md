@@ -331,6 +331,115 @@ attempts — at 8 with the default 3, CloudFront throttled a ~65-distribution li
 - **`ListDistributionTenantsWithCertificates*` fails on any certificate read other than `ErrNotFound`.**
   A nil `Certificate` means "no managed certificate"; reporting a throttled read that way is a wrong answer.
 
+#### CloudFront configuration objects
+
+Next to distributions, tenants and connection groups, `service/cloudfront` lists the objects a
+distribution references by ID or ARN: cache, origin request and response headers policies,
+Functions, origin access controls, legacy origin access identities, key groups, public keys,
+real-time log configs, KeyValueStores, VPC origins and continuous deployment policies. All are global
+(`ResourceTypeListGlobal`), one `List<X>All`/`List<X>ByInput` pair each, driven by the shared
+Marker loop `listPages` (`list_pages.go`) because most of these calls have no SDK paginator. A repeated
+`NextMarker` is an error, not an endless loop.
+
+- **Policies list managed and custom together.** A request without `Type` returns both. Managed
+  policies are AWS-owned and identical everywhere, but distributions reference them by ID, so they
+  have to be resolvable. The summary's `Type` is carried as `PolicyType`, because it would collide with
+  `AbstractResource.Type` and `encoding/json` drops both colliding fields.
+- **Functions are listed once per stage** (`LIVE`, then `DEVELOPMENT`). A published function is
+  therefore two rows sharing a name and ARN. `GetStage` tells them apart.
+- **No synthesized ARNs.** Only Functions, real-time log configs, KeyValueStores and VPC origins come
+  with one. A real-time log config has no ID, so its name is the ID. A continuous deployment policy and an
+  OAI have no name, so `GetName` falls back to the ID (an OAI uses its comment first).
+- **Only VPC origins are taggable.** They go through `bulkTags` with an `arnMarker` of `:vpcorigin/`,
+  the connection-group treatment: they have not been observed in a sweep, so an absence counts as
+  "untagged" only once the sweep has shown a VPC origin. The other types return an empty tag map.
+
+#### WAFv2 (`service/wafv2`) and CloudWatch metrics (`service/cloudwatch`)
+
+`Wafv2Repository` lists web ACLs, rule groups, IP sets and regex pattern sets in full (the List
+APIs return names only, so each object costs a `Get*` and a `ListTagsForResource`, at
+concurrency 3 with 10 attempts), plus one `ListLoggingConfigurations` sweep per scope for web
+ACLs. Things that are easy to break:
+
+- **Scope decides the endpoint.** REGIONAL objects come from the client's region; CLOUDFRONT
+  objects only from us-east-1. `Scopes()` returns both for a us-east-1 client and REGIONAL only
+  elsewhere, which is why the four types are in `ResourceTypeListRegional`: a region sweep sees
+  each CloudFront-scoped object exactly once. Methods given an explicit CLOUDFRONT scope pin the
+  call to us-east-1 per operation (`opts`); the region cannot be set on the client because
+  `GetClient` caches one SDK client per v3 client and ignores later option functions.
+- **The entities gob-encode through JSON** (`gob.go`). gob rejects the SDK types: rule
+  statements reach empty structs (`AllQueryArguments`, `NoneAction`, …) and gob fails with
+  "type has no exported fields" for the whole type graph, set or not. `WebACL` and `RuleGroup`
+  implement `GobEncoder`/`GobDecoder` over a wire struct with named fields, because the entity
+  embeds both `AbstractResource` and the SDK struct, both declare `ARN`, and `encoding/json`
+  drops an ambiguous field. Pinned by `TestEntitiesRoundTripThroughGob`.
+- **Tags fail the listing, logging does not.** An object whose tags cannot be read fails the
+  listing (as for CloudFront distributions). An unreadable logging sweep only logs a warning
+  and leaves `LoggingKnown=false`, so "unknown" is not reported as "logging off".
+- **Traffic methods are named `Fetch*`/`Find*` so `generate-cached` never wraps them:**
+  `FetchWebACLMetrics`, `FetchSampledRequests`, `FindWebACLAssociations`. Metric values,
+  samples and associations must never be answered from a cache.
+- **`FetchWebACLMetrics` discovers series with `ListMetrics`** (filtered on the ACL's metric name
+  in the `WebACL` dimension) rather than constructing them, because WAF publishes only
+  non-zero counts and owns the dimension combinations below the rule level. Region selection:
+  `Region=<region>` for REGIONAL, no `Region` dimension (or `Global`) for CLOUDFRONT, falling back
+  to `Region=us-east-1` with a warning. The CloudFront rule matches a live account (series carry
+  only `Rule` and `WebACL`). Series carrying dimensions other than rule ones are
+  counted in `SkippedDimensions` (labels are kept on request). `ListMetrics` only sees the last
+  14 days, so callers must warn on longer windows.
+- `cloudwatch.SingleWindow` snaps a window to the granularity CloudWatch keeps for data of that
+  age (1 min / 5 min / 1 h at 15 / 63 days) and returns a period spanning it, so each query
+  yields at most one datapoint: its sum. `FetchMetricData` batches 500 queries per call and
+  merges values across `NextToken` pages by query id.
+- `FindWebACLAssociations` records a failing resource type in `Failures` and errors only when
+  every type failed. CloudFront associations come from the CloudFront API
+  (`ListDistributionsByWebACLId`, `ListDistributionTenantsByCustomization`), since
+  `ListResourcesForWebACL` does not answer for distributions.
+
+Tagging filter: the bare `wafv2` service filter (a superset), because the ARN's type segment is
+scope-prefixed (`regional/webacl`) and no typed spelling is established.
+
+#### CloudWatch Logs Insights (`service/cloudwatchlogs/insights_*.go`)
+
+Modelled on the CloudTrail lookups: `QueryMiddleware` (like `LookupMiddleware`) builds a
+`StartQueryInput` and collects errors, `ListQueryResultsByInput`/`ByQuery` run a query to the end
+and are wrapped by the generated cache, `*Async` streams `QueryRow`s. `StartQuery`/`WaitForQuery`/
+`StopQuery` are the handle-based split and are deliberately not `Get*`/`List*`. User docs:
+`docs/insights.md`. Things that are easy to break:
+
+- **Only `Complete` returns a nil error**, so the cache never stores a partial answer. Any other
+  final status is a `*QueryFailedError`. `Unknown` is treated as final rather than polled for the
+  hour a query may run.
+- **An abandoned query is stopped** (`abandonQuery`, on `context.WithoutCancel`): a query keeps
+  scanning, and billing, after the caller stops polling. Not for a `QueryFailedError` (already
+  ended), and not in `WaitForQuery`, whose caller started the query and owns it.
+- **No rows before `Complete`.** Running-query rows are a preview that `sort`/`limit`/`stats` can
+  still rewrite, so streaming them would hand out rows the final answer does not contain.
+- **Polls set `MaxItems: 1` only for a query known to be `CWLI`.** Running queries return up to
+  10,000 preview rows per poll; SQL and PPL cannot be paged, so trimming them could lose rows. A
+  query of unknown language (`WaitForQuery`) polls untrimmed until a response names the language.
+  After a trimmed poll sees `Complete`, the pages are re-read from the start.
+- **The async buffer is sized to the query's limit** (or `QueryRowsBufferSize` = 10,000, the most AWS
+  returns without one), so the non-blocking `WriteToChan` never overflows for a well-behaved API.
+- Metrics are labelled `cfg.ResourceTypeCloudWatchLogsQuery`, a label-only type kept out of
+  `ResourceTypeList`.
+
+Pinned by `insights_repository_test.go`, which fakes the SDK client through the unexported
+`insightsAPI` interface.
+
+#### CloudTrail lookups (`service/cloudtrail`)
+
+- **`MaxResults` is a total.** `LookupEvents` reads it as the page size and rejects anything above
+  50, so `fetchEventsByInput` sends a clamped copy and trims the last page itself.
+- **`WithResource` drops its filter silently on purpose.** CloudTrail accepts one lookup attribute;
+  the other `With*` attribute setters report a second one in `Errors()`, but `LookupResourceHandler`
+  swallows that error so the lookup runs without the resource filter instead of failing. Don't
+  "fix" it; pinned by `TestLookupWithResourceDroppedWhenAttributeSet`.
+- **`errors.New(nil)` from `go-errors` is a non-nil `"<nil>"` error.** `AwsBlame.Lookup` wrapped a nil
+  error that way and so failed every lookup; wrap only after an `err != nil` check.
+- `Event.GetType()` is `cfg.ResourceTypeTrailEvent`, not `ResourceTypeTrail`. The event ARN is
+  synthesized by `helper.BuildArn` and is not a real AWS ARN (CloudTrail events have none).
+
 ### Resource types (`service/cfg/resources.go`)
 
 Resource types reuse `aws-sdk-go-v2/service/configservice/types.ResourceType` (CloudFormation-style

@@ -25,13 +25,15 @@ type fakeLookup struct {
 	failPage int
 	delay    time.Duration
 
-	mu    sync.Mutex
-	calls int
+	mu         sync.Mutex
+	calls      int
+	maxResults []int32
 }
 
 func (f *fakeLookup) LookupEvents(ctx context.Context, in *cloudtrail.LookupEventsInput, _ ...func(*cloudtrail.Options)) (*cloudtrail.LookupEventsOutput, error) {
 	f.mu.Lock()
 	f.calls++
+	f.maxResults = append(f.maxResults, aws.ToInt32(in.MaxResults))
 	f.mu.Unlock()
 
 	if f.delay > 0 {
@@ -236,5 +238,59 @@ func TestListEventsByLookupAsyncInvalidLookupClosesEvents(t *testing.T) {
 
 	if err, ok := <-errChan; !ok || err == nil {
 		t.Fatal("expected the lookup error")
+	}
+}
+
+// LookupEvents rejects a page size above 50, so a larger MaxResults is a total spread over pages.
+func TestListEventsByInputLimitAbovePageSize(t *testing.T) {
+	api := &fakeLookup{pages: 10}
+	query := &cloudtrail.LookupEventsInput{MaxResults: aws.Int32(120)}
+
+	events, err := newTestRepository(context.Background(), api).ListEventsByInput(query)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(events) != 120 {
+		t.Fatalf("received %d events, want 120", len(events))
+	}
+
+	if calls := api.callCount(); calls != 3 {
+		t.Fatalf("LookupEvents called %d times, want 3", calls)
+	}
+
+	for i, size := range api.maxResults {
+		if size != LookupEventsMaxPageSize {
+			t.Fatalf("request %d asked for a page of %d, want %d", i, size, LookupEventsMaxPageSize)
+		}
+	}
+
+	if aws.ToInt32(query.MaxResults) != 120 {
+		t.Fatalf("caller's query was modified: MaxResults is %d", aws.ToInt32(query.MaxResults))
+	}
+}
+
+// CloudTrail takes a single lookup attribute. WithResource on a lookup that already has one drops
+// the resource filter without an error, by design, and keeps the attribute set first.
+func TestLookupWithResourceDroppedWhenAttributeSet(t *testing.T) {
+	lookup := NewLookupMiddleware().
+		WithEventName("RunInstances").
+		WithResource(NewEvent(&v3.Client{}, types.Event{EventId: aws.String("i-123")}, CloudTrailEvent{}))
+
+	if errs, ok := lookup.Errors(); !ok {
+		t.Fatalf("WithResource reported %v, want the resource filter dropped silently", errs)
+	}
+
+	attrs := lookup.Get().LookupAttributes
+	if len(attrs) != 1 || attrs[0].AttributeKey != types.LookupAttributeKeyEventName {
+		t.Fatalf("lookup holds %v, want only the event name attribute", attrs)
+	}
+}
+
+func TestEventWithoutReadOnly(t *testing.T) {
+	e := NewEvent(&v3.Client{}, types.Event{EventId: aws.String("e1")}, CloudTrailEvent{})
+
+	if e.IsReadOnly() || e.GetReadOnly() != "" {
+		t.Fatalf("event without ReadOnly reported %q", e.GetReadOnly())
 	}
 }

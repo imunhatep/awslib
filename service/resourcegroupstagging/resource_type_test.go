@@ -22,6 +22,23 @@ var unsupportedResourceTypes = map[cfg.ResourceType]string{
 	ccfg.ResourceTypeRoute53DomainSummary:                "not ARN-addressable through the tagging API",
 	ccfg.ResourceTypeCloudFrontDistributionTenantSummary: "no established filter spelling",
 	ccfg.ResourceTypeCloudFrontConnectionGroup:           "no established filter spelling",
+
+	// CloudFront configuration objects. Only VPC origins take tags, and their
+	// filter spelling is not established either (cloudfront.ListVpcOriginsAll reads
+	// them through a bare "cloudfront" sweep matched by ARN). The rest are not
+	// taggable through the CloudFront API at all.
+	ccfg.ResourceTypeCloudFrontVpcOrigin:                  "no established filter spelling",
+	ccfg.ResourceTypeCloudFrontCachePolicy:                "not taggable",
+	ccfg.ResourceTypeCloudFrontOriginRequestPolicy:        "not taggable",
+	ccfg.ResourceTypeCloudFrontResponseHeadersPolicy:      "not taggable",
+	ccfg.ResourceTypeCloudFrontFunction:                   "not taggable",
+	ccfg.ResourceTypeCloudFrontOriginAccessControl:        "not taggable",
+	ccfg.ResourceTypeCloudFrontOriginAccessIdentity:       "not taggable",
+	ccfg.ResourceTypeCloudFrontKeyGroup:                   "not taggable",
+	ccfg.ResourceTypeCloudFrontPublicKey:                  "not taggable",
+	ccfg.ResourceTypeCloudFrontRealtimeLogConfig:          "not taggable",
+	ccfg.ResourceTypeCloudFrontKeyValueStore:              "not taggable",
+	ccfg.ResourceTypeCloudFrontContinuousDeploymentPolicy: "not taggable",
 }
 
 // TestEveryResourceTypeIsDecided fails when a resource type is added to
