@@ -2,7 +2,6 @@ package resources
 
 import (
 	"sync"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/imunhatep/awslib/metrics"
@@ -17,7 +16,8 @@ const ResourceBusSize = 10000
 
 // Bounding a fetch is the HTTP client's job, not this provider's. A region whose
 // endpoint does not route is a connection that never establishes, which dial and TLS
-// timeouts on the AWS client cut off in seconds. A wall-clock deadline here cannot
+// timeouts on the AWS client (v3.AwsDialTimeout, v3.AwsTLSHandshakeTimeout) cut off
+// in seconds. A wall-clock deadline here cannot
 // tell that apart from a legitimately long paginated read — S3 lists every bucket and
 // then queries each one's location and tags — so it abandons real results and reports
 // a working region as failed.
@@ -74,6 +74,16 @@ func (r Provider) Run() *ResourceReader {
 	return resourceReader
 }
 
+// MaxConcurrentProxies bounds how many (account, region) fetches run at once.
+//
+// It replaces a fixed 100ms pause before starting each proxy, which throttled
+// nothing useful — every proxy targets its own account and region, and AWS rate
+// limits are per account and region — while making the last of N proxies wait
+// N/10 seconds to start: half a minute for a 19-account sweep, longer than a
+// typical MCP client waits. A bound on concurrency keeps the burst of open
+// connections in check without serialising the start.
+var MaxConcurrentProxies = 32
+
 // findResources fetches resources from all regions
 func (r Provider) findResources(stream chan<- service.ResourceInterface, failures chan<- ProxyFailure) {
 	defer close(stream)
@@ -83,17 +93,26 @@ func (r Provider) findResources(stream chan<- service.ResourceInterface, failure
 		Str("type", cfg.ResourceTypeToString(r.resourceType)).
 		Msg("[AwsProvider.findResources] resource update")
 
+	limit := MaxConcurrentProxies
+	if limit < 1 {
+		limit = 1
+	}
+
+	slots := make(chan struct{}, limit)
+
 	var wg sync.WaitGroup
 	for _, gw := range r.proxyPool {
 		wg.Add(1)
+		slots <- struct{}{}
 
 		go func() {
-			r.findResourcesInRegion(gw, stream, failures)
-			wg.Done()
-		}()
+			defer func() {
+				<-slots
+				wg.Done()
+			}()
 
-		// manual aws request throttle
-		time.Sleep(100 * time.Millisecond)
+			r.findResourcesInRegion(gw, stream, failures)
+		}()
 	}
 	wg.Wait()
 }
@@ -110,6 +129,19 @@ func (r Provider) findResourcesInRegion(
 			Str("region", gw.GetRegion().String()).
 			Str("type", cfg.ResourceTypeToString(r.resourceType)).
 			Msg("[AwsProvider.findResourcesInRegion] failed to find resources")
+
+		// Clients are built without touching AWS, so this is often the first
+		// request the pair has made: if it shows the whole region unusable,
+		// the client's pool remembers that and later sweeps skip the pair.
+		//
+		// Not when the caller's own context has ended: a dial cut short by
+		// the caller's deadline reads exactly like one cut short by the
+		// dialer's timeout — same text, both errors.Is DeadlineExceeded — and
+		// would remember every healthy region still connecting when a tool
+		// call timed out.
+		if ctx := gw.GetContext(); ctx == nil || ctx.Err() == nil {
+			gw.GetClient().ReportFailure(err)
+		}
 
 		failures <- ProxyFailure{AccountID: gw.GetAccountID(), Region: gw.GetRegion(), Err: err}
 

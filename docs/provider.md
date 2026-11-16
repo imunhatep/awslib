@@ -13,6 +13,7 @@ choice between provider versions — it is the only client provider the library 
 - [Discovering assumable roles](#discovering-assumable-roles)
 - [Using any AWS service client](#using-any-aws-service-client) — [the 56 ready-made clients](#the-56-ready-made-clients), [service packages](#service-packages-repositories-on-top-of-those-clients)
 - [IAM policies](#iam-policies) — caller, trust policy, read permissions
+- [How the pools build clients](#how-the-pools-build-clients) — no STS per region, shared credentials, connection timeouts, region failures
 - [Failure caching and region timeouts](#failure-caching-and-region-timeouts)
 - [Custom endpoints (LocalStack, S3-compatible)](#custom-endpoints-localstack-s3-compatible)
 - [Logging verbosity](#logging-verbosity)
@@ -30,9 +31,13 @@ choice between provider versions — it is the only client provider the library 
 Two things about `v3.Client` are worth knowing before anything else:
 
 - **It is per-region.** There is no "switch region" call; a second region means a second client.
-- **Constructing one calls STS.** `NewClient` resolves the account ID via
-  `sts:GetCallerIdentity` before returning, so it fails immediately on missing credentials
-  or a region the account has not enabled, rather than later at the first API call.
+- **`NewClient` calls STS; the `*ForAccount` constructors do not.** `NewClient` resolves
+  the account ID via `sts:GetCallerIdentity` before returning, so it fails immediately on
+  missing credentials or a region the account has not enabled. `NewClientForAccount` and
+  the builder's `LocalClientForAccount` / `AssumeClientForAccount` take the account from
+  the caller and make no AWS call at all — that is what both pools use, so a bad region
+  shows up on the first real request instead. See
+  [how the pools build clients](#how-the-pools-build-clients).
 
 ## A single client
 
@@ -60,7 +65,7 @@ client, err := v3.NewClient(ctx, providers...)
 ```
 
 `v3.DefaultAwsClientProviders(extra...)` builds the config chain the library expects and
-appends whatever you pass. It sets 5 retry attempts with a 3s max backoff
+appends whatever you pass. It sets 5 retry attempts with a 20s max backoff
 (`v3.AwsRetryAttempts`, `v3.AwsRetryMaxBackoffDelay`) and then reads the environment:
 
 | Environment | Effect |
@@ -94,10 +99,14 @@ builder := v3.NewClientBuilder(ctx, providers...)
 | `builder.DefaultClient()` | default chain | **always `us-east-1`** (`types.DefaultAwsRegion`) | yes, one instance |
 | `builder.LocalClient(region)` | default chain | as given | no — each call is a fresh client and a fresh STS call |
 | `builder.AssumeClient(role, region)` | `sts:AssumeRole` on `role` | as given | credentials per role, client no |
+| `builder.LocalClientForAccount(account, region)` | default chain | as given | one base config (and credentials cache) shared by every region; no STS call |
+| `builder.AssumeClientForAccount(account, role, region)` | `sts:AssumeRole` on `role`, on first use | as given | one base config per role shared by every region; no STS call per region |
 
 `DefaultClient()` forces `us-east-1` regardless of `AWS_REGION`, because its job is to be
 the identity that mints assumed-role credentials, not to do work. For work in a specific
-region use `LocalClient(region)` — or a pool, which caches per account and region.
+region use `LocalClient(region)` — or a pool, which caches per account and region. The
+`*ForAccount` variants trust the `account` they are given; pass the one the default client
+or the role belongs to.
 
 ```go
 // Same credentials, one client per region.
@@ -204,9 +213,10 @@ accounts, err := pool.PoolAccountIDs()                                  // every
 clients, err := pool.GetAccountClients("123456789012", "eu-central-1")  // just that one
 ```
 
-Do this here, not by filtering the result of `GetClients`: building a client assumes that
-account's role, so by the time you hold a slice every account in the pool has already been
-contacted. An account the pool cannot serve is an **error**, not an empty slice — a caller
+Do this here, not by filtering the result of `GetClients`: building no longer calls AWS,
+but every client in the slice carries that account's role, and whatever the slice is
+handed to will use it — the scope belongs where the clients are chosen, not on the rows
+they return. An account the pool cannot serve is an **error**, not an empty slice — a caller
 that asked about the wrong account must not be told the account is empty.
 
 `PoolAccountIDs()` is the one to validate against. `ListAccountIDs()` on
@@ -437,7 +447,8 @@ reads policies in the caller's own account:
 ```
 
 `sts:GetCallerIdentity` needs no permission — every principal may call it — but a `Deny`
-that catches it breaks client construction outright, since `NewClient` calls it eagerly.
+that catches it breaks client construction outright: `NewClient` calls it eagerly, and the
+pools need it once, for the default client's account.
 
 ### 2. The target account: the role's trust policy
 
@@ -551,16 +562,76 @@ A region the account has not enabled rejects **every** STS call with
 `InvalidClientTokenId`, which reads like a credential problem but is not fixable with a
 policy. Enable the region in the account, or leave it out of the region list.
 
+## How the pools build clients
+
+Both pools build a client without any network call, and learn whether a region works from
+its first real request.
+
+- **No STS call per region.** The account is known before the client exists — the role
+  map's key in `v3.ClientPool`, the default client's account otherwise — so the pools use
+  `AssumeClientForAccount` / `LocalClientForAccount`. The only identity call left is the
+  default client's one `GetCallerIdentity` in `us-east-1`. Asking a pool for an account
+  its default credentials do not belong to is an error, never a mislabelled client, and so
+  is a role map entry whose key differs from the account in the role's ARN.
+- **One credential source, one base config.** The builder loads one `aws.Config` per
+  credential source (the default chain, or each role ARN) and gives every region a copy
+  that differs only in `Region`. Credentials cache, retryer and HTTP client are shared, so
+  a role is assumed once on first use and an SSO profile's credentials are fetched once,
+  not once per region. Loading is serialised, so concurrent builds still load each base
+  once.
+- **Connection timeouts.** Every config the builder loads starts with
+  `v3.DefaultHTTPClient()`: dial timeout `v3.AwsDialTimeout` and TLS handshake timeout
+  `v3.AwsTLSHandshakeTimeout`, both 5s. The SDK default is a 30s dial, repeated by the
+  retryer, which kept an unroutable region busy for minutes. Neither limits how long a
+  response may take, so slow paginated reads are unaffected. A
+  `config.WithHTTPClient` among your builder providers replaces it.
+- **A failed connection is not retried.** `v3.NewRetryer` — the retryer the builder and
+  `DefaultAwsClientProviders` install — is the SDK's standard one with
+  `AwsRetryAttempts`/`AwsRetryMaxBackoffDelay`, except that `v3.ConnectFailure` errors
+  are final: an endpoint that has not connected in 5s is dead, and five attempts plus
+  backoff only multiplied the wait. Throttling, resets mid-request and 5xx are still
+  retried. Pass `config.WithRetryer(v3.NewRetryer)` when you build a config yourself.
+- **Failures are learned from requests and remembered per pair.** Each pooled client
+  carries a hook (`OnRegionFailure`). `resources.Provider` hands every fetch error to
+  `client.ReportFailure(err)`; when `v3.RegionFailure(err)` says the whole (account,
+  region) pair is unusable, the pool adds it to its `FailureCache` and drops the client,
+  so `GetClient` replays the error without building anything until the TTL lapses. Code
+  that calls repositories directly should do the same with its own errors, and **only
+  while its own context is live**: a dial cut short by the caller's deadline is
+  indistinguishable from a dead endpoint (same text, and both satisfy
+  `errors.Is(err, context.DeadlineExceeded)`), so `resources.Provider` skips the report
+  once the proxy's context has ended. Only the client that failed is evicted, so a late
+  report from a replaced client cannot evict its successor. `ReportFailure` is nil-safe.
+
+What `v3.RegionFailure` counts:
+
+| Region failure (remembered) | Why |
+|---|---|
+| `InvalidClientTokenId` (STS), `UnrecognizedClientException`, `AuthFailure` (EC2) | the account has not enabled the region, so every endpoint there rejects the token |
+| `dial …` with `i/o timeout`, `connection refused`, `network is unreachable` or `no route to host`; `TLS handshake timeout` | the endpoint cannot be reached at all |
+
+| Not a region failure (never remembered) | Why |
+|---|---|
+| credential failures (expired token, failed refresh, no providers) | they fail every region at once and are fixed by logging in; remembering them would outlive the fix |
+| access denied (`AccessDenied`, `UnauthorizedOperation`, …) | usually one service's IAM grant; remembering it would hide every other service in the region |
+| `no such host` | that one service does not exist in the region; others there still answer |
+| `dial tcp: lookup …: i/o timeout` | the local DNS resolver timed out, not the region |
+| throttling, a read that times out mid-response, the caller's own cancellation | the region works; the request did not |
+
 ## Failure caching and region timeouts
 
 A wide sweep's expensive failures are the ones the resource cache never sees, because it
 only caches successful results. Three things bound the cost:
 
-- **`v3.FailureCache`** — both pools remember per (account, region) client-creation
-  failures for `v3.DefaultClientFailureTTL`, so a disabled region costs one rejected STS
-  call per TTL instead of one per request, and an unroutable endpoint costs one TCP timeout
-  instead of one per request. Pass your own window with `WithFailureTTL(ttl)` so it ages on
-  the same clock as your resource cache. Credential failures are deliberately **not**
+- **`v3.FailureCache`** — both pools remember per (account, region) failures for
+  `v3.DefaultClientFailureTTL`: failures to build a client, and region failures reported
+  by a client's requests (see [above](#how-the-pools-build-clients)). A disabled region
+  costs one rejected request per TTL instead of one per sweep, and an unroutable endpoint
+  one connection timeout. Pass your own window with `WithFailureTTL(ttl)` so it ages on
+  the same clock as your resource cache. Connection failures are capped at
+  `v3.NetworkFailureTTL` (10 minutes): they are the one kind a blip on your own network
+  produces — a VPN reconnecting fails every region at once — and a remembered pair is
+  skipped without appearing in the results. Credential failures are deliberately **not**
   cached — an expired SSO session fails identically everywhere and is fixed by
   re-authenticating, so caching it would turn a 30-second `aws sso login` into a TTL-long
   outage.
@@ -568,14 +639,13 @@ only caches successful results. Three things bound the cost:
   `resources.Provider` deliberately has no wall-clock timeout: it cannot tell an
   unroutable endpoint from a legitimately long paginated read (S3 lists every bucket and
   then queries each one's tags), so a deadline there abandons real results and reports a
-  working region as failed. Bound it where the distinction is visible — dial and TLS
-  timeouts on the AWS HTTP client:
+  working region as failed. The builder already bounds the part where the distinction is
+  visible — dial and TLS handshake, via `v3.DefaultHTTPClient()`. To add an overall
+  request timeout, pass your own client and keep those two:
 
   ```go
   providers, err := v3.DefaultAwsClientProviders(
-      config.WithHTTPClient(awshttp.NewBuildableClient().
-          WithTimeout(2 * time.Minute).
-          WithDialerOptions(func(d *net.Dialer) { d.Timeout = 5 * time.Second })),
+      config.WithHTTPClient(v3.DefaultHTTPClient().WithTimeout(2 * time.Minute)),
   )
   ```
 
@@ -585,8 +655,8 @@ only caches successful results. Three things bound the cost:
 
 ## Custom endpoints (LocalStack, S3-compatible)
 
-`v3.Client` construction hits STS, so an endpoint override has to be in the config, not
-applied afterwards:
+`v3.NewClient` hits STS, and the pools' builder loads its configs once and copies them, so
+an endpoint override has to be in the config, not applied afterwards:
 
 ```go
 providers, err := v3.DefaultAwsClientProviders(

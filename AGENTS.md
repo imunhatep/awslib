@@ -35,17 +35,39 @@ The library is built in layers, from low-level SDK access up to a parallel cross
 ### 1. Provider layer — client creation & multi-account fanout (`provider/`)
 
 - `provider/v3/` holds the client implementation.
-- `v3.Client` (`provider/v3/client.go`) wraps an `aws.Config` for one account+region. It lazily
-  resolves account ID via STS `GetCallerIdentity`, and acts as a per-client cache (`sync.Map`) for
-  instantiated SDK service clients.
-- `v3.ClientBuilder` (`client_builder.go`) constructs clients: `DefaultClient()`, `LocalClient(region)`,
-  and `AssumeClient(role, region)` (caches assumed-role credentials per role). `DefaultAwsClientProviders()`
-  assembles the default config chain (retry settings, shared profile / static creds / web identity from env).
+- `v3.Client` (`provider/v3/client.go`) wraps an `aws.Config` for one account+region and acts as a
+  per-client cache (`sync.Map`) for instantiated SDK service clients. `NewClient` resolves the account
+  via STS `GetCallerIdentity`; `NewClientForAccount(ctx, accountID, ...)` takes it from the caller and
+  makes **no** AWS call (empty accountID falls back to `NewClient`). `OnRegionFailure(hook)` /
+  `ReportFailure(err)` (nil-safe) let a pool learn from a client's requests that its pair is unusable.
+- `v3.ClientBuilder` (`client_builder.go`) constructs clients: `DefaultClient()` (one instance, us-east-1,
+  the only STS call the pools make), `LocalClient(region)`, `AssumeClient(role, region)`, and the no-I/O
+  `LocalClientForAccount(account, region)` / `AssumeClientForAccount(account, role, region)` the pools use.
+  The `*ForAccount` pair loads one base config per credential source (`""` or the role ARN, under
+  `loadMu`) and copies it per region, so every region shares one credentials cache, retryer and HTTP
+  client; the role is assumed on first use, and `AssumeClientForAccount` refuses an account that is not
+  the one in the role ARN. Every config the builder loads gets `DefaultHTTPClient()` (5s dial / 5s TLS
+  handshake, `AwsDialTimeout` / `AwsTLSHandshakeTimeout`) and `NewRetryer` (standard retryer that does
+  not retry a `ConnectFailure`) first, so a caller's `config.WithHTTPClient` / `WithRetryer` still wins. `DefaultAwsClientProviders()` assembles the default config chain
+  (retry settings, shared profile / static creds / web identity from env).
 - **Two `ClientPool` types exist** — do not confuse them:
   - `v3.ClientPool` (`provider/v3/client_pool.go`) — takes a map of `AwsAccountID → RoleArn` and
-    creates one client per account×region by assuming roles (concurrent). Used for explicit cross-account setups.
+    creates one client per account×region (concurrent), labelled with the map key. Used for explicit
+    cross-account setups.
   - `provider.ClientPool` (`provider/client_pool.go`, top-level package) — thinner wrapper around a
     `v3.ClientBuilder` that uses default credentials only. Example CLIs (`cmd/resources`) use this one.
+  - Both register `OnRegionFailure` → `regionFailed` on every client they build: a `v3.RegionFailure`
+    error (region not enabled: `InvalidClientTokenId` / `UnrecognizedClientException` / `AuthFailure`;
+    unreachable: dial timeout/refused/unreachable/no route, TLS handshake timeout) goes into the
+    `FailureCache` and evicts that client (only that one), so `GetClient` replays it without building.
+    Connection failures are kept for `NetworkFailureTTL` (10m) at most. Credential failures, access
+    denied, any DNS failure (`no such host`, `lookup …`), throttling, read timeouts and cancellation are
+    not region failures. `resources.Provider` reports fetch errors through
+    `gw.GetClient().ReportFailure(err)` only while `gw.GetContext()` is live — a caller's deadline makes
+    a dial error identical to a dead endpoint's.
+    Tests: `provider/v3/{region_failure,client_builder,client_pool_region_failure,connect_failure}_test.go`,
+    `provider/client_pool_test.go`, `resources/provider_{region_failure,cancel}_test.go` — all offline, against a
+    local fake STS.
 - `provider/types/resources.go` defines the core value types: `AwsAccountID`, `AwsRegion`, `RoleArn`.
 
 ### 2. Service layer — repositories & entities (`service/`)

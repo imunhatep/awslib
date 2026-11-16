@@ -25,6 +25,14 @@ import (
 // the whole TTL after the operator logged back in.
 const DefaultClientFailureTTL = 3 * time.Hour
 
+// NetworkFailureTTL caps how long a connection failure (ConnectFailure) is
+// remembered, whatever the cache's TTL. Long enough that one sweep, and the
+// follow-up queries an agent makes right after it, do not wait on a dead
+// endpoint again; short enough that a blip on the caller's own network — a VPN
+// reconnecting, a laptop waking up, which fail every region at once — does not
+// hide healthy regions for hours.
+const NetworkFailureTTL = 10 * time.Minute
+
 // credentialFailure reports whether an error is about the caller's credentials
 // rather than the target region.
 //
@@ -83,6 +91,7 @@ type FailureCache struct {
 type failureEntry struct {
 	err error
 	at  time.Time
+	ttl time.Duration
 }
 
 // NewFailureCache returns a cache holding failures for ttl. A non-positive ttl
@@ -119,7 +128,7 @@ func (c *FailureCache) Err(accountID types.AwsAccountID, region types.AwsRegion)
 		return nil
 	}
 
-	if time.Since(entry.at) > c.ttl {
+	if time.Since(entry.at) > entry.ttl {
 		delete(regions, region)
 		return nil
 	}
@@ -151,7 +160,21 @@ func (c *FailureCache) Add(accountID types.AwsAccountID, region types.AwsRegion,
 		c.entries[accountID] = map[types.AwsRegion]failureEntry{}
 	}
 
-	c.entries[accountID][region] = failureEntry{err: err, at: time.Now()}
+	c.entries[accountID][region] = failureEntry{err: err, at: time.Now(), ttl: c.entryTTL(err)}
+}
+
+// entryTTL is how long one failure is remembered. A connection failure is
+// remembered for at most NetworkFailureTTL: it is the one kind a transient blip on
+// the caller's own network can produce, and a remembered failure skips the pair
+// without a trace in the results, so a healthy region must not stay hidden for
+// the whole TTL. A region the account has not enabled stays disabled until
+// someone acts, and is remembered for the full TTL.
+func (c *FailureCache) entryTTL(err error) time.Duration {
+	if ConnectFailure(err) && NetworkFailureTTL < c.ttl {
+		return NetworkFailureTTL
+	}
+
+	return c.ttl
 }
 
 // Forget drops any remembered failure, so a pair that starts working is not held
@@ -167,4 +190,84 @@ func (c *FailureCache) Forget(accountID types.AwsAccountID, region types.AwsRegi
 	if regions, ok := c.entries[accountID]; ok {
 		delete(regions, region)
 	}
+}
+
+// RegionFailure reports whether an error from a request means the whole
+// (account, region) pair is unusable, so every service there will fail the same
+// way and the pair is worth skipping until the FailureCache TTL lapses.
+//
+// Two kinds qualify:
+//   - the region is not enabled for the account: its endpoints reject the
+//     caller's token (STS InvalidClientTokenId, EC2 AuthFailure, most other
+//     services UnrecognizedClientException);
+//   - its endpoints cannot be reached: the connection times out or is refused.
+//
+// Deliberately not a region failure: a credential failure (the pool must not
+// remember it, see credentialFailure), access denied (usually one service's IAM
+// grant, and caching it would hide every other service in the region), a DNS
+// "no such host" (a service that does not exist in that region, not a region
+// that does not answer), throttling, and the caller's own cancellation.
+func RegionFailure(err error) bool {
+	if err == nil || credentialFailure(err) {
+		return false
+	}
+
+	haystack := strings.ToLower(err.Error())
+
+	if strings.Contains(haystack, "no such host") {
+		return false
+	}
+
+	// The region rejects the caller's token because the account has not
+	// enabled it.
+	for _, marker := range []string{
+		"invalidclienttokenid",        // STS
+		"unrecognizedclientexception", // most other services
+		"authfailure",                 // EC2
+	} {
+		if strings.Contains(haystack, marker) {
+			return true
+		}
+	}
+
+	return ConnectFailure(err)
+}
+
+// ConnectFailure reports whether err is a failure to establish a connection to
+// the endpoint: the dial timed out, was refused or had no route, or the TLS
+// handshake timed out. Only establishing the connection counts — a read that
+// times out halfway through a long paginated listing ("read tcp ...: i/o
+// timeout") is a slow answer from a working endpoint, not a dead one — and no
+// DNS failure counts either: "no such host" is a service absent from the region
+// (see RegionFailure), and a resolver timeout is the caller's own network.
+//
+// A dial cut short by the caller's context is indistinguishable from one cut
+// short by AwsDialTimeout; whoever reports the error must check the context.
+//
+// The retryer built by NewRetryer does not retry these: AwsDialTimeout is already
+// orders of magnitude longer than a working endpoint takes to connect.
+func ConnectFailure(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	haystack := strings.ToLower(err.Error())
+
+	if strings.Contains(haystack, "tls handshake timeout") {
+		return true
+	}
+
+	// "dial tcp: lookup <host>: ..." is the local resolver failing, which
+	// says nothing about the region, even when it is an i/o timeout.
+	if !strings.Contains(haystack, "dial ") || strings.Contains(haystack, "lookup ") {
+		return false
+	}
+
+	for _, marker := range []string{"i/o timeout", "connection refused", "network is unreachable", "no route to host"} {
+		if strings.Contains(haystack, marker) {
+			return true
+		}
+	}
+
+	return false
 }

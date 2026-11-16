@@ -172,6 +172,11 @@ func (p *ClientPool) GetClient(accountID types.AwsAccountID, region types.AwsReg
 		return nil, err
 	}
 
+	// Building the client proved nothing about the region, so its first
+	// requests do: a region failure there is remembered like a build failure
+	// used to be, and the client dropped so the next sweep skips the pair.
+	client.OnRegionFailure(func(err error) { p.regionFailed(accountID, region, client, err) })
+
 	p.failures.Forget(accountID, region)
 	p.setClient(accountID, region, client)
 
@@ -201,7 +206,9 @@ func (p *ClientPool) buildClient(accountID types.AwsAccountID, region types.AwsR
 	roleArn, assume := p.roles[accountID]
 	p.Unlock()
 
-	// If a role is configured for this account, use it
+	// Either way the account is known before the client exists — the role's
+	// account, or the default credentials' — so no client here calls STS. The
+	// role itself is assumed on the first request and shared by every region.
 	if assume {
 		log.Trace().
 			Stringer("accountID", accountID).
@@ -209,7 +216,7 @@ func (p *ClientPool) buildClient(accountID types.AwsAccountID, region types.AwsR
 			Str("roleArn", roleArn.String()).
 			Msg("[ClientPool.buildClient] creating client with assumed role")
 
-		client, err := p.builder.AssumeClient(roleArn, region)
+		client, err := p.builder.AssumeClientForAccount(accountID, roleArn, region)
 		if err != nil {
 			return nil, errors.New(err)
 		}
@@ -217,23 +224,45 @@ func (p *ClientPool) buildClient(accountID types.AwsAccountID, region types.AwsR
 		return client, nil
 	}
 
-	// Use default credentials (no role assumption)
 	log.Trace().
 		Stringer("accountID", accountID).
 		Stringer("region", region).
 		Msg("[ClientPool.buildClient] creating client with default credentials")
 
-	client, err := p.builder.LocalClient(region)
+	defaultClient, err := p.builder.DefaultClient()
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
-	// Verify the accountID matches
-	if client.GetAccountID() != accountID {
-		return nil, errors.Errorf("accountID mismatch: requested %s but got %s", accountID, client.GetAccountID())
+	if local := defaultClient.GetAccountID(); local != accountID {
+		return nil, errors.Errorf("accountID mismatch: requested %s but the default credentials belong to %s", accountID, local)
+	}
+
+	client, err := p.builder.LocalClientForAccount(accountID, region)
+	if err != nil {
+		return nil, errors.New(err)
 	}
 
 	return client, nil
+}
+
+// regionFailed remembers a pair whose requests failed for the whole region and
+// drops its client, so GetClient replays the failure until the TTL lapses.
+func (p *ClientPool) regionFailed(accountID types.AwsAccountID, region types.AwsRegion, client *Client, err error) {
+	log.Warn().Err(err).
+		Stringer("accountID", accountID).
+		Stringer("region", region).
+		Msg("[ClientPool.regionFailed] region unusable for this account, skipping it until the failure TTL lapses")
+
+	p.failures.Add(accountID, region, err)
+
+	// Evict only the client that failed: a slow request from a client
+	// replaced after an earlier failure lapsed must not evict its successor.
+	p.Lock()
+	if p.clients[accountID][region] == client {
+		delete(p.clients[accountID], region)
+	}
+	p.Unlock()
 }
 
 func (p *ClientPool) ListAssumableRoleArns() ([]types.RoleArn, error) {

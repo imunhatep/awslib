@@ -134,9 +134,13 @@ func (p *ClientPool) GetClient(accountID types.AwsAccountID, region types.AwsReg
 	log.Trace().
 		Stringer("accountID", accountID).
 		Stringer("region", region).
-		Msg("[LocalClientPool.GetClient] fetching assumable roles from local iam role policies")
+		Msg("[LocalClientPool.GetClient] building client")
 
-	client, err := p.builder.LocalClient(region)
+	// The account comes from the default client, resolved once; every region
+	// client is then built from it with no further STS call. A caller asking
+	// for another account gets an error rather than a client mislabelled with
+	// an account it does not reach.
+	defaultClient, err := p.builder.DefaultClient()
 	if err != nil {
 		wrapped := errors.New(err)
 		p.failures.Add(accountID, region, wrapped)
@@ -144,10 +148,46 @@ func (p *ClientPool) GetClient(accountID types.AwsAccountID, region types.AwsReg
 		return nil, wrapped
 	}
 
+	if local := defaultClient.GetAccountID(); local != accountID {
+		return nil, errors.Errorf("account %s is not reachable by this client pool, which serves account %s", accountID, local)
+	}
+
+	client, err := p.builder.LocalClientForAccount(accountID, region)
+	if err != nil {
+		wrapped := errors.New(err)
+		p.failures.Add(accountID, region, wrapped)
+
+		return nil, wrapped
+	}
+
+	// Building the client proved nothing about the region, so its first
+	// requests do: a region failure there is remembered like a build failure
+	// used to be, and the client dropped so the next sweep skips the pair.
+	client.OnRegionFailure(func(err error) { p.regionFailed(accountID, region, client, err) })
+
 	p.failures.Forget(accountID, region)
-	p.setClient(client.GetAccountID(), region, client)
+	p.setClient(accountID, region, client)
 
 	return client, nil
+}
+
+// regionFailed remembers a pair whose requests failed for the whole region and
+// drops its client, so GetClient replays the failure until the TTL lapses.
+func (p *ClientPool) regionFailed(accountID types.AwsAccountID, region types.AwsRegion, client *v3.Client, err error) {
+	log.Warn().Err(err).
+		Stringer("accountID", accountID).
+		Stringer("region", region).
+		Msg("[LocalClientPool.regionFailed] region unusable for this account, skipping it until the failure TTL lapses")
+
+	p.failures.Add(accountID, region, err)
+
+	// Evict only the client that failed: a slow request from a client
+	// replaced after an earlier failure lapsed must not evict its successor.
+	p.Lock()
+	if p.clients[accountID][region] == client {
+		delete(p.clients[accountID], region)
+	}
+	p.Unlock()
 }
 
 // cachedClient reads the client map under the lock setClient writes it with.

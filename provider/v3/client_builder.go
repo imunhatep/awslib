@@ -2,18 +2,21 @@ package v3
 
 import (
 	"context"
+	"net"
+	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/provider/types"
-	"github.com/imunhatep/gocollection/slice"
 	"github.com/rs/zerolog/log"
 )
 
@@ -37,6 +40,54 @@ const (
 	AwsRetryMaxBackoffDelay = 20 * time.Second
 )
 
+// Connection timeouts applied to every client this package builds.
+//
+// The SDK's default dialer waits 30s for a connection, and the retryer repeats
+// it up to AwsRetryAttempts times, so a region whose endpoint does not route —
+// me-south-1 from some networks — held a request for minutes. A working endpoint
+// connects in milliseconds; these bound only the dead ones. A slow answer from a
+// working endpoint is not affected: neither limits how long a response may take.
+const (
+	AwsDialTimeout         = 5 * time.Second
+	AwsTLSHandshakeTimeout = 5 * time.Second
+)
+
+// DefaultHTTPClient is the HTTP client the builder gives every config: the SDK's
+// buildable client with AwsDialTimeout and AwsTLSHandshakeTimeout. A provider
+// passed to NewClientBuilder may still replace it with config.WithHTTPClient.
+func DefaultHTTPClient() *awshttp.BuildableClient {
+	return awshttp.NewBuildableClient().
+		WithDialerOptions(func(d *net.Dialer) { d.Timeout = AwsDialTimeout }).
+		WithTransportOptions(func(t *http.Transport) { t.TLSHandshakeTimeout = AwsTLSHandshakeTimeout })
+}
+
+// NewRetryer is the retryer every client this package builds uses: the SDK's
+// standard retryer with AwsRetryAttempts and AwsRetryMaxBackoffDelay, except that
+// a failure to connect (ConnectFailure) is not retried. An endpoint that has not
+// connected within AwsDialTimeout is dead, not slow, and retrying it only
+// multiplies the wait — five attempts plus backoff held each unreachable region
+// for over half a minute. The pool's FailureCache remembers the failure instead.
+//
+// Pass it to config.WithRetryer when building a config outside ClientBuilder.
+func NewRetryer() aws.Retryer {
+	return retry.NewStandard(func(o *retry.StandardOptions) {
+		o.MaxAttempts = AwsRetryAttempts
+		o.MaxBackoff = AwsRetryMaxBackoffDelay
+		o.Retryables = append([]retry.IsErrorRetryable{noRetryOnConnectFailure}, o.Retryables...)
+	})
+}
+
+// noRetryOnConnectFailure goes first in the retryer's chain, where the first
+// definite answer wins, so it overrides the SDK's own "connection errors are
+// retryable" rule for exactly the failures ConnectFailure names.
+var noRetryOnConnectFailure = retry.IsErrorRetryableFunc(func(err error) aws.Ternary {
+	if ConnectFailure(err) {
+		return aws.FalseTernary
+	}
+
+	return aws.UnknownTernary
+})
+
 type ClientBuilder struct {
 	sync.Mutex
 
@@ -44,6 +95,18 @@ type ClientBuilder struct {
 	client      *Client
 	providers   []func(*config.LoadOptions) error
 	credentials map[types.RoleArn]*aws.CredentialsCache
+
+	// bases holds one loaded config per credential source — "" for the
+	// builder's own credentials, else the role ARN — from which region clients
+	// are copied. See regionClient.
+	bases map[types.RoleArn]aws.Config
+	// loadMu serialises loading a base: collectClients builds regions
+	// concurrently, and getRoleCredentials and DefaultClient are not safe to
+	// enter from several goroutines at once.
+	loadMu sync.Mutex
+	// defaultMu guards client, which DefaultClient builds once and pools then
+	// read from concurrent goroutines.
+	defaultMu sync.Mutex
 }
 
 func NewClientBuilder(ctx context.Context, providers ...func(*config.LoadOptions) error) *ClientBuilder {
@@ -51,12 +114,16 @@ func NewClientBuilder(ctx context.Context, providers ...func(*config.LoadOptions
 		ctx:         ctx,
 		providers:   providers,
 		credentials: map[types.RoleArn]*aws.CredentialsCache{},
+		bases:       map[types.RoleArn]aws.Config{},
 	}
 
 	return builder
 }
 
 func (c *ClientBuilder) DefaultClient() (*Client, error) {
+	c.defaultMu.Lock()
+	defer c.defaultMu.Unlock()
+
 	if c.client != nil {
 		return c.client, nil
 	}
@@ -76,7 +143,11 @@ func (c *ClientBuilder) DefaultClient() (*Client, error) {
 }
 
 func (c *ClientBuilder) getRoleCredentials(role types.RoleArn) (*aws.CredentialsCache, error) {
-	if creds, ok := c.credentials[role]; ok {
+	c.Lock()
+	creds, ok := c.credentials[role]
+	c.Unlock()
+
+	if ok {
 		return creds, nil
 	}
 
@@ -90,6 +161,12 @@ func (c *ClientBuilder) getRoleCredentials(role types.RoleArn) (*aws.Credentials
 	c.Lock()
 	defer c.Unlock()
 
+	// Concurrent callers may race here; keep the first cache so every client
+	// of the role shares it.
+	if creds, ok := c.credentials[role]; ok {
+		return creds, nil
+	}
+
 	roleCredentials := stscreds.NewAssumeRoleProvider(client.Sts(), role.String())
 	c.credentials[role] = aws.NewCredentialsCache(roleCredentials)
 
@@ -97,8 +174,115 @@ func (c *ClientBuilder) getRoleCredentials(role types.RoleArn) (*aws.Credentials
 }
 
 func (c *ClientBuilder) getProviders(providers ...func(*config.LoadOptions) error) []func(*config.LoadOptions) error {
-	cfgProviders := slice.Copy(c.providers)
+	// The default HTTP client and retryer go first so a caller's own
+	// WithHTTPClient or WithRetryer, in the builder's providers or these, still
+	// wins.
+	cfgProviders := []func(*config.LoadOptions) error{
+		config.WithHTTPClient(DefaultHTTPClient()),
+		config.WithRetryer(NewRetryer),
+	}
+	cfgProviders = append(cfgProviders, c.providers...)
+
 	return append(cfgProviders, providers...)
+}
+
+// LocalClientForAccount is LocalClient for an account the caller already knows:
+// no STS call, no network I/O. Every region shares one loaded config, and with
+// it one credentials cache, so a profile's credentials are fetched once rather
+// than once per region.
+//
+// accountID is taken on trust. A pool should pass the account its default
+// client resolved, which is the account these credentials belong to.
+func (c *ClientBuilder) LocalClientForAccount(accountID types.AwsAccountID, region types.AwsRegion) (*Client, error) {
+	log.Debug().Str("account", accountID.String()).Str("region", region.String()).Msg("[ClientBuilder.LocalClientForAccount] building client")
+
+	return c.regionClient("", accountID, region)
+}
+
+// AssumeClientForAccount is AssumeClient for the account the role belongs to,
+// without an STS call per region: the role's credentials are assumed on first
+// use and shared by every region.
+//
+// accountID must be the account in the role's ARN. AssumeClient learned the
+// account from GetCallerIdentity under the role, so it reported the account it
+// really reached; with no call to learn it from, the ARN is the only authority,
+// and a mismatch — one typo in an accountID=roleArn list — would otherwise label
+// every resource fetched with the client as another account's.
+func (c *ClientBuilder) AssumeClientForAccount(accountID types.AwsAccountID, role types.RoleArn, region types.AwsRegion) (*Client, error) {
+	log.Debug().Str("account", accountID.String()).Str("role", role.String()).Str("region", region.String()).Msg("[ClientBuilder.AssumeClientForAccount] building client")
+
+	if role == "" {
+		return nil, errors.New("AssumeClientForAccount needs a role")
+	}
+
+	if roleAccount := roleArnAccount(role); roleAccount != accountID.String() {
+		return nil, errors.Errorf("role %s belongs to account %q, not %s", role, roleAccount, accountID)
+	}
+
+	return c.regionClient(role, accountID, region)
+}
+
+// roleArnAccount returns the account segment of a role ARN
+// (arn:<partition>:iam::<account>:role/<name>), or "" when it has none.
+func roleArnAccount(role types.RoleArn) string {
+	parts := strings.SplitN(role.String(), ":", 6)
+	if len(parts) != 6 || parts[0] != "arn" {
+		return ""
+	}
+
+	return parts[4]
+}
+
+// regionClient copies the credential source's base config into region. Copying
+// keeps the credentials cache, the retryer and the HTTP client shared, and only
+// the region — which decides every service client's endpoint — differs.
+func (c *ClientBuilder) regionClient(role types.RoleArn, accountID types.AwsAccountID, region types.AwsRegion) (*Client, error) {
+	base, err := c.baseConfig(role)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	cfg := base.Copy()
+	cfg.Region = region.String()
+
+	return newClientFromConfig(cfg, accountID), nil
+}
+
+// baseConfig loads, once per credential source, the config region clients are
+// copied from. Loading reads the shared config files; it makes no AWS call.
+func (c *ClientBuilder) baseConfig(role types.RoleArn) (aws.Config, error) {
+	c.loadMu.Lock()
+	defer c.loadMu.Unlock()
+
+	c.Lock()
+	base, ok := c.bases[role]
+	c.Unlock()
+
+	if ok {
+		return base, nil
+	}
+
+	providers := []func(*config.LoadOptions) error{config.WithRegion(types.DefaultAwsRegion.String())}
+
+	if role != "" {
+		roleCredentials, err := c.getRoleCredentials(role)
+		if err != nil {
+			return aws.Config{}, errors.New(err)
+		}
+
+		providers = append(providers, config.WithCredentialsProvider(roleCredentials))
+	}
+
+	base, err := config.LoadDefaultConfig(c.ctx, c.getProviders(providers...)...)
+	if err != nil {
+		return aws.Config{}, errors.New(err)
+	}
+
+	c.Lock()
+	c.bases[role] = base
+	c.Unlock()
+
+	return base, nil
 }
 
 func (c *ClientBuilder) AssumeClient(role types.RoleArn, region types.AwsRegion) (*Client, error) {
@@ -147,12 +331,7 @@ func DefaultAwsClientProviders(providers ...func(*config.LoadOptions) error) ([]
 	// in, silently discarded, and every client retried 3 times. Errors read
 	// "exceeded maximum number of attempts, 3" while the constant said 5.
 	commonProviders := []func(*config.LoadOptions) error{
-		config.WithRetryer(func() aws.Retryer {
-			return retry.NewStandard(func(o *retry.StandardOptions) {
-				o.MaxAttempts = AwsRetryAttempts
-				o.MaxBackoff = AwsRetryMaxBackoffDelay
-			})
-		}),
+		config.WithRetryer(NewRetryer),
 	}
 
 	// aws config credsProvider
