@@ -58,6 +58,7 @@ var resourceTypeFilters = map[cfg.ResourceType]string{
 	cfg.ResourceTypeSecurityGroup:    "ec2:security-group",
 	cfg.ResourceTypeVPCEndpoint:      "ec2:vpc-endpoint",
 	cfg.ResourceTypeRouteTable:       "ec2:route-table",
+	cfg.ResourceTypeNetworkAcl:       "ec2:network-acl",
 	cfg.ResourceTypeEip:              "ec2:elastic-ip",
 	cfg.ResourceTypeNetworkInterface: "ec2:network-interface",
 	// ecs

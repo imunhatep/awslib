@@ -178,6 +178,8 @@ func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.Reso
 		items, err = FindEc2VpcEndpoints(e.ctx, e.client, e.cache)
 	case cfg.ResourceTypeRouteTable:
 		items, err = FindEc2RouteTables(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeNetworkAcl:
+		items, err = FindEc2NetworkAcls(e.ctx, e.client, e.cache)
 	case cfg.ResourceTypeEip:
 		items, err = FindEc2Addresses(e.ctx, e.client, e.cache)
 	case cfg.ResourceTypeNetworkInterface:

@@ -186,6 +186,18 @@ func FindEc2RouteTables(ctx context.Context, client *v3.Client, dc *cache.DataCa
 	return slice.Map(items, cast[ec2.RouteTable]), err
 }
 
+// FindEc2NetworkAcls returns a list of VPC network ACLs with their inbound and outbound rules
+// and subnet associations
+func FindEc2NetworkAcls(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {
+	repo := ec2.NewEc2Repository(ctx, client)
+	if dc != nil {
+		items, err := repo.WithCache(dc).ListNetworkAclsAll()
+		return slice.Map(items, cast[ec2.NetworkAcl]), err
+	}
+	items, err := repo.ListNetworkAclsAll()
+	return slice.Map(items, cast[ec2.NetworkAcl]), err
+}
+
 // FindEc2Addresses returns a list of Elastic IPs, each carrying its public and, when
 // associated, its private address
 func FindEc2Addresses(ctx context.Context, client *v3.Client, dc *cache.DataCache) ([]service.ResourceInterface, error) {

@@ -103,6 +103,7 @@ func TestResourceTypeFilterSpotChecks(t *testing.T) {
 		cfg.ResourceTypeAutoScalingGroup:    "autoscaling:autoScalingGroup",
 		cfg.ResourceTypeEip:                 "ec2:elastic-ip",
 		cfg.ResourceTypeNetworkInterface:    "ec2:network-interface",
+		cfg.ResourceTypeNetworkAcl:          "ec2:network-acl",
 		cfg.ResourceTypeDistribution:        "cloudfront:distribution",
 		// Service-only filters: these ARNs carry no resource-type segment, so
 		// "s3:bucket" or "sns:topic" would be an invented spelling.

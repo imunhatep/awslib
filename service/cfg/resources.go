@@ -212,6 +212,7 @@ func ResourceTypeListRegional() []awscfg.ResourceType {
 		awscfg.ResourceTypeSecurityGroup,
 		awscfg.ResourceTypeVPCEndpoint,
 		awscfg.ResourceTypeRouteTable,
+		awscfg.ResourceTypeNetworkAcl,
 		awscfg.ResourceTypeEip,
 		awscfg.ResourceTypeNetworkInterface,
 		// elb

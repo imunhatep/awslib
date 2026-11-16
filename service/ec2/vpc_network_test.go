@@ -81,6 +81,17 @@ func TestVpcNetworkResourceInterface(t *testing.T) {
 			rName:    "-",
 		},
 		{
+			name: "network acl",
+			resource: NewNetworkAcl(client, types.NetworkAcl{
+				NetworkAclId: aws.String("acl-0a1b2c"),
+				Tags:         []types.Tag{{Key: aws.String("Name"), Value: aws.String("public-nacl")}},
+			}),
+			id:    "acl-0a1b2c",
+			arn:   "arn:aws:ec2:eu-west-1:123456789012:network-acl/acl-0a1b2c",
+			rType: cfg.ResourceTypeNetworkAcl,
+			rName: "public-nacl",
+		},
+		{
 			name: "elastic ip is keyed by allocation id and named by its public address",
 			resource: NewAddress(client, types.Address{
 				AllocationId:     aws.String("eipalloc-0a1b2c"),
@@ -150,6 +161,43 @@ func TestRouteTableMainAndSubnets(t *testing.T) {
 	assert.Equal(t, []string{}, standalone.GetSubnetIds())
 }
 
+func TestNetworkAclEntriesAndSubnets(t *testing.T) {
+	acl := NewNetworkAcl(mockClient{}, types.NetworkAcl{
+		NetworkAclId: aws.String("acl-0a1b2c"),
+		VpcId:        aws.String("vpc-0a1b2c"),
+		IsDefault:    aws.Bool(true),
+		Entries: []types.NetworkAclEntry{
+			{RuleNumber: aws.Int32(100), Egress: aws.Bool(false), RuleAction: types.RuleActionAllow},
+			{RuleNumber: aws.Int32(100), Egress: aws.Bool(true), RuleAction: types.RuleActionAllow},
+			{RuleNumber: aws.Int32(32767), Egress: aws.Bool(false), RuleAction: types.RuleActionDeny},
+		},
+		Associations: []types.NetworkAclAssociation{
+			{SubnetId: aws.String("subnet-1")},
+			{SubnetId: aws.String("subnet-2")},
+		},
+	})
+
+	assert.True(t, acl.IsDefault())
+	assert.Equal(t, "vpc-0a1b2c", acl.GetVpcId())
+	assert.Equal(t, []string{"subnet-1", "subnet-2"}, acl.GetSubnetIds())
+	assert.Len(t, acl.GetEntries(), 3)
+
+	ingress := acl.GetIngressEntries()
+	require.Len(t, ingress, 2)
+	assert.Equal(t, int32(100), aws.ToInt32(ingress[0].RuleNumber))
+	assert.Equal(t, types.RuleActionDeny, ingress[1].RuleAction)
+
+	egress := acl.GetEgressEntries()
+	require.Len(t, egress, 1)
+	assert.True(t, aws.ToBool(egress[0].Egress))
+
+	empty := NewNetworkAcl(mockClient{}, types.NetworkAcl{NetworkAclId: aws.String("acl-2")})
+	assert.False(t, empty.IsDefault())
+	assert.Equal(t, []string{}, empty.GetSubnetIds())
+	assert.Equal(t, []types.NetworkAclEntry{}, empty.GetIngressEntries())
+	assert.Equal(t, []types.NetworkAclEntry{}, empty.GetEgressEntries())
+}
+
 func TestSubnetIsPublic(t *testing.T) {
 	public := NewSubnet(mockClient{}, types.Subnet{
 		SubnetId:            aws.String("subnet-1"),
@@ -204,6 +252,20 @@ func TestVpcNetworkGobRoundTrip(t *testing.T) {
 			}},
 			Associations: []types.RouteTableAssociation{{Main: aws.Bool(true)}},
 		}),
+		NewNetworkAcl(client, types.NetworkAcl{
+			NetworkAclId: aws.String("acl-1"),
+			VpcId:        aws.String("vpc-1"),
+			IsDefault:    aws.Bool(true),
+			Entries: []types.NetworkAclEntry{{
+				RuleNumber: aws.Int32(100),
+				Protocol:   aws.String("6"),
+				RuleAction: types.RuleActionAllow,
+				CidrBlock:  aws.String("0.0.0.0/0"),
+				PortRange:  &types.PortRange{From: aws.Int32(443), To: aws.Int32(443)},
+				Egress:     aws.Bool(false),
+			}},
+			Associations: []types.NetworkAclAssociation{{SubnetId: aws.String("subnet-1")}},
+		}),
 		NewAddress(client, types.Address{
 			AllocationId:     aws.String("eipalloc-1"),
 			PublicIp:         aws.String("52.1.2.3"),
@@ -238,7 +300,13 @@ func TestVpcNetworkGobRoundTrip(t *testing.T) {
 	require.Len(t, sg.GetIngressRules(), 1)
 	assert.Equal(t, int32(443), aws.ToInt32(sg.GetIngressRules()[0].FromPort))
 
-	eip, ok := decoded[4].(Address)
+	eip, ok := decoded[5].(Address)
 	require.True(t, ok)
 	assert.Equal(t, "10.0.1.5", eip.GetPrivateIpAddress())
+
+	acl, ok := decoded[4].(NetworkAcl)
+	require.True(t, ok)
+	require.Len(t, acl.GetIngressEntries(), 1)
+	assert.Equal(t, int32(443), aws.ToInt32(acl.GetIngressEntries()[0].PortRange.From))
+	assert.Equal(t, []string{"subnet-1"}, acl.GetSubnetIds())
 }

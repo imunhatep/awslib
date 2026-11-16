@@ -101,6 +101,34 @@ func (c *Ec2RepositoryCached) ListInstancesByInput(query *awsec2.DescribeInstanc
 	return r0, r1
 }
 
+// ListNetworkAclsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListNetworkAclsAll() ([]NetworkAcl, error) {
+	cacheKey := cache.Key("ListNetworkAclsAll")
+	var cached []NetworkAcl
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListNetworkAclsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListNetworkAclsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListNetworkAclsByInput(describeInput *awsec2.DescribeNetworkAclsInput) ([]NetworkAcl, error) {
+	cacheKey := cache.Key("ListNetworkAclsByInput", describeInput)
+	var cached []NetworkAcl
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListNetworkAclsByInput(describeInput)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // ListNetworkInterfacesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListNetworkInterfacesAll() ([]NetworkInterface, error) {
 	cacheKey := cache.Key("ListNetworkInterfacesAll")
