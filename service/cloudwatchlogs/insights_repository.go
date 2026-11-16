@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/go-errors/errors"
 	"github.com/imunhatep/awslib/metrics"
-	"github.com/imunhatep/awslib/service"
 	ccfg "github.com/imunhatep/awslib/service/cfg"
 	"github.com/rs/zerolog/log"
 )
@@ -21,11 +20,10 @@ const (
 	DefaultQueryPollMin = 500 * time.Millisecond
 	DefaultQueryPollMax = 5 * time.Second
 
-	// QueryRowsBufferSize is how many rows ListQueryResultsByInputAsync buffers for a query that
-	// sets no Limit. AWS returns no more than 10,000 rows for such a query, so the buffer holds the
-	// whole result and the producer never waits on the reader; a query with a Limit gets a buffer of
-	// that size for the same reason.
-	QueryRowsBufferSize = 10000
+	// QueryRowsBufferSize is how many rows ListQueryResultsByInputAsync buffers ahead of its reader.
+	// The buffer is not sized to the result: a query may return 100,000 rows, and a fan-out that
+	// allocated that much per query up front would hold it for queries returning a handful.
+	QueryRowsBufferSize = 1000
 
 	// stopQueryTimeout bounds the StopQuery sent for an abandoned query, which runs on a context
 	// detached from the repository's: the usual reason to abandon one is that context ending.
@@ -167,15 +165,13 @@ func (r *CloudWatchLogsRepository) ListQueryResultsByInput(input *awscloudwatchl
 //
 // Rows arrive only once the query is Complete. Logs Insights does return rows while a query runs,
 // but those are a preview, not a prefix of the answer: a sort or limit can still evict them, and a
-// stats row's value keeps changing. The buffer is as large as the query's limit, so the producer
-// never blocks on the reader.
+// stats row's value keeps changing.
+//
+// Up to QueryRowsBufferSize rows are buffered; past that the producer waits for the reader, so a
+// reader that stops reading must end the repository context to release it. By then the query is
+// Complete and nothing is lost on the AWS side.
 func (r *CloudWatchLogsRepository) ListQueryResultsByInputAsync(input *awscloudwatchlogs.StartQueryInput) (<-chan QueryRow, <-chan *errors.Error) {
-	size := QueryRowsBufferSize
-	if limit := int(aws.ToInt32(input.Limit)); limit > 0 {
-		size = limit
-	}
-
-	source := make(chan QueryRow, size)
+	source := make(chan QueryRow, QueryRowsBufferSize)
 	errChan := make(chan *errors.Error, 1)
 
 	go func() {
@@ -184,10 +180,10 @@ func (r *CloudWatchLogsRepository) ListQueryResultsByInputAsync(input *awscloudw
 
 		_, err := r.runQuery(input, func(rows []QueryRow) error {
 			for _, row := range rows {
-				if err := service.WriteToChan(source, row); err != nil {
-					// more rows than the limit the buffer was sized for; end with an error rather
-					// than hand back a result that only looks complete
-					return errors.Errorf("reader fell %d rows behind: %w", cap(source), err)
+				select {
+				case source <- row:
+				case <-r.ctx.Done():
+					return errors.New(r.ctx.Err())
 				}
 			}
 
@@ -262,8 +258,10 @@ func (r *CloudWatchLogsRepository) runQuery(input *awscloudwatchlogs.StartQueryI
 
 	first, err := r.awaitQuery(&res)
 	if err != nil {
+		// a Failed, Cancelled or Timeout query has already ended. Unknown says nothing about
+		// whether it still runs, and it is given up on here, so it is stopped like any other.
 		var failed *QueryFailedError
-		if !errors.As(err, &failed) {
+		if !errors.As(err, &failed) || failed.Status == types.QueryStatusUnknown {
 			r.abandonQuery(queryID)
 		}
 

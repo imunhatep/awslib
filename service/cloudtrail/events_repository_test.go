@@ -25,15 +25,13 @@ type fakeLookup struct {
 	failPage int
 	delay    time.Duration
 
-	mu         sync.Mutex
-	calls      int
-	maxResults []int32
+	mu    sync.Mutex
+	calls int
 }
 
 func (f *fakeLookup) LookupEvents(ctx context.Context, in *cloudtrail.LookupEventsInput, _ ...func(*cloudtrail.Options)) (*cloudtrail.LookupEventsOutput, error) {
 	f.mu.Lock()
 	f.calls++
-	f.maxResults = append(f.maxResults, aws.ToInt32(in.MaxResults))
 	f.mu.Unlock()
 
 	if f.delay > 0 {
@@ -241,32 +239,24 @@ func TestListEventsByLookupAsyncInvalidLookupClosesEvents(t *testing.T) {
 	}
 }
 
-// LookupEvents rejects a page size above 50, so a larger MaxResults is a total spread over pages.
-func TestListEventsByInputLimitAbovePageSize(t *testing.T) {
-	api := &fakeLookup{pages: 10}
-	query := &cloudtrail.LookupEventsInput{MaxResults: aws.Int32(120)}
+// A MaxResults of zero or less fetches nothing and sends no request.
+func TestListEventsByInputNonPositiveLimitFetchesNothing(t *testing.T) {
+	for _, limit := range []int32{0, -1} {
+		api := &fakeLookup{pages: 3}
+		query := &cloudtrail.LookupEventsInput{MaxResults: aws.Int32(limit)}
 
-	events, err := newTestRepository(context.Background(), api).ListEventsByInput(query)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(events) != 120 {
-		t.Fatalf("received %d events, want 120", len(events))
-	}
-
-	if calls := api.callCount(); calls != 3 {
-		t.Fatalf("LookupEvents called %d times, want 3", calls)
-	}
-
-	for i, size := range api.maxResults {
-		if size != LookupEventsMaxPageSize {
-			t.Fatalf("request %d asked for a page of %d, want %d", i, size, LookupEventsMaxPageSize)
+		events, err := newTestRepository(context.Background(), api).ListEventsByInput(query)
+		if err != nil {
+			t.Fatalf("limit %d: unexpected error: %v", limit, err)
 		}
-	}
 
-	if aws.ToInt32(query.MaxResults) != 120 {
-		t.Fatalf("caller's query was modified: MaxResults is %d", aws.ToInt32(query.MaxResults))
+		if len(events) != 0 {
+			t.Fatalf("limit %d: received %d events, want none", limit, len(events))
+		}
+
+		if calls := api.callCount(); calls != 0 {
+			t.Fatalf("limit %d: LookupEvents called %d times, want 0", limit, calls)
+		}
 	}
 }
 
@@ -292,5 +282,29 @@ func TestEventWithoutReadOnly(t *testing.T) {
 
 	if e.IsReadOnly() || e.GetReadOnly() != "" {
 		t.Fatalf("event without ReadOnly reported %q", e.GetReadOnly())
+	}
+}
+
+// Hash keys the cache, so it must depend on the instants of the range only: not on the zone they
+// are expressed in, nor on the monotonic reading time.Now() carries.
+func TestLookupHashIgnoresZoneAndMonotonicClock(t *testing.T) {
+	now := time.Now()
+	start := now.Add(-time.Hour)
+
+	eet := time.FixedZone("EET", 2*60*60)
+	plain := NewLookupMiddleware().WithStartTime(start.Round(0).In(eet)).WithEndTime(now.Round(0).In(eet))
+	monotonic := NewLookupMiddleware().WithStartTime(start).WithEndTime(now)
+
+	if plain.Hash() != monotonic.Hash() {
+		t.Fatal("the same range hashed differently")
+	}
+
+	later := NewLookupMiddleware().WithStartTime(start).WithEndTime(now.Add(time.Nanosecond))
+	if later.Hash() == monotonic.Hash() {
+		t.Fatal("different ranges hashed the same")
+	}
+
+	if NewLookupMiddleware().Hash() == monotonic.Hash() {
+		t.Fatal("a lookup without a range hashed like one with it")
 	}
 }

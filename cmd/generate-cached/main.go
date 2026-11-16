@@ -33,9 +33,6 @@ import (
 type ParamInfo struct {
 	Name string
 	Type string
-	// SkipInKey marks a parameter that carries no query semantics (the
-	// *cache.DataCache a few repositories take) and must stay out of the key.
-	SkipInKey bool
 }
 
 type MethodInfo struct {
@@ -48,14 +45,11 @@ type MethodInfo struct {
 
 // CacheKey returns the Go expression for building the cache key inside the
 // wrapper method body: a cache.Key call taking the method name and every
-// key-bearing parameter. cache.Key renders parameters by value, so nested
-// pointer fields do not leak addresses into the key.
+// parameter. cache.Key renders parameters by value, so nested pointer fields
+// do not leak addresses into the key.
 func (m MethodInfo) CacheKey() string {
 	args := []string{fmt.Sprintf("%q", m.Name)}
 	for _, p := range m.Params {
-		if p.SkipInKey {
-			continue
-		}
 		args = append(args, p.Name)
 	}
 	return fmt.Sprintf("cache.Key(%s)", strings.Join(args, ", "))
@@ -288,10 +282,20 @@ func typeString(t types.Type, pkgPath string, aliasMap map[string]string) string
 	}
 }
 
-// isCacheParam reports whether t is (a pointer to) cache.DataCache. Such a
-// parameter is plumbing rather than query input: it must be excluded from the
-// cache key, both because it does not change the result and because walking a
-// live cache handler to build a key would be pointless work.
+// takesCache reports whether a method takes a *cache.DataCache. Such a method
+// already caches through the cache it is handed (CloudTrailRepository's
+// ListEventsByLookupCached), so wrapping it would store every result twice,
+// once in a namespace the caller never chose. It gets no wrapper.
+func takesCache(sig *types.Signature) bool {
+	for j := 0; j < sig.Params().Len(); j++ {
+		if isCacheParam(sig.Params().At(j).Type()) {
+			return true
+		}
+	}
+	return false
+}
+
+// isCacheParam reports whether t is (a pointer to) cache.DataCache.
 func isCacheParam(t types.Type) bool {
 	if p, ok := t.(*types.Pointer); ok {
 		t = p.Elem()
@@ -540,13 +544,16 @@ func main() {
 				}
 
 				sig := fn.Type().(*types.Signature)
+				if takesCache(sig) {
+					continue
+				}
+
 				var params []ParamInfo
 				for j := 0; j < sig.Params().Len(); j++ {
 					p := sig.Params().At(j)
 					params = append(params, ParamInfo{
-						Name:      paramName(p.Name(), j),
-						Type:      typeString(p.Type(), pkg.PkgPath, aliasMap),
-						SkipInKey: isCacheParam(p.Type()),
+						Name: paramName(p.Name(), j),
+						Type: typeString(p.Type(), pkg.PkgPath, aliasMap),
 					})
 				}
 

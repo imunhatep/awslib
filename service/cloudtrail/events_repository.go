@@ -60,16 +60,7 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 
 	start := time.Now()
 
-	// MaxResults is the total the caller wants, but LookupEvents reads it as the page size and
-	// rejects anything above LookupEventsMaxPageSize, so the request carries a clamped copy and
-	// the total is enforced here
-	limit := int(aws.ToInt32(query.MaxResults))
-	pageQuery := *query
-	if limit > LookupEventsMaxPageSize {
-		pageQuery.MaxResults = aws.Int32(LookupEventsMaxPageSize)
-	}
-
-	p := cloudtrail.NewLookupEventsPaginator(r.lookupEventsClient(), &pageQuery)
+	p := cloudtrail.NewLookupEventsPaginator(r.lookupEventsClient(), query)
 
 	// reach end of pages or max results
 	eventsFetchedCount := 0
@@ -87,7 +78,7 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 		}
 	}()
 
-	for p.HasMorePages() && (limit <= 0 || eventsFetchedCount < limit) {
+	for p.HasMorePages() && (query.MaxResults == nil || eventsFetchedCount < int(*query.MaxResults)) {
 		if metrics.AwsMetricsEnabled {
 			metrics.AwsApiRequests.With(r.promLabels("LookupEvents", ccfg.ResourceTypeTrailEvent)).Inc()
 		}
@@ -106,14 +97,9 @@ func (r *CloudTrailRepository) fetchEventsByInput(
 			return
 		}
 
-		events := resp.Events
-		if limit > 0 && eventsFetchedCount+len(events) > limit {
-			events = events[:limit-eventsFetchedCount]
-		}
+		eventsFetchedCount += len(resp.Events)
 
-		eventsFetchedCount += len(events)
-
-		for _, event := range events {
+		for _, event := range resp.Events {
 			var cloudTrailEvent CloudTrailEvent
 			if raw := aws.ToString(event.CloudTrailEvent); raw != "" {
 				if err := json.Unmarshal([]byte(raw), &cloudTrailEvent); err != nil {
@@ -164,9 +150,6 @@ func (r *CloudTrailRepository) ListEventsByLookup(lookup *LookupMiddleware) ([]E
 }
 
 // ListEventsByLookupCached a wrapper of EventsByResource method with reading and writing results into a cache
-//
-// Deprecated: use r.WithCache(cache).ListEventsByLookup(lookup), which caches through the same
-// generated wrapper as every other repository method.
 func (r *CloudTrailRepository) ListEventsByLookupCached(cache *cache.DataCache, lookup *LookupMiddleware) (items []Event, err error) {
 	namespace := fmt.Sprintf("%s:%s:%s", r.client.GetAccountID().String(), r.client.GetRegion().String(), lookup.Hash())
 	cacheNs := cache.WithNamespace(namespace)

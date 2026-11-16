@@ -156,9 +156,15 @@ func TestListQueryResultsReadsEveryPage(t *testing.T) {
 }
 
 func TestListQueryResultsFailedStatus(t *testing.T) {
-	for _, status := range []types.QueryStatus{
-		types.QueryStatusFailed, types.QueryStatusCancelled, types.QueryStatusTimeout, types.QueryStatusUnknown,
-	} {
+	// Unknown is given up on without knowing the query ended, so it is stopped; the others ended
+	stops := map[types.QueryStatus]int{
+		types.QueryStatusFailed:    0,
+		types.QueryStatusCancelled: 0,
+		types.QueryStatusTimeout:   0,
+		types.QueryStatusUnknown:   1,
+	}
+
+	for status, wantStops := range stops {
 		t.Run(string(status), func(t *testing.T) {
 			api := &fakeInsights{runningPolls: 1, final: status}
 
@@ -168,7 +174,7 @@ func TestListQueryResultsFailedStatus(t *testing.T) {
 			require.True(t, errors.As(err, &failed), "error %v is not a *QueryFailedError", err)
 			assert.Equal(t, status, failed.Status)
 			assert.Equal(t, status, res.Status)
-			assert.Zero(t, api.stops(), "a query that already ended must not be stopped")
+			assert.Equal(t, wantStops, api.stops())
 		})
 	}
 }
@@ -235,11 +241,11 @@ func TestWaitForQueryTrimsPollsOnlyForInsightsQL(t *testing.T) {
 }
 
 func TestListQueryResultsAsyncDeliversEveryRowToSlowReader(t *testing.T) {
-	api := &fakeInsights{final: types.QueryStatusComplete, rows: 250, pageSize: 100}
-	query := testQuery()
-	query.Limit = aws.Int32(250)
+	// more rows than the buffer holds: the producer has to wait for the reader
+	rowCount := 2*QueryRowsBufferSize + 50
+	api := &fakeInsights{final: types.QueryStatusComplete, rows: rowCount, pageSize: 700}
 
-	source, errChan := newTestInsightsRepository(context.Background(), api).ListQueryResultsByInputAsync(query)
+	source, errChan := newTestInsightsRepository(context.Background(), api).ListQueryResultsByInputAsync(testQuery())
 
 	seen := map[string]bool{}
 	for row := range source {
@@ -249,7 +255,31 @@ func TestListQueryResultsAsyncDeliversEveryRowToSlowReader(t *testing.T) {
 
 	err, ok := <-errChan
 	require.False(t, ok, "unexpected error: %v", err)
-	assert.Len(t, seen, 250)
+	assert.Len(t, seen, rowCount)
+}
+
+// A reader that stops reading leaves the producer waiting on a full buffer; ending the context
+// releases it with the context's error.
+func TestListQueryResultsAsyncStoppedReaderReleasedByContext(t *testing.T) {
+	api := &fakeInsights{final: types.QueryStatusComplete, rows: 2 * QueryRowsBufferSize, pageSize: 500}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	source, errChan := newTestInsightsRepository(ctx, api).ListQueryResultsByInputAsync(testQuery())
+
+	require.Eventually(t, func() bool { return len(source) == cap(source) }, time.Second, time.Millisecond)
+	cancel()
+
+	select {
+	case err, ok := <-errChan:
+		require.True(t, ok, "expected the context error")
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(time.Second):
+		t.Fatal("producer is still blocked after the context ended")
+	}
+
+	// the query was Complete before it was read, so there is nothing to stop
+	assert.Zero(t, api.stops())
 }
 
 func TestListQueryResultsByQueryAsyncInvalidQueryClosesRows(t *testing.T) {

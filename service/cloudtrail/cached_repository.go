@@ -68,17 +68,3 @@ func (c *CloudTrailRepositoryCached) ListEventsByLookup(lookup *LookupMiddleware
 func (c *CloudTrailRepositoryCached) ListEventsByLookupAsync(lookup *LookupMiddleware) (<-chan Event, <-chan *errors.Error) {
 	return c.repo.ListEventsByLookupAsync(lookup)
 }
-
-// ListEventsByLookupCached returns cached results when available, otherwise delegates to the underlying repository.
-func (c *CloudTrailRepositoryCached) ListEventsByLookupCached(p0 *cache.DataCache, lookup *LookupMiddleware) ([]Event, error) {
-	cacheKey := cache.Key("ListEventsByLookupCached", lookup)
-	var cached []Event
-	if c.cache.Read(cacheKey, &cached) {
-		return cached, nil
-	}
-	r0, r1 := c.repo.ListEventsByLookupCached(p0, lookup)
-	if r1 == nil {
-		_ = c.cache.Write(cacheKey, r0)
-	}
-	return r0, r1
-}

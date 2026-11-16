@@ -120,7 +120,8 @@ A `QueryRow` keeps its fields in the order AWS returned them:
   after 60 minutes; narrow the range or split it if that happens.
 - **A query abandoned on the way is stopped.** When the context ends or a poll fails,
   `ListQueryResults*` sends `StopQuery`, on a context of its own: otherwise the query keeps
-  scanning, and billing, for up to an hour. `WaitForQuery` does not stop a query it gives up on;
+  scanning, and billing, for up to an hour. A query that reports `Unknown` is stopped too, since
+  that status does not say it ended. `WaitForQuery` does not stop a query it gives up on;
   whoever started it decides.
 - **Rows stream only once the query is Complete.** A running query does return rows, but they are
   a preview, not a prefix of the answer: a `sort` or `limit` can still evict them and a `stats`
@@ -131,9 +132,9 @@ A `QueryRow` keeps its fields in the order AWS returned them:
   the first poll of `WaitForQuery`, which does not know the query's language yet.
 - **The poll delay grows** from `DefaultQueryPollMin` (500 ms) by half each poll up to
   `DefaultQueryPollMax` (5 s); `WithPollInterval(min, max)` changes both bounds.
-- **The async buffer holds the whole result**: it is sized to the query's `Limit`, or 10,000
-  (`QueryRowsBufferSize`, the most AWS returns without one), so the producer never waits on the
-  reader and a reader that stops reading leaks no goroutine.
+- **The async variant buffers `QueryRowsBufferSize` (1,000) rows** ahead of the reader and then
+  waits for it. A reader that stops reading before the channel is closed must cancel the
+  repository's context, or the producing goroutine stays blocked.
 - `LimitReached()` is true when the query returned as many rows as its limit — more may have
   matched. It cannot tell when the limit is unknown (no `WithLimit`, or `WaitForQuery`).
 - AWS caps concurrent queries per account; a fan-out past it fails `StartQuery` with

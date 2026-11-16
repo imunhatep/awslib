@@ -43,8 +43,8 @@ func (l *LookupMiddleware) Hash() string {
 	}
 
 	optStr = append(optStr, fmt.Sprintf("EventCategory:%s", l.lookup.EventCategory))
-	optStr = append(optStr, fmt.Sprintf("StartTime:%s", l.lookup.StartTime))
-	optStr = append(optStr, fmt.Sprintf("EndTime:%s", l.lookup.EndTime))
+	optStr = append(optStr, fmt.Sprintf("StartTime:%s", hashTime(l.lookup.StartTime)))
+	optStr = append(optStr, fmt.Sprintf("EndTime:%s", hashTime(l.lookup.EndTime)))
 	optStr = append(optStr, fmt.Sprintf("MaxResults:%d", aws.ToInt32(l.lookup.MaxResults)))
 
 	log.Trace().Strs("hash", optStr).Msg("[LookupMiddleware.Hash] lookup string")
@@ -53,6 +53,17 @@ func (l *LookupMiddleware) Hash() string {
 	hasher.Write([]byte(strings.Join(slice.Sort(optStr, helper.StrSort), ".")))
 
 	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+}
+
+// hashTime renders t as the instant it is. Time.String, which %s used, adds the zone and, for a
+// time derived from time.Now(), the monotonic clock reading, so the same range hashed differently
+// from one process, or one call, to the next.
+func hashTime(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+
+	return t.UTC().Format(time.RFC3339Nano)
 }
 
 func (l *LookupMiddleware) Errors() ([]error, bool) {

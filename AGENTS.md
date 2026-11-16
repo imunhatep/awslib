@@ -412,15 +412,18 @@ and are wrapped by the generated cache, `*Async` streams `QueryRow`s. `StartQuer
   hour a query may run.
 - **An abandoned query is stopped** (`abandonQuery`, on `context.WithoutCancel`): a query keeps
   scanning, and billing, after the caller stops polling. Not for a `QueryFailedError` (already
-  ended), and not in `WaitForQuery`, whose caller started the query and owns it.
+  ended) unless its status is `Unknown`, which does not say the query ended, and not in
+  `WaitForQuery`, whose caller started the query and owns it.
 - **No rows before `Complete`.** Running-query rows are a preview that `sort`/`limit`/`stats` can
   still rewrite, so streaming them would hand out rows the final answer does not contain.
 - **Polls set `MaxItems: 1` only for a query known to be `CWLI`.** Running queries return up to
   10,000 preview rows per poll; SQL and PPL cannot be paged, so trimming them could lose rows. A
   query of unknown language (`WaitForQuery`) polls untrimmed until a response names the language.
   After a trimmed poll sees `Complete`, the pages are re-read from the start.
-- **The async buffer is sized to the query's limit** (or `QueryRowsBufferSize` = 10,000, the most AWS
-  returns without one), so the non-blocking `WriteToChan` never overflows for a well-behaved API.
+- **The async buffer is fixed** (`QueryRowsBufferSize`, 1,000 rows), not sized to the query's limit:
+  a 100,000-row limit preallocated per query in a fan-out is memory held for results that are
+  usually small. Past the buffer the producer blocks on the reader, selecting on the repository
+  context, so a reader that stops reading has to end that context to release the goroutine.
 - Metrics are labelled `cfg.ResourceTypeCloudWatchLogsQuery`, a label-only type kept out of
   `ResourceTypeList`.
 
@@ -429,8 +432,15 @@ Pinned by `insights_repository_test.go`, which fakes the SDK client through the 
 
 #### CloudTrail lookups (`service/cloudtrail`)
 
-- **`MaxResults` is a total.** `LookupEvents` reads it as the page size and rejects anything above
-  50, so `fetchEventsByInput` sends a clamped copy and trims the last page itself.
+- **`ListEventsByLookupCached(dc, lookup)` is the CloudTrail cache**, older than code generation
+  and used by cloudevo; it keys on `LookupMiddleware.Hash()` in a per-lookup namespace.
+  `generate-cached` skips every method that takes a `*cache.DataCache` (`takesCache`), since
+  wrapping one stored each result twice. The generated `ListEventsByLookup` keys on `Hash()`
+  too, through `cache.Hashable`; before that interface existed it keyed on `%+v` of the builder
+  pointer, i.e. on memory addresses.
+- **`Hash()` renders the range as UTC RFC 3339** (`hashTime`). `%s` on a `*time.Time` added the
+  zone and `time.Now()`'s monotonic reading, so an identical range missed the cache. Pinned by
+  `TestLookupHashIgnoresZoneAndMonotonicClock`.
 - **`WithResource` drops its filter silently on purpose.** CloudTrail accepts one lookup attribute;
   the other `With*` attribute setters report a second one in `Errors()`, but `LookupResourceHandler`
   swallows that error so the lookup runs without the resource filter instead of failing. Don't
