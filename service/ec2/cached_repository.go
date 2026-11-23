@@ -73,6 +73,34 @@ func (c *Ec2RepositoryCached) ListAddressesByInput(describeInput *awsec2.Describ
 	return r0, r1
 }
 
+// ListImagesAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListImagesAll() ([]Image, error) {
+	cacheKey := cache.Key("ListImagesAll")
+	var cached []Image
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListImagesAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListImagesByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListImagesByInput(describeInput *awsec2.DescribeImagesInput) ([]Image, error) {
+	cacheKey := cache.Key("ListImagesByInput", describeInput)
+	var cached []Image
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListImagesByInput(describeInput)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // ListInstancesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListInstancesAll() ([]Instance, error) {
 	cacheKey := cache.Key("ListInstancesAll")
@@ -95,6 +123,90 @@ func (c *Ec2RepositoryCached) ListInstancesByInput(query *awsec2.DescribeInstanc
 		return cached, nil
 	}
 	r0, r1 := c.repo.ListInstancesByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListInternetGatewaysAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListInternetGatewaysAll() ([]InternetGateway, error) {
+	cacheKey := cache.Key("ListInternetGatewaysAll")
+	var cached []InternetGateway
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListInternetGatewaysAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListInternetGatewaysByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListInternetGatewaysByInput(describeInput *awsec2.DescribeInternetGatewaysInput) ([]InternetGateway, error) {
+	cacheKey := cache.Key("ListInternetGatewaysByInput", describeInput)
+	var cached []InternetGateway
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListInternetGatewaysByInput(describeInput)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListLaunchTemplatesAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListLaunchTemplatesAll() ([]LaunchTemplate, error) {
+	cacheKey := cache.Key("ListLaunchTemplatesAll")
+	var cached []LaunchTemplate
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListLaunchTemplatesAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListLaunchTemplatesByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListLaunchTemplatesByInput(describeInput *awsec2.DescribeLaunchTemplatesInput) ([]LaunchTemplate, error) {
+	cacheKey := cache.Key("ListLaunchTemplatesByInput", describeInput)
+	var cached []LaunchTemplate
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListLaunchTemplatesByInput(describeInput)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListNatGatewaysAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListNatGatewaysAll() ([]NatGateway, error) {
+	cacheKey := cache.Key("ListNatGatewaysAll")
+	var cached []NatGateway
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListNatGatewaysAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListNatGatewaysByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListNatGatewaysByInput(describeInput *awsec2.DescribeNatGatewaysInput) ([]NatGateway, error) {
+	cacheKey := cache.Key("ListNatGatewaysByInput", describeInput)
+	var cached []NatGateway
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListNatGatewaysByInput(describeInput)
 	if r1 == nil {
 		_ = c.cache.Write(cacheKey, r0)
 	}
@@ -311,6 +423,62 @@ func (c *Ec2RepositoryCached) ListSubnetsByInput(describeInput *awsec2.DescribeS
 	return r0, r1
 }
 
+// ListTransitGatewayAttachmentsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListTransitGatewayAttachmentsAll() ([]TransitGatewayAttachment, error) {
+	cacheKey := cache.Key("ListTransitGatewayAttachmentsAll")
+	var cached []TransitGatewayAttachment
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListTransitGatewayAttachmentsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListTransitGatewayAttachmentsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListTransitGatewayAttachmentsByInput(describeInput *awsec2.DescribeTransitGatewayAttachmentsInput) ([]TransitGatewayAttachment, error) {
+	cacheKey := cache.Key("ListTransitGatewayAttachmentsByInput", describeInput)
+	var cached []TransitGatewayAttachment
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListTransitGatewayAttachmentsByInput(describeInput)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListTransitGatewaysAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListTransitGatewaysAll() ([]TransitGateway, error) {
+	cacheKey := cache.Key("ListTransitGatewaysAll")
+	var cached []TransitGateway
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListTransitGatewaysAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListTransitGatewaysByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListTransitGatewaysByInput(describeInput *awsec2.DescribeTransitGatewaysInput) ([]TransitGateway, error) {
+	cacheKey := cache.Key("ListTransitGatewaysByInput", describeInput)
+	var cached []TransitGateway
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListTransitGatewaysByInput(describeInput)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // ListVolumesAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *Ec2RepositoryCached) ListVolumesAll() ([]Volume, error) {
 	cacheKey := cache.Key("ListVolumesAll")
@@ -361,6 +529,34 @@ func (c *Ec2RepositoryCached) ListVpcEndpointsByInput(describeInput *awsec2.Desc
 		return cached, nil
 	}
 	r0, r1 := c.repo.ListVpcEndpointsByInput(describeInput)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListVpcPeeringConnectionsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListVpcPeeringConnectionsAll() ([]VpcPeeringConnection, error) {
+	cacheKey := cache.Key("ListVpcPeeringConnectionsAll")
+	var cached []VpcPeeringConnection
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListVpcPeeringConnectionsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListVpcPeeringConnectionsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *Ec2RepositoryCached) ListVpcPeeringConnectionsByInput(describeInput *awsec2.DescribeVpcPeeringConnectionsInput) ([]VpcPeeringConnection, error) {
+	cacheKey := cache.Key("ListVpcPeeringConnectionsByInput", describeInput)
+	var cached []VpcPeeringConnection
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListVpcPeeringConnectionsByInput(describeInput)
 	if r1 == nil {
 		_ = c.cache.Write(cacheKey, r0)
 	}

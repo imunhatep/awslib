@@ -8,7 +8,9 @@ import (
 	"github.com/imunhatep/awslib/service/cloudcontrol"
 	"github.com/imunhatep/awslib/service/cloudwatchlogs"
 	"github.com/imunhatep/awslib/service/ec2"
+	"github.com/imunhatep/awslib/service/ecr"
 	"github.com/imunhatep/awslib/service/glue"
+	"github.com/imunhatep/awslib/service/kms"
 	"github.com/imunhatep/awslib/service/lambda"
 	"github.com/imunhatep/awslib/service/sns"
 	"github.com/imunhatep/awslib/service/sqs"
@@ -38,6 +40,8 @@ func TestGetTagsReturnsCopy(t *testing.T) {
 		"glue.Table":               glue.Table{Tags: tags()},
 		"lambda.Function":          lambda.Function{Tags: tags()},
 		"sqs.Queue":                sqs.Queue{Tags: tags()},
+		"kms.Key":                  kms.Key{Tags: tags()},
+		"ecr.Repo":                 ecr.Repo{Tags: tags()},
 	}
 
 	for name, resource := range resources {

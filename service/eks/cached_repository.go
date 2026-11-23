@@ -57,3 +57,31 @@ func (c *EksRepositoryCached) ListClustersByInput(query *awseks.ListClustersInpu
 	}
 	return r0, r1
 }
+
+// ListNodegroupsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *EksRepositoryCached) ListNodegroupsAll() ([]Nodegroup, error) {
+	cacheKey := cache.Key("ListNodegroupsAll")
+	var cached []Nodegroup
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListNodegroupsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListNodegroupsByCluster returns cached results when available, otherwise delegates to the underlying repository.
+func (c *EksRepositoryCached) ListNodegroupsByCluster(clusterName string) ([]Nodegroup, error) {
+	cacheKey := cache.Key("ListNodegroupsByCluster", clusterName)
+	var cached []Nodegroup
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListNodegroupsByCluster(clusterName)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}

@@ -7,6 +7,9 @@ import "encoding/gob"
 // init registers this package's types with encoding/gob so they can be
 // serialized by the cache handlers. Importing this package is sufficient.
 func init() {
+	gob.Register(Listener{})
 	gob.Register(LoadBalancer{})
 	gob.Register(LoadBalancerList{})
+	gob.Register(Target{})
+	gob.Register(TargetGroup{})
 }

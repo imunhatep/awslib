@@ -31,6 +31,62 @@ func (r *RdsRepository) WithCache(dc *cache.DataCache) *RdsRepositoryCached {
 	}
 }
 
+// ListDBClusterSnapshotsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *RdsRepositoryCached) ListDBClusterSnapshotsAll() ([]DBClusterSnapshot, error) {
+	cacheKey := cache.Key("ListDBClusterSnapshotsAll")
+	var cached []DBClusterSnapshot
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListDBClusterSnapshotsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListDBClusterSnapshotsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *RdsRepositoryCached) ListDBClusterSnapshotsByInput(query *awsrds.DescribeDBClusterSnapshotsInput) ([]DBClusterSnapshot, error) {
+	cacheKey := cache.Key("ListDBClusterSnapshotsByInput", query)
+	var cached []DBClusterSnapshot
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListDBClusterSnapshotsByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListDBClustersAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *RdsRepositoryCached) ListDBClustersAll() ([]DBCluster, error) {
+	cacheKey := cache.Key("ListDBClustersAll")
+	var cached []DBCluster
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListDBClustersAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListDBClustersByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *RdsRepositoryCached) ListDBClustersByInput(query *awsrds.DescribeDBClustersInput) ([]DBCluster, error) {
+	cacheKey := cache.Key("ListDBClustersByInput", query)
+	var cached []DBCluster
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListDBClustersByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // ListDBEngineVersionsByInput returns cached results when available, otherwise delegates to the underlying repository.
 func (c *RdsRepositoryCached) ListDBEngineVersionsByInput(query *awsrds.DescribeDBEngineVersionsInput) ([]types.DBEngineVersion, error) {
 	cacheKey := cache.Key("ListDBEngineVersionsByInput", query)

@@ -8,15 +8,22 @@ import "encoding/gob"
 // serialized by the cache handlers. Importing this package is sufficient.
 func init() {
 	gob.Register(Address{})
+	gob.Register(Image{})
 	gob.Register(Instance{})
 	gob.Register(InstanceList{})
+	gob.Register(InternetGateway{})
+	gob.Register(LaunchTemplate{})
+	gob.Register(NatGateway{})
 	gob.Register(NetworkAcl{})
 	gob.Register(NetworkInterface{})
 	gob.Register(RouteTable{})
 	gob.Register(SecurityGroup{})
 	gob.Register(Snapshot{})
 	gob.Register(Subnet{})
+	gob.Register(TransitGateway{})
+	gob.Register(TransitGatewayAttachment{})
 	gob.Register(Volume{})
 	gob.Register(Vpc{})
 	gob.Register(VpcEndpoint{})
+	gob.Register(VpcPeeringConnection{})
 }

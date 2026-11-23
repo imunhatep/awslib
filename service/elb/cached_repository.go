@@ -45,6 +45,34 @@ func (c *LoadBalancerRepositoryCached) GetLoadBalancerTags(lb types.LoadBalancer
 	return r0, r1
 }
 
+// ListListenersAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *LoadBalancerRepositoryCached) ListListenersAll() ([]Listener, error) {
+	cacheKey := cache.Key("ListListenersAll")
+	var cached []Listener
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListListenersAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListListenersByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *LoadBalancerRepositoryCached) ListListenersByInput(describeInput *awselbv2.DescribeListenersInput) ([]Listener, error) {
+	cacheKey := cache.Key("ListListenersByInput", describeInput)
+	var cached []Listener
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListListenersByInput(describeInput)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
 // ListLoadBalancersAll returns cached results when available, otherwise delegates to the underlying repository.
 func (c *LoadBalancerRepositoryCached) ListLoadBalancersAll() ([]LoadBalancer, error) {
 	cacheKey := cache.Key("ListLoadBalancersAll")
@@ -67,6 +95,34 @@ func (c *LoadBalancerRepositoryCached) ListLoadBalancersByInput(query *awselbv2.
 		return cached, nil
 	}
 	r0, r1 := c.repo.ListLoadBalancersByInput(query)
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListTargetGroupsAll returns cached results when available, otherwise delegates to the underlying repository.
+func (c *LoadBalancerRepositoryCached) ListTargetGroupsAll() ([]TargetGroup, error) {
+	cacheKey := cache.Key("ListTargetGroupsAll")
+	var cached []TargetGroup
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListTargetGroupsAll()
+	if r1 == nil {
+		_ = c.cache.Write(cacheKey, r0)
+	}
+	return r0, r1
+}
+
+// ListTargetGroupsByInput returns cached results when available, otherwise delegates to the underlying repository.
+func (c *LoadBalancerRepositoryCached) ListTargetGroupsByInput(describeInput *awselbv2.DescribeTargetGroupsInput) ([]TargetGroup, error) {
+	cacheKey := cache.Key("ListTargetGroupsByInput", describeInput)
+	var cached []TargetGroup
+	if c.cache.Read(cacheKey, &cached) {
+		return cached, nil
+	}
+	r0, r1 := c.repo.ListTargetGroupsByInput(describeInput)
 	if r1 == nil {
 		_ = c.cache.Write(cacheKey, r0)
 	}

@@ -10,6 +10,8 @@ import (
 const (
 	ResourceTypeDBEngineVersion          awscfg.ResourceType = "AWS::RDS::DBEngineVersion"
 	ResourceTypeSnapshot                 awscfg.ResourceType = "AWS::EC2::Snapshot"
+	ResourceTypeEc2Image                 awscfg.ResourceType = "AWS::EC2::Image"
+	ResourceTypeEKSNodegroup             awscfg.ResourceType = "AWS::EKS::Nodegroup"
 	ResourceTypeEmrServerlessApplication awscfg.ResourceType = "AWS::EMRServerless::Application"
 	ResourceTypeEmrCluster               awscfg.ResourceType = "AWS::EMR::Cluster"
 	ResourceTypeEmrServerlessJobRun      awscfg.ResourceType = "AWS::EMRServerless::JobRun"
@@ -185,11 +187,14 @@ func ResourceTypeListRegional() []awscfg.ResourceType {
 		// rds
 		awscfg.ResourceTypeDBInstance,
 		awscfg.ResourceTypeDBSnapshot,
+		awscfg.ResourceTypeDBCluster,
+		awscfg.ResourceTypeDBClusterSnapshot,
 		// ecs
 		awscfg.ResourceTypeECSCluster,
 		awscfg.ResourceTypeECSService,
 		// eks
 		awscfg.ResourceTypeEKSCluster,
+		ResourceTypeEKSNodegroup,
 		// efs
 		awscfg.ResourceTypeEFSFileSystem,
 		// emr
@@ -206,6 +211,8 @@ func ResourceTypeListRegional() []awscfg.ResourceType {
 		awscfg.ResourceTypeInstance,
 		awscfg.ResourceTypeVolume,
 		ResourceTypeSnapshot,
+		ResourceTypeEc2Image,
+		awscfg.ResourceTypeLaunchTemplate,
 		// ec2 — vpc and its networking resources
 		awscfg.ResourceTypeVpc,
 		awscfg.ResourceTypeSubnet,
@@ -215,8 +222,19 @@ func ResourceTypeListRegional() []awscfg.ResourceType {
 		awscfg.ResourceTypeNetworkAcl,
 		awscfg.ResourceTypeEip,
 		awscfg.ResourceTypeNetworkInterface,
+		awscfg.ResourceTypeNatGateway,
+		awscfg.ResourceTypeInternetGateway,
+		awscfg.ResourceTypeTransitGateway,
+		awscfg.ResourceTypeTransitGatewayAttachment,
+		awscfg.ResourceTypeVPCPeeringConnection,
 		// elb
 		awscfg.ResourceTypeLoadBalancerV2,
+		awscfg.ResourceTypeElasticLoadBalancingV2TargetGroup,
+		awscfg.ResourceTypeListenerV2,
+		// kms
+		awscfg.ResourceTypeKey,
+		// ecr
+		awscfg.ResourceTypeECRRepository,
 		// sqs
 		awscfg.ResourceTypeQueue,
 		// sm

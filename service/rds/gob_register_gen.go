@@ -7,6 +7,8 @@ import "encoding/gob"
 // init registers this package's types with encoding/gob so they can be
 // serialized by the cache handlers. Importing this package is sufficient.
 func init() {
+	gob.Register(DBCluster{})
+	gob.Register(DBClusterSnapshot{})
 	gob.Register(DbInstance{})
 	gob.Register(DbInstanceList{})
 	gob.Register(DbSnapshot{})

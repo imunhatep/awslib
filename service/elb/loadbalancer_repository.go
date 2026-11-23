@@ -59,33 +59,49 @@ func (r *LoadBalancerRepository) ListLoadBalancersAll() ([]LoadBalancer, error) 
 	return r.ListLoadBalancersByInput(&awselbv2.DescribeLoadBalancersInput{})
 }
 
+// ListLoadBalancersByInput pages through DescribeLoadBalancers and reads the
+// tags in batches. Tags that cannot be read fail the listing: a load balancer
+// returned without them would read as untagged.
 func (r *LoadBalancerRepository) ListLoadBalancersByInput(query *awselbv2.DescribeLoadBalancersInput) ([]LoadBalancer, error) {
 	start := time.Now()
-	var balancers []LoadBalancer
 
-	if metrics.AwsMetricsEnabled {
-		metrics.AwsApiRequests.With(r.promLabels("DescribeLoadBalancers", cfg.ResourceTypeLoadBalancerV2)).Inc()
+	if query == nil {
+		query = &awselbv2.DescribeLoadBalancersInput{}
 	}
 
-	resp, err := r.elbv2Client().DescribeLoadBalancers(r.ctx, query)
-	if err != nil {
+	var lbs []types.LoadBalancer
+
+	p := awselbv2.NewDescribeLoadBalancersPaginator(r.elbv2Client(), query)
+	for p.HasMorePages() {
 		if metrics.AwsMetricsEnabled {
-			metrics.AwsApiRequestErrors.With(r.promLabels("DescribeLoadBalancers", cfg.ResourceTypeLoadBalancerV2)).Inc()
+			metrics.AwsApiRequests.With(r.promLabels("DescribeLoadBalancers", cfg.ResourceTypeLoadBalancerV2)).Inc()
 		}
 
-		return balancers, errors.New(err)
+		resp, err := p.NextPage(r.ctx)
+		if err != nil {
+			if metrics.AwsMetricsEnabled {
+				metrics.AwsApiRequestErrors.With(r.promLabels("DescribeLoadBalancers", cfg.ResourceTypeLoadBalancerV2)).Inc()
+			}
+
+			return nil, errors.New(err)
+		}
+
+		lbs = append(lbs, resp.LoadBalancers...)
 	}
 
-	for _, v := range resp.LoadBalancers {
-		tags, err := r.GetLoadBalancerTags(v)
-		if err != nil {
-			log.Warn().Err(err).
-				Str("loadBalancer", aws.ToString(v.LoadBalancerName)).
-				Msg("[LoadBalancerRepository.ListLoadBalancersByInput] failed to read load balancer tags; load balancer returned without tags")
-		}
+	arns := make([]string, 0, len(lbs))
+	for _, lb := range lbs {
+		arns = append(arns, aws.ToString(lb.LoadBalancerArn))
+	}
 
-		bucket := NewLoadBalancer(r.client, v, tags)
-		balancers = append(balancers, bucket)
+	tags, err := r.describeTags(arns, cfg.ResourceTypeLoadBalancerV2)
+	if err != nil {
+		return nil, err
+	}
+
+	balancers := make([]LoadBalancer, 0, len(lbs))
+	for _, lb := range lbs {
+		balancers = append(balancers, NewLoadBalancer(r.client, lb, tags[aws.ToString(lb.LoadBalancerArn)]))
 	}
 
 	if metrics.AwsMetricsEnabled {

@@ -9,4 +9,5 @@ import "encoding/gob"
 func init() {
 	gob.Register(Cluster{})
 	gob.Register(ClusterList{})
+	gob.Register(Nodegroup{})
 }

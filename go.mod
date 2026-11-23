@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/allegro/bigcache/v3 v3.2.0
-	github.com/aws/aws-sdk-go-v2 v1.47.3
+	github.com/aws/aws-sdk-go-v2 v1.48.0
 	github.com/aws/aws-sdk-go-v2/config v1.33.9
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.9
 	github.com/aws/aws-sdk-go-v2/service/accessanalyzer v1.57.4
@@ -24,6 +24,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/costexplorer v1.74.1
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.70.3
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.338.4
+	github.com/aws/aws-sdk-go-v2/service/ecr v1.69.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.100.3
 	github.com/aws/aws-sdk-go-v2/service/efs v1.49.4
 	github.com/aws/aws-sdk-go-v2/service/eks v1.104.1
@@ -34,6 +35,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/glue v1.169.1
 	github.com/aws/aws-sdk-go-v2/service/health v1.50.1
 	github.com/aws/aws-sdk-go-v2/service/iam v1.64.4
+	github.com/aws/aws-sdk-go-v2/service/kms v1.63.0
 	github.com/aws/aws-sdk-go-v2/service/lambda v1.112.1
 	github.com/aws/aws-sdk-go-v2/service/pricing v1.49.4
 	github.com/aws/aws-sdk-go-v2/service/rds v1.130.3
@@ -65,7 +67,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/waf v1.38.4
 	github.com/aws/aws-sdk-go-v2/service/wafregional v1.38.4
 	github.com/aws/aws-sdk-go-v2/service/wafv2 v1.83.4
-	github.com/aws/smithy-go v1.28.5
+	github.com/aws/smithy-go v1.28.9
 	github.com/go-errors/errors v1.5.1
 	github.com/imunhatep/gocollection v0.2.1
 	github.com/prometheus/client_golang v1.25.0
@@ -78,8 +80,8 @@ require (
 require (
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.22 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.20.3 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.6 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.6 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.12 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.12 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.5.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.21 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.11.7 // indirect

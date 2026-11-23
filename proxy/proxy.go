@@ -110,6 +110,34 @@ func (e *RepoProxy) FindAll(resourceType cfg.ResourceType) (items []service.Reso
 		items, err = FindRoute53Domains(e.ctx, e.client, e.cache)
 	case cfgEntity.ResourceTypeRoute53ResourceRecord:
 		items, err = FindRoute53ResourceRecords(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeNatGateway:
+		items, err = FindEc2NatGateways(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeInternetGateway:
+		items, err = FindEc2InternetGateways(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeTransitGateway:
+		items, err = FindEc2TransitGateways(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeTransitGatewayAttachment:
+		items, err = FindEc2TransitGatewayAttachments(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeVPCPeeringConnection:
+		items, err = FindEc2VpcPeeringConnections(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeEc2Image:
+		items, err = FindEc2Images(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeLaunchTemplate:
+		items, err = FindEc2LaunchTemplates(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeElasticLoadBalancingV2TargetGroup:
+		items, err = FindElbTargetGroups(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeListenerV2:
+		items, err = FindElbListeners(e.ctx, e.client, e.cache)
+	case cfgEntity.ResourceTypeEKSNodegroup:
+		items, err = FindEksNodegroups(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeDBCluster:
+		items, err = FindRdsDBClusters(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeDBClusterSnapshot:
+		items, err = FindRdsDBClusterSnapshots(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeKey:
+		items, err = FindKmsKeys(e.ctx, e.client, e.cache)
+	case cfg.ResourceTypeECRRepository:
+		items, err = FindEcrRepositories(e.ctx, e.client, e.cache)
 	case cfgEntity.ResourceTypeCloudFrontDistributionTenantSummary:
 		items, err = FindCloudFrontDistributionTenants(e.ctx, e.client, e.cache)
 	case cfgEntity.ResourceTypeCloudFrontConnectionGroup:

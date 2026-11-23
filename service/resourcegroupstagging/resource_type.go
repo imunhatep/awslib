@@ -50,26 +50,40 @@ var resourceTypeFilters = map[cfg.ResourceType]string{
 	// dynamodb
 	cfg.ResourceTypeTable: "dynamodb:table",
 	// ec2
-	cfg.ResourceTypeInstance:         "ec2:instance",
-	cfg.ResourceTypeVolume:           "ec2:volume",
-	ccfg.ResourceTypeSnapshot:        "ec2:snapshot",
-	cfg.ResourceTypeVpc:              "ec2:vpc",
-	cfg.ResourceTypeSubnet:           "ec2:subnet",
-	cfg.ResourceTypeSecurityGroup:    "ec2:security-group",
-	cfg.ResourceTypeVPCEndpoint:      "ec2:vpc-endpoint",
-	cfg.ResourceTypeRouteTable:       "ec2:route-table",
-	cfg.ResourceTypeNetworkAcl:       "ec2:network-acl",
-	cfg.ResourceTypeEip:              "ec2:elastic-ip",
-	cfg.ResourceTypeNetworkInterface: "ec2:network-interface",
+	cfg.ResourceTypeInstance:                 "ec2:instance",
+	cfg.ResourceTypeVolume:                   "ec2:volume",
+	ccfg.ResourceTypeSnapshot:                "ec2:snapshot",
+	cfg.ResourceTypeVpc:                      "ec2:vpc",
+	cfg.ResourceTypeSubnet:                   "ec2:subnet",
+	cfg.ResourceTypeSecurityGroup:            "ec2:security-group",
+	cfg.ResourceTypeVPCEndpoint:              "ec2:vpc-endpoint",
+	cfg.ResourceTypeRouteTable:               "ec2:route-table",
+	cfg.ResourceTypeNetworkAcl:               "ec2:network-acl",
+	cfg.ResourceTypeEip:                      "ec2:elastic-ip",
+	cfg.ResourceTypeNetworkInterface:         "ec2:network-interface",
+	cfg.ResourceTypeNatGateway:               "ec2:natgateway",
+	cfg.ResourceTypeInternetGateway:          "ec2:internet-gateway",
+	cfg.ResourceTypeTransitGateway:           "ec2:transit-gateway",
+	cfg.ResourceTypeTransitGatewayAttachment: "ec2:transit-gateway-attachment",
+	cfg.ResourceTypeVPCPeeringConnection:     "ec2:vpc-peering-connection",
+	cfg.ResourceTypeLaunchTemplate:           "ec2:launch-template",
+	ccfg.ResourceTypeEc2Image:                "ec2:image",
 	// ecs
 	cfg.ResourceTypeECSCluster: "ecs:cluster",
 	cfg.ResourceTypeECSService: "ecs:service",
 	// efs
 	cfg.ResourceTypeEFSFileSystem: "elasticfilesystem:file-system",
 	// eks
-	cfg.ResourceTypeEKSCluster: "eks:cluster",
+	cfg.ResourceTypeEKSCluster:    "eks:cluster",
+	ccfg.ResourceTypeEKSNodegroup: "eks:nodegroup",
 	// elb
-	cfg.ResourceTypeLoadBalancerV2: "elasticloadbalancing:loadbalancer",
+	cfg.ResourceTypeLoadBalancerV2:                    "elasticloadbalancing:loadbalancer",
+	cfg.ResourceTypeElasticLoadBalancingV2TargetGroup: "elasticloadbalancing:targetgroup",
+	cfg.ResourceTypeListenerV2:                        "elasticloadbalancing:listener",
+	// kms
+	cfg.ResourceTypeKey: "kms:key",
+	// ecr
+	cfg.ResourceTypeECRRepository: "ecr:repository",
 	// emr
 	ccfg.ResourceTypeEmrCluster: "elasticmapreduce:cluster",
 	// emr serverless — ARNs read ".../applications/<id>" with a leading slash and
@@ -87,8 +101,10 @@ var resourceTypeFilters = map[cfg.ResourceType]string{
 	// lambda
 	cfg.ResourceTypeFunction: "lambda:function",
 	// rds
-	cfg.ResourceTypeDBInstance: "rds:db",
-	cfg.ResourceTypeDBSnapshot: "rds:snapshot",
+	cfg.ResourceTypeDBInstance:        "rds:db",
+	cfg.ResourceTypeDBSnapshot:        "rds:snapshot",
+	cfg.ResourceTypeDBCluster:         "rds:cluster",
+	cfg.ResourceTypeDBClusterSnapshot: "rds:cluster-snapshot",
 	// route53
 	cfg.ResourceTypeRoute53HostedZone: "route53:hostedzone",
 	// s3 — arn:aws:s3:::<bucket> has no resource-type segment
